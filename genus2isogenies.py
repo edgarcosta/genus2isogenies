@@ -1,5 +1,5 @@
 from sage.all import *  #  to avoid circular imports triggered by pyhdme in old versions of sage
-import timeout_decorator
+from wrapt_timeout_decorator import timeout
 from pyhdme import (
     modular_igusa_from_igusa_clebsch,
     igusa_clebsch_from_modular_igusa,
@@ -156,7 +156,7 @@ def hyperellminimalmodel(C):
 def hyperellred(C):
     return gpwrapper(C, 'hyperellred')
 
-@timeout_decorator.timeout(30, use_signals=False)
+@timeout(30, use_signals=False)
 def ReducedModel(C):
     magma.quit()
     magma.eval("""
@@ -188,7 +188,7 @@ def reduced_minimal_weierstrass_model(C):
     # no need to factor discriminant
     try:
         C2 = ReducedModel(C1)
-    except timeout_decorator.timeout_decorator.TimeoutError:
+    except Exception:
         C2 = C1
     return C2
 
