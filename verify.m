@@ -1,18 +1,31 @@
-AttachSpec("~/projects/CHIMP/CHIMP.spec");
+hwlpolys := 0 eq System("hwlpoly 1&> /dev/null");
 
 function TracesOfFrobeniusQuick(C, B0, B1: exclude:={})
   if not IsIntegral(C) then C:=IntegralModel(C); end if;
   D := Integers()!Discriminant(C);
-  cstr := sprint(Coefficients(HyperellipticPolynomials(SimplifiedModel(C))));
   filename := Sprintf("temp_%o", Getpid());
-  k := Ceiling(Log(2,B1));
-  cmd := Sprintf("hwlpolys %o %o 2 0 -1 0 %o >/dev/null", cstr, k, filename);
-  System(cmd);
-  S := [[atoi(c):c in Split(r,",")]: r in Split(Read(filename))|"," in r];
+  if hwlpolys then
+    cstr := sprint(Coefficients(HyperellipticPolynomials(SimplifiedModel(C))));
+    k := Ceiling(Log(2,B1));
+    cmd := Sprintf("hwlpolys %o %o 2 0 -1 0 %o &>/dev/null", cstr, k, filename);
+    System(cmd);
+  else
+    f := HyperellipticPolynomials(SimplifiedModel(C));
+    _<x> := Parent(f);
+    cstr := sprint(f);
+    cmd := Sprintf("lpdata %o \"%o\" %o 3 &>/dev/null", filename, cstr, B1);
+    System(cmd);
+    filename cat:= "_lpdata.txt";
+  end if;
+  S := [[atoi(c):c in Split(r,",")]: r in Split(Read(filename)) | "," in r];
   System("rm " cat filename);
   X := IndexFibers(S,func<r|r[1]>:Unique,Project:=func<r|r[2]>);
   minp := 16*Genus(C)^2;
-  return [ p gt minp and IsDefined(X,p) select X[p] else p+1-#ChangeRing(C,GF(p)):p in PrimesInInterval(B0,B1) | not (p in exclude or IsDivisibleBy(D,p))];
+  res := [ p gt minp and IsDefined(X,p) select X[p] else p+1-#ChangeRing(C,GF(p)):p in PrimesInInterval(B0,B1) | not (p in exclude or IsDivisibleBy(D,p))];
+  if not hwlpolys then
+    res := [-elt : elt in res];
+  end if;
+  return res;
 end function;
 
 function RichelotClass(Cs)
@@ -86,6 +99,5 @@ function Verify(input)
 end function;
 
 
-res := [* Verify(ReplaceCharacter(elt, "\\", "")) : elt in Split(input, " ") *];
-
+res := [Verify(ReplaceCharacter(elt, "\\", "")) : elt in Split(input, " ")];
 exit;
