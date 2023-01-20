@@ -245,7 +245,7 @@ def isogeny_graph(C, conductor, ells=None, verbose=0, threads=1):
 
 def isogeny_graph_from_line(line, verbose=0, threads=1):
     cond, c, Lhash, input_ics, input_eqns = line.split(":")
-    cond, Lhash = map(int, [cond, Lhash])
+    cond = int(cond)
     input_ics, input_eqns = map(eval, [input_ics, input_eqns])
     R = PolynomialRing(ZZ, "x")
     # pick the first curve
@@ -332,7 +332,19 @@ def is_interactive():
     return not hasattr(main, '__file__')
 
 if __name__ == "__main__" and not is_interactive():
-    assert len(sys.argv) >= 2
+    if not len(sys.argv) >= 2:
+        print(r"""
+    USAGE:
+         sage -python {cmd} <input line> <optional:threads> <optional:verbosity level>
+
+         <input line> takes the following format
+            "conductor:<optional>:<optional>:[list of modular invariants]:[list of pairs of coefficients]"
+        for example
+            "704:704.a:2159575534599616393:[[-1856,129536,-44,-2948]]:[[[-1,-1,-2,1,1,-2],[1,1,1,1]]]"
+
+    EXAMPLE
+        """.format(cmd=sys.argv[0]) )
+        sys.exit()
     threads = 1 if len(sys.argv) <= 2 else int(sys.argv[2])
     verbose = 0 if len(sys.argv) <= 3 else int(sys.argv[3])
     out = isogeny_graph_from_line(sys.argv[1], verbose=verbose, threads=threads)
