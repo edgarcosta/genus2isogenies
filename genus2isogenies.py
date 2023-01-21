@@ -1,5 +1,4 @@
 from sage.all import *  #  to avoid circular imports triggered by pyhdme in old versions of sage
-from wrapt_timeout_decorator import timeout
 from pyhdme import (
     modular_igusa_from_igusa_clebsch,
     igusa_clebsch_from_modular_igusa,
@@ -118,7 +117,7 @@ def possible_isogenous_quadratic_twists(C, bad_primes, Lpolynomial_origin, bound
     return r
 
 
-def isogenous_curves(C, invariants):
+def isogenous_curves(C, invariants, reduced=True):
     # returns curves in the same order
     bad_primes = ZZ(discriminant(C)).prime_divisors()
     Lpolynomial_origin = lambda p: Lpolynomial(C, p)
@@ -132,9 +131,12 @@ def isogenous_curves(C, invariants):
     ]
     assert all(len(elt) == 1 for elt in twists)
     Cnonred = [quadratic_twist(c, t[0]) for c, t in zip(Cinv, twists)]
-    Cred = [reduced_minimal_weierstrass_model(elt) for elt in Cnonred]
-    assert [modular_invariants(elt) for elt in Cred] == invariants
-    return Cred
+    if reduced:
+        res = [reduced_minimal_weierstrass_model(elt) for elt in Cnonred]
+    else:
+        res = Cnonred
+    assert [modular_invariants(elt) for elt in res] == invariants
+    return res
 
 
 def gpwrapper(C, command):
@@ -156,10 +158,13 @@ def hyperellminimalmodel(C):
 def hyperellred(C):
     return gpwrapper(C, 'hyperellred')
 
-@timeout(30, use_signals=False)
-def ReducedModel(C):
-    magma.quit()
-    magma.eval("""
+
+def reduced_minimal_weierstrass_model(C):
+    from wrapt_timeout_decorator import timeout
+    @timeout(30, use_signals=False)
+    def ReducedModel(C):
+        magma.quit()
+        magma.eval("""
 function reducemodel(C : prec:=100, tries:=3)
     old_prec := Precision(GetDefaultRealField());
     SetDefaultRealFieldPrecision(prec);
@@ -177,9 +182,7 @@ function reducemodel(C : prec:=100, tries:=3)
 end function;
 """
     )
-    return magma(C).reducemodel().sage()
-
-def reduced_minimal_weierstrass_model(C):
+        return magma(C).reducemodel().sage()
     # minimize discriminant
     C0 = hyperellminimalmodel(C)
     # minimize coefficients
@@ -229,7 +232,7 @@ def isogeny_graph_invariants(ics, ells, verbose=0, threads=1):
     return G
 
 
-def isogeny_graph(C, conductor, ells=None, verbose=0, threads=1):
+def isogeny_graph(C, conductor, ells=None, verbose=0, threads=1, reduced=True):
     if ells is None:
         ells = reducible_ell(C, conductor)
         if verbose:
@@ -237,20 +240,20 @@ def isogeny_graph(C, conductor, ells=None, verbose=0, threads=1):
     m_inv = modular_invariants(C)
     G = isogeny_graph_invariants([m_inv], ells, verbose=verbose, threads=threads)
     invs = G.vertices(sort=True)
-    curves = isogenous_curves(C, invs)
+    curves = isogenous_curves(C, invs, reduced=reduced)
     invs_to_curves = dict([(i, c) for i, c in zip(invs, curves)])
     G.relabel(invs_to_curves)
     return G, ells
 
 
-def isogeny_graph_from_line(line, verbose=0, threads=1):
+def isogeny_graph_from_line(line, verbose=0, threads=1, reduced=True):
     cond, c, Lhash, input_ics, input_eqns = line.split(":")
     cond = int(cond)
     input_ics, input_eqns = map(eval, [input_ics, input_eqns])
     R = PolynomialRing(ZZ, "x")
     # pick the first curve
     C = HyperellipticCurve(*map(R, input_eqns[0]))
-    G, ells = isogeny_graph(C, cond, verbose=verbose, threads=threads)
+    G, ells = isogeny_graph(C, cond, verbose=verbose, threads=threads, reduced=reduced)
     curves = G.vertices(key=modular_invariants)
     eqns = [[pol.list() for pol in elt.hyperelliptic_polynomials()] for elt in curves]
     invs = list(map(modular_invariants, curves))
@@ -335,9 +338,10 @@ if __name__ == "__main__" and not is_interactive():
     if not len(sys.argv) >= 2:
         print(r"""
     USAGE:
-         sage -python {cmd} <input line> <optional:threads> <optional:verbosity level>
+         sage -python {cmd} <input line> <threads=1> <verbose=0> <reduced=0>
 
-         <input line> takes the following format
+         where the last 3 positional arguments are optional
+         the <input line> takes the following format
             "conductor:<optional>:<optional>:[list of modular invariants]:[list of pairs of coefficients]"
         for example
             "704:704.a:2159575534599616393:[[-1856,129536,-44,-2948]]:[[[-1,-1,-2,1,1,-2],[1,1,1,1]]]"
@@ -347,5 +351,6 @@ if __name__ == "__main__" and not is_interactive():
         sys.exit()
     threads = 1 if len(sys.argv) <= 2 else int(sys.argv[2])
     verbose = 0 if len(sys.argv) <= 3 else int(sys.argv[3])
-    out = isogeny_graph_from_line(sys.argv[1], verbose=verbose, threads=threads)
+    reduced = True if len(sys.argv) <= 4 else bool(int(sys.argv[4]))
+    out = isogeny_graph_from_line(sys.argv[1], verbose=verbose, threads=threads, reduced=reduced)
     print(":".join(map(str, out)).replace(" ", ""))
