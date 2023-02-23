@@ -3,7 +3,7 @@ Each row of the output corresponds to an isogeny class.
 This is the description of the columns:
 1. Conductor
 2. LMFDB isogeny class label if known, otherwise `NULL`
-3. Trace hash, as in in Section 4.3 of (https://arxiv.org/abs/1602.03715)
+3. Trace hash, as in Section 4.3 of https://arxiv.org/abs/1602.03715
 4. Modular invariants for the known curves in the isogeny class
 5. Curve equations corresponding to the invariants in item 4
 6. The primes ell that we considered to test for isogenies
