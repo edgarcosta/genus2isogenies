@@ -8,7 +8,7 @@ This is the description of the columns:
 5. Curve equations corresponding to the invariants in item 4
 6. The primes ell that we considered to test for isogenies
 7. Modular invariants for all the curves in the isogeny class (this is a supset of item 4)
-8. Equations corresponding to such invariants in item 7 (up to isomormphism, this is a supset of item 5)
+8. Curve equations corresponding to the invariants in item 7 (up to isomormphism, this is a supset of item 5)
 9. A matrix representing the weighted isogeny graph, where the weights are the square roots of the isogeny degrees
 
 The input is given by columns 1 through 5.
