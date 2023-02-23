@@ -11,4 +11,4 @@ This is the description of the columns:
 8. Equations corresponding to such invariants in item 7 (up to isomormphism, this is a supset of item 5)
 9. A matrix representing the weighted isogeny graph, where the weights are the square roots of the isogeny degrees
 
-The input is given by columns from 1 through 5.
+The input is given by columns 1 through 5.
