@@ -21,6 +21,8 @@ to provide models with reasonable coefficient size.
 
 ## Examples
 
+See [data/README.md](data/README.md) for a description of the input/output.
+
 ### A pair connected by an isogeny of degree 3^4
 ```
 $ sage -python genus2isogenies.py "704:704.a:2159575534599616393:[[-1856,129536,-44,-2948]]:[[[-1,-1,-2,1,1,-2],[1,1,1,1]]]"
