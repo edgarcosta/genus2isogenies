@@ -8,16 +8,14 @@ The computation of isogeny classes from invariants can be on
 ```
   sage -pip install --upgrade git+https://github.com/edgarcosta/pyhdme
 ```
- 
+
 and optionally on:
  - [Pari/GP](https://pari.math.u-bordeaux.fr/) >= 2.15.0, precisely `hyperellminimalmodel` and `hyperellred`
- - [Magma](http://magma.maths.usyd.edu.au/magma/), precisely `ReducedModel`
-- [wrapt-timeout-decorator](https://pypi.org/project/wrapt-timeout-decorator/)
 ```
 sage -pip install wrapt-timeout-decorator
 ```
 to provide models with reasonable coefficient size.
- 
+
 
 ## Examples
 

@@ -160,40 +160,11 @@ def hyperellred(C):
 
 
 def reduced_minimal_weierstrass_model(C):
-    from wrapt_timeout_decorator import timeout
-    @timeout(30, use_signals=False)
-    def ReducedModel(C):
-        magma.quit()
-        magma.eval("""
-function reducemodel(C : prec:=100, tries:=3)
-    old_prec := Precision(GetDefaultRealField());
-    SetDefaultRealFieldPrecision(prec);
-    try
-        Cred := ReducedModel(C);
-    catch e
-        if tries gt 0 then
-            Cred := $$(C : prec:=2*prec, tries:=tries-1);
-        else
-            Cred := C;
-        end if;
-    end try;
-    SetDefaultRealFieldPrecision(old_prec);
-    return Cred;
-end function;
-"""
-    )
-        return magma(C).reducemodel().sage()
     # minimize discriminant
     C0 = hyperellminimalmodel(C)
     # minimize coefficients
     C1 = hyperellred(C0)
-    # call magma for ultimate reduction, but just reduce
-    # no need to factor discriminant
-    try:
-        C2 = ReducedModel(C1)
-    except Exception:
-        C2 = C1
-    return C2
+    return C1
 
 
 def isogeny_graph_invariants(ics, ells, verbose=0, threads=1):
