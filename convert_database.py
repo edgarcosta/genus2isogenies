@@ -1,9 +1,6 @@
 from sage.all import *
 import sys
 import os
-# edit accordingly
-sys.path.append(os.path.join(os.environ['HOME'],"projects/LMFDB/lmfdb"))
-from lmfdb import db
 from pyhdme import modular_igusa_from_igusa_clebsch
 
 from collections import defaultdict
@@ -41,8 +38,11 @@ def doline(lines):
 
 
 def load_drew(filename):
+# edit accordingly
+    sys.path.append(os.path.join(os.environ['HOME'],"projects/LMFDB/lmfdb"))
+    from lmfdb import db
     res = defaultdict(list)
-    names = {int(elt['Lhash']) : elt['class'] for elt in lmfdb.db.g2c_curves.search({}, ['Lhash', 'class'])}
+    names = {int(elt['Lhash']) : elt['class'] for elt in db.g2c_curves.search({}, ['Lhash', 'class'])}
 
     with open(filename) as F:
         lines = F.readlines()
