@@ -163,19 +163,19 @@ def gpwrapper(C, command):
     newf, newh = map(S, map(R, out.strip('[]\n').split(",")))
     return HyperellipticCurve(newf, newh)
 
-#def MinimalWeierstrassModel(C):
-#    return gpwrapper(C, 'hyperellminimalmodel')
+def MinimalWeierstrassModel(C):
+    return gpwrapper(C, 'hyperellminimalmodel')
 
 def ReducedModel(C):
     return gpwrapper(C, 'hyperellred')
 
 
-#def ReducedMinimalWeierstrassModel(C):
-#    # minimize discriminant
-#    C0 = MinimalWeierstrassModel(C)
-#    # minimize coefficients
-#    C1 = ReducedModel(C0)
-#    return C1
+def ReducedMinimalWeierstrassModel(C):
+    # minimize discriminant
+    C0 = MinimalWeierstrassModel(C)
+    # minimize coefficients
+    C1 = ReducedModel(C0)
+    return C1
 
 
 def isogeny_graph_invariants(ics, ells, verbose=0, threads=1):
