@@ -44,6 +44,7 @@ def load_drew(filename):
     res = defaultdict(list)
     names = {int(elt['Lhash']) : elt['class'] for elt in db.g2c_curves.search({}, ['Lhash', 'class'])}
 
+    print(f"Processing {filename}...")
     with open(filename) as F:
         lines = F.readlines()
         blocksoflines = [lines[i:len(lines):cpu_count()] for i in range(cpu_count())]
@@ -51,6 +52,7 @@ def load_drew(filename):
         for _, rlines in doline(blocksoflines):
             for (cond, Lhash, inv, coeffs) in rlines:
                 res[(cond, Lhash)].append([inv, coeffs])
+    print(f"\rDone")
     for elt in res:
         res[elt].sort()
         res[elt] = [[ elt[0] for elt in res[elt]], [elt[1] for elt in res[elt]]]
@@ -58,6 +60,7 @@ def load_drew(filename):
 
 
 def generate_input(filename, database, names):
+    print(f"Generating {filename}...")
     with open(filename, "w") as W:
         for k in sorted(database):
             v = database[k]
@@ -65,6 +68,7 @@ def generate_input(filename, database, names):
             name = names.get(Lhash)
             row = [cond, name, Lhash] + v
             W.write(":".join(map(str, row)).replace(" ", "") + "\n")
+    print(f"\rDone")
 
 
 def is_interactive():
@@ -85,10 +89,6 @@ if __name__ == "__main__" and not is_interactive():
 
     input_filename = sys.argv[1]
     output_filename = sys.argv[2]
-    print(f"Processing {input_filename}...")
-    drewst4, names = load_drew(output_filename)
-    print(f"\rDone")
-    print(f"Generating {output_filename}...")
+    drewst4, names = load_drew(input_filename)
     generate_input(output_filename, drewst4, names)
-    print(f"\rDone")
 
