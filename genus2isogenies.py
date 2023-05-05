@@ -19,7 +19,6 @@ from sage.all import (
     ZZ,
     cached_function,
     kronecker_symbol,
-    magma,
     matrix,
     prime_range,
     prod,
@@ -55,23 +54,35 @@ def discriminant(C):
     f, h = C.hyperelliptic_polynomials()
     return (h**2 + 4 * f).discriminant()
 
+@cached_function
+def quadratic_twist(C, d):
+    f, h = C.hyperelliptic_polynomials()
+    return HyperellipticCurve(d*(h**2 + 4 * f))
+
 
 def quadratic_twist(C, d):
     f, h = C.hyperelliptic_polynomials()
     return HyperellipticCurve(d * (4 * f + h**2))
 
+
 def HyperellipticCurve_from_modular_invariants(minv):
     ic = igusa_clebsch_from_modular_igusa(minv)
     try:
         C = HyperellipticCurve_from_invariants(ic, reduced=False)
-        C = magma.ReducedWamelenModel(C).sage()
     except ZeroDivisionError:
+        from sage import magma
         C = magma(ic).ChangeUniverse(QQ).HyperellipticCurveFromIgusaClebsch().sage()
-    f, h = C.hyperelliptic_polynomials()
-    den = LCM(elt.denominator() for elt in f.list() + h.list())
-    f *= den**2
-    h *= den
-    return HyperellipticCurve(f, h)
+    # lazy way to normalize the igusa
+    newminv = modular_igusa_from_igusa_clebsch(C.igusa_clebsch_invariants())
+
+    # find the scalar d that relates minv and newminv in P(4,6,10,12)
+    weights = [4, 6, 10, 12]
+    coordinates = [i for i, elt in enumerate(minv) if elt != 0]
+    assert coordinates == [i for i, elt in enumerate(newminv) if elt != 0]
+    assert len(coordinates) > 0
+    c = coordinates[0]
+    d = (newminv[c]/minv[c]).nth_root(weights[c])
+    return ReducedModel(quadratic_twist(C, d))
 
 
 def possible_isogenous_quadratic_twists(C, bad_primes, Lpolynomial_origin, bound=2000):
@@ -152,19 +163,19 @@ def gpwrapper(C, command):
     newf, newh = map(S, map(R, out.strip('[]\n').split(",")))
     return HyperellipticCurve(newf, newh)
 
-def hyperellminimalmodel(C):
-    return gpwrapper(C, 'hyperellminimalmodel')
+#def MinimalWeierstrassModel(C):
+#    return gpwrapper(C, 'hyperellminimalmodel')
 
-def hyperellred(C):
+def ReducedModel(C):
     return gpwrapper(C, 'hyperellred')
 
 
-def reduced_minimal_weierstrass_model(C):
-    # minimize discriminant
-    C0 = hyperellminimalmodel(C)
-    # minimize coefficients
-    C1 = hyperellred(C0)
-    return C1
+#def ReducedMinimalWeierstrassModel(C):
+#    # minimize discriminant
+#    C0 = MinimalWeierstrassModel(C)
+#    # minimize coefficients
+#    C1 = ReducedModel(C0)
+#    return C1
 
 
 def isogeny_graph_invariants(ics, ells, verbose=0, threads=1):
