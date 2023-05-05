@@ -51,7 +51,7 @@ def load_drew(filename):
         assert sum(len(elt) for elt in blocksoflines)
         for _, rlines in doline(blocksoflines):
             for (cond, Lhash, inv, coeffs) in rlines:
-                res[(cond, Lhash)].append([inv, coeffs])
+                res[(cond, Lhash)].append([list(inv), coeffs])
     print(f"\rDone")
     for elt in res:
         res[elt].sort()
