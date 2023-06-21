@@ -30,11 +30,18 @@ import sys
 
 from subprocess import Popen, PIPE
 
+def rescale(c, I, weights):
+    return vector([c**i * j for i, j in zip(weights, I)])
+def make_integral(I, weights):
+    return rescale(LCM([elt.denominator() for elt in I]), I, weights)
+
 @cached_function
 def modular_invariants(C):
     return modular_igusa_from_igusa_clebsch(
-        C.change_ring(QQ).igusa_clebsch_invariants()
+        make_integral(C.change_ring(QQ).igusa_clebsch_invariants(), (1,2,3,5))
     )
+
+
 
 
 @cached_function
@@ -71,7 +78,7 @@ def HyperellipticCurve_from_modular_invariants(minv, reduced=True):
         C = magma(ic).ChangeUniverse(QQ).HyperellipticCurveFromIgusaClebsch().sage()
     C = ReducedMinimalWeierstrassModel(C)
     # lazy way to normalize the igusa
-    newminv = modular_igusa_from_igusa_clebsch(C.igusa_clebsch_invariants())
+    newminv = modular_invariants(C)
 
     # find the scalar d that relates minv and newminv in P(4,6,10,12)
     weights = [4, 6, 10, 12]
