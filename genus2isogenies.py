@@ -63,7 +63,7 @@ def quadratic_twist(C, d):
 
 
 
-def HyperellipticCurve_from_modular_invariants(minv):
+def HyperellipticCurve_from_modular_invariants(minv, reduced=True):
     ic = igusa_clebsch_from_modular_igusa(minv)
     try:
         C = HyperellipticCurve_from_invariants(ic, reduced=False)
@@ -80,9 +80,11 @@ def HyperellipticCurve_from_modular_invariants(minv):
     assert len(coordinates) > 0
     c = coordinates[0]
     d = (newminv[c]/minv[c]).nth_root(weights[c])
-    # we don't care about spoiling the model over Q, and thus we can call ReducedWamelenModel
-    return ReducedMinimalWeierstrassModel(ReducedWamelenModel(quadratic_twist(C, d)))
-
+    if reduced:
+        # we don't care about spoiling the model over Q, and thus we can call ReducedWamelenModel
+        return ReducedMinimalWeierstrassModel(ReducedWamelenModel(quadratic_twist(C, d)))
+    else:
+        return quadratic_twist(C, d)
 
 def possible_isogenous_quadratic_twists(C, bad_primes, Lpolynomial_origin, bound=2000):
     C = C.change_ring(Integers())
@@ -133,7 +135,7 @@ def isogenous_curves(C, invariants, reduced=True, known_models={}):
     bad_primes = ZZ(discriminant(C)).prime_divisors()
     Lpolynomial_origin = lambda p: Lpolynomial(C, p)
     Cinv = [
-        known_models.get(tuple(elt), HyperellipticCurve_from_modular_invariants(elt).change_ring(ZZ))
+        known_models.get(tuple(elt), HyperellipticCurve_from_modular_invariants(elt, reduced=reduced).change_ring(ZZ))
         for elt in invariants
     ]
     twists = [
