@@ -11,9 +11,7 @@ The computation of isogeny classes from invariants can be on
 
 and optionally on:
  - [Pari/GP](https://pari.math.u-bordeaux.fr/) >= 2.15.0, precisely `hyperellminimalmodel` and `hyperellred`
-```
-sage -pip install wrapt-timeout-decorator
-```
+ - [Magma](https://magma.maths.usyd.edu.au/) >= 2.28-2, precisely `HyperellipticCurveFromIgusaClebsch`, `ReducedWamelenModel`
 to provide models with reasonable coefficient size.
 
 
