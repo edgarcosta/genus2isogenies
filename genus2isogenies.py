@@ -35,6 +35,7 @@ def rescale(c, I, weights):
 def make_integral(I, weights):
     return rescale(LCM([elt.denominator() for elt in I]), I, weights)
 
+@cached_method
 def modular_invariants(C):
     return modular_igusa_from_igusa_clebsch(
         make_integral(C.change_ring(QQ).igusa_clebsch_invariants(), (1,2,3,5))
