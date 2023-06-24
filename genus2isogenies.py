@@ -35,7 +35,6 @@ def rescale(c, I, weights):
 def make_integral(I, weights):
     return rescale(LCM([elt.denominator() for elt in I]), I, weights)
 
-@cached_function
 def modular_invariants(C):
     return modular_igusa_from_igusa_clebsch(
         make_integral(C.change_ring(QQ).igusa_clebsch_invariants(), (1,2,3,5))
@@ -102,7 +101,7 @@ def possible_isogenous_quadratic_twists(C, bad_primes, Lpolynomial_origin, bound
     bad_primes = sorted(set(bad_primes))
     twistdata = []
     splittingdata = []
-    if bound is None: 
+    if bound is None:
         primes = Primes()
     else:
         primes = prime_range(bound)
