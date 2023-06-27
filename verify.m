@@ -1,4 +1,4 @@
-hwlpolys := 0 eq System("which hwlpoly > /dev/null");
+hwlpolys := 0 eq System("which hwlpoly > /dev/null"); // soon to be available in a new version of smalljac
 
 function TracesOfFrobeniusQuick(C, B0, B1: exclude:={})
   if not IsIntegral(C) then C:=IntegralModel(C); end if;
@@ -70,7 +70,7 @@ function Verify(input)
 
   // Check that aps match for p < 2^16, with some exceptions
   exclude := &join[SequenceToSet(PrimeDivisors(Integers()!Discriminant(elt))) : elt in curves];
-  traces := {TracesOfFrobeniusQuick(elt, 1, 2^17 : exclude:=exclude) : elt in curves};
+  traces := {TracesOfFrobeniusQuick(elt, 1, 2^16 : exclude:=exclude) : elt in curves};
   assert #traces eq 1;
 
   done := false;
