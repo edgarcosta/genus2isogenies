@@ -4,7 +4,7 @@
 # Computation of isogeny classes
 The computation of isogeny classes from invariants can be on
  - [SageMath](https://www.sagemath.org/)
- - [pyhdme](https://github.com/edgarcosta/pyhdme)
+ - [pyhdme](https://github.com/edgarcosta/pyhdme) >= 0.0.6
 ```
   sage -pip install --upgrade git+https://github.com/edgarcosta/pyhdme
 ```
