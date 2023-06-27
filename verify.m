@@ -1,4 +1,4 @@
-hwlpolys := 0 eq System("hwlpoly 1&> /dev/null");
+hwlpolys := 0 eq System("which hwlpoly > /dev/null");
 
 function TracesOfFrobeniusQuick(C, B0, B1: exclude:={})
   if not IsIntegral(C) then C:=IntegralModel(C); end if;
