@@ -1,4 +1,6 @@
-hwlpolys := 0 eq System("which hwlpoly > /dev/null"); // soon to be available in a new version of smalljac
+// Depends on ReplaceCharacter 
+hwlpolys := 0 eq System("which hwlpolys > /dev/null"); // soon to be available in a new version of smalljac
+
 
 function TracesOfFrobeniusQuick(C, B0, B1: exclude:={})
   if not IsIntegral(C) then C:=IntegralModel(C); end if;
