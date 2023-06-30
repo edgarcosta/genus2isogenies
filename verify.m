@@ -1,3 +1,9 @@
+SetQuitOnError(true);
+if false then
+  CHIMP();
+end if;
+SetQuitOnError(false);
+
 /*
 Depends on CHIMP https://github.com/edgarcosta/CHIMP
 From Magma/utils.m:
@@ -119,7 +125,6 @@ function Verify(input)
   end if;
   return true;
 end function;
-
 
 res := [Verify(ReplaceCharacter(elt, "\\", "")) : elt in Split(input, " ")];
 exit;
