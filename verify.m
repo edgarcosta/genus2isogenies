@@ -5,7 +5,7 @@ hwlpolys := 0 eq System("which hwlpolys > /dev/null"); // soon to be available i
 function ReplaceCharacter(s, c, d)
 //intrinsic ReplaceCharacter(s::MonStgElt,c::MonStgElt,d::MonStgElt) -> MonStgElt
 //{ Efficiently replace every occurrence of the character c in s with the string d (c must be a single character but d need not be). }
-    require #c eq 1: "The second parameter must be a single character (string of length 1).";
+    //require #c eq 1: "The second parameter must be a single character (string of length 1).";
     t := Split(s,c:IncludeEmpty);
     if s[#s] eq c then Append(~t,""); end if; // add empty string at the end which Split omits
     return Join(t,d);
