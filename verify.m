@@ -1,30 +1,16 @@
-// Depends on ReplaceCharacter 
+/*
+Depends on CHIMP https://github.com/edgarcosta/CHIMP
+From Magma/utils.m:
+- ReplaceCharacter
+- IndexFibers
+From endomorphisms package:
+- HyperellipticCurveExtra
+- PeriodMatrix
+- GeometricHomomorphismRepresentation
+*/
 hwlpolys := 0 eq System("which hwlpolys > /dev/null"); // soon to be available in a new version of smalljac
 
-// from CHIMP/Magma/utils.m
-function ReplaceCharacter(s, c, d)
-//intrinsic ReplaceCharacter(s::MonStgElt,c::MonStgElt,d::MonStgElt) -> MonStgElt
-//{ Efficiently replace every occurrence of the character c in s with the string d (c must be a single character but d need not be). }
-    //require #c eq 1: "The second parameter must be a single character (string of length 1).";
-    t := Split(s,c:IncludeEmpty);
-    if s[#s] eq c then Append(~t,""); end if; // add empty string at the end which Split omits
-    return Join(t,d);
-//end intrinsic;
-end function;
 
-// from CHIMP/Magma/utils.m
-function IndexFibers(S, f : Unique:=false, Project:=func<r|r>)
-//intrinsic IndexFibers (S::SeqEnum, f::UserProgram : Unique:=false, Project:=func<r|r>) -> Assoc
-//{ Given a list of objects S and a function f on S creates an associative array satisfying A[f(s)] = [t:t in S|f(t) eq f(s)]. }
-    A := AssociativeArray();
-    if Unique then
-        for x in S do y := f(x); assert not IsDefined(A,y); A[y]:=Project(x); end for;
-    else
-        for x in S do y := f(x); A[y] := IsDefined(A,y) select Append(A[y],Project(x)) else [Project(x)]; end for;
-    end if;
-    return A;
-//end intrinsic;
-end function;
 
 function TracesOfFrobeniusQuick(C, B0, B1: exclude:={})
   if not IsIntegral(C) then C:=IntegralModel(C); end if;
