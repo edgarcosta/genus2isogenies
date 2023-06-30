@@ -12,15 +12,14 @@ from sage.all import (
     HyperellipticCurve,
     HyperellipticCurve_from_invariants,
     Integers,
-    LCM,
     PolynomialRing,
     Primes,
     QQ,
     ZZ,
     cached_function,
     kronecker_symbol,
-    magma,
     matrix,
+    magma,
     prime_range,
     prod,
     sqrt,
@@ -31,11 +30,18 @@ import sys
 
 from subprocess import Popen, PIPE
 
-@cached_function
+def rescale(c, I, weights):
+    return vector([c**i * j for i, j in zip(weights, I)])
+def make_integral(I, weights):
+    return rescale(LCM([elt.denominator() for elt in I]), I, weights)
+
+@cached_method
 def modular_invariants(C):
     return modular_igusa_from_igusa_clebsch(
-        C.change_ring(QQ).igusa_clebsch_invariants()
+        make_integral(C.change_ring(QQ).igusa_clebsch_invariants(), (1,2,3,5))
     )
+
+
 
 
 @cached_function
@@ -55,24 +61,37 @@ def discriminant(C):
     f, h = C.hyperelliptic_polynomials()
     return (h**2 + 4 * f).discriminant()
 
-
+@cached_function
 def quadratic_twist(C, d):
+    if d == 1:
+        return C
     f, h = C.hyperelliptic_polynomials()
-    return HyperellipticCurve(d * (4 * f + h**2))
+    return HyperellipticCurve(d*(h**2 + 4 * f))
 
-def HyperellipticCurve_from_modular_invariants(minv):
+
+
+def HyperellipticCurve_from_modular_invariants(minv, reduced=True):
     ic = igusa_clebsch_from_modular_igusa(minv)
     try:
         C = HyperellipticCurve_from_invariants(ic, reduced=False)
-        C = magma.ReducedWamelenModel(C).sage()
     except ZeroDivisionError:
         C = magma(ic).ChangeUniverse(QQ).HyperellipticCurveFromIgusaClebsch().sage()
-    f, h = C.hyperelliptic_polynomials()
-    den = LCM(elt.denominator() for elt in f.list() + h.list())
-    f *= den**2
-    h *= den
-    return HyperellipticCurve(f, h)
+    C = ReducedMinimalWeierstrassModel(C)
+    # lazy way to normalize the igusa
+    newminv = modular_invariants(C)
 
+    # find the scalar d that relates minv and newminv in P(4,6,10,12)
+    weights = [4, 6, 10, 12]
+    coordinates = [i for i, elt in enumerate(minv) if elt != 0]
+    assert coordinates == [i for i, elt in enumerate(newminv) if elt != 0]
+    assert len(coordinates) > 0
+    c = coordinates[0]
+    d = (newminv[c]/minv[c]).nth_root(weights[c])
+    if reduced:
+        # we don't care about spoiling the model over Q, and thus we can call ReducedWamelenModel
+        return ReducedMinimalWeierstrassModel(ReducedWamelenModel(quadratic_twist(C, d)))
+    else:
+        return quadratic_twist(C, d)
 
 def possible_isogenous_quadratic_twists(C, bad_primes, Lpolynomial_origin, bound=2000):
     C = C.change_ring(Integers())
@@ -83,7 +102,7 @@ def possible_isogenous_quadratic_twists(C, bad_primes, Lpolynomial_origin, bound
     bad_primes = sorted(set(bad_primes))
     twistdata = []
     splittingdata = []
-    if bound is None: 
+    if bound is None:
         primes = Primes()
     else:
         primes = prime_range(bound)
@@ -117,12 +136,13 @@ def possible_isogenous_quadratic_twists(C, bad_primes, Lpolynomial_origin, bound
     return r
 
 
-def isogenous_curves(C, invariants, reduced=True):
+def isogenous_curves(C, invariants, reduced=True, known_models={}):
+    invariants = list(map(tuple, invariants))
     # returns curves in the same order
     bad_primes = ZZ(discriminant(C)).prime_divisors()
     Lpolynomial_origin = lambda p: Lpolynomial(C, p)
     Cinv = [
-        HyperellipticCurve_from_modular_invariants(elt).change_ring(ZZ)
+        known_models.get(tuple(elt), HyperellipticCurve_from_modular_invariants(elt, reduced=reduced).change_ring(ZZ))
         for elt in invariants
     ]
     twists = [
@@ -132,7 +152,9 @@ def isogenous_curves(C, invariants, reduced=True):
     assert all(len(elt) == 1 for elt in twists)
     Cnonred = [quadratic_twist(c, t[0]) for c, t in zip(Cinv, twists)]
     if reduced:
-        res = [reduced_minimal_weierstrass_model(elt) for elt in Cnonred]
+        res = []
+        for inv, nonredmodel in zip(invariants, Cnonred):
+            res.append(known_models.get(inv, ReducedMinimalWeierstrassModel(nonredmodel)))
     else:
         res = Cnonred
     assert [modular_invariants(elt) for elt in res] == invariants
@@ -152,48 +174,28 @@ def gpwrapper(C, command):
     newf, newh = map(S, map(R, out.strip('[]\n').split(",")))
     return HyperellipticCurve(newf, newh)
 
-def hyperellminimalmodel(C):
+def MinimalWeierstrassModel(C):
     return gpwrapper(C, 'hyperellminimalmodel')
 
-def hyperellred(C):
+def ReducedModel(C):
     return gpwrapper(C, 'hyperellred')
 
 
-def reduced_minimal_weierstrass_model(C):
-    from wrapt_timeout_decorator import timeout
-    @timeout(30, use_signals=False)
-    def ReducedModel(C):
-        magma.quit()
-        magma.eval("""
-function reducemodel(C : prec:=100, tries:=3)
-    old_prec := Precision(GetDefaultRealField());
-    SetDefaultRealFieldPrecision(prec);
-    try
-        Cred := ReducedModel(C);
-    catch e
-        if tries gt 0 then
-            Cred := $$(C : prec:=2*prec, tries:=tries-1);
-        else
-            Cred := C;
-        end if;
-    end try;
-    SetDefaultRealFieldPrecision(old_prec);
-    return Cred;
-end function;
-"""
-    )
-        return magma(C).reducemodel().sage()
+def ReducedMinimalWeierstrassModel(C):
     # minimize discriminant
-    C0 = hyperellminimalmodel(C)
+    C0 = MinimalWeierstrassModel(C)
     # minimize coefficients
-    C1 = hyperellred(C0)
-    # call magma for ultimate reduction, but just reduce
-    # no need to factor discriminant
-    try:
-        C2 = ReducedModel(C1)
-    except Exception:
-        C2 = C1
-    return C2
+    C1 = ReducedModel(C0)
+    return C1
+
+def ReducedWamelenModel(C):
+    """
+    Given a hyperelliptic curve C over Q, returns a reduced and partially minimized model of some quadratic twist of C
+    """
+    return magma(C).ReducedWamelenModel().sage()
+
+def IsIsomorphic(C0, C1):
+    return magma(C0).IsIsomorphic(magma(C1)).sage()
 
 
 def isogeny_graph_invariants(ics, ells, verbose=0, threads=1):
@@ -232,7 +234,7 @@ def isogeny_graph_invariants(ics, ells, verbose=0, threads=1):
     return G
 
 
-def isogeny_graph(C, conductor, ells=None, verbose=0, threads=1, reduced=True):
+def isogeny_graph(C, conductor, ells=None, verbose=0, threads=1, reduced=True, known_models={}):
     if ells is None:
         ells = reducible_ell(C, conductor)
         if verbose:
@@ -240,7 +242,7 @@ def isogeny_graph(C, conductor, ells=None, verbose=0, threads=1, reduced=True):
     m_inv = modular_invariants(C)
     G = isogeny_graph_invariants([m_inv], ells, verbose=verbose, threads=threads)
     invs = G.vertices(sort=True)
-    curves = isogenous_curves(C, invs, reduced=reduced)
+    curves = isogenous_curves(C, invs, reduced=reduced, known_models=known_models)
     invs_to_curves = dict([(i, c) for i, c in zip(invs, curves)])
     G.relabel(invs_to_curves)
     return G, ells
@@ -250,10 +252,12 @@ def isogeny_graph_from_line(line, verbose=0, threads=1, reduced=True):
     cond, c, Lhash, input_ics, input_eqns = line.split(":")
     cond = int(cond)
     input_ics, input_eqns = map(eval, [input_ics, input_eqns])
+    ZZx = PolynomialRing(ZZ, 'x')
+    known_models = dict(zip(map(tuple, input_ics), [HyperellipticCurve(ZZx(f), ZZx(h)) for f, h in input_eqns]))
     R = PolynomialRing(ZZ, "x")
     # pick the first curve
     C = HyperellipticCurve(*map(R, input_eqns[0]))
-    G, ells = isogeny_graph(C, cond, verbose=verbose, threads=threads, reduced=reduced)
+    G, ells = isogeny_graph(C, cond, verbose=verbose, threads=threads, reduced=reduced, known_models=known_models)
     curves = G.vertices(key=modular_invariants)
     eqns = [[pol.list() for pol in elt.hyperelliptic_polynomials()] for elt in curves]
     invs = list(map(modular_invariants, curves))
