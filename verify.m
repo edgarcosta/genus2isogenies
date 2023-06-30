@@ -87,7 +87,9 @@ function Verify(input)
 
   richelotclass := RichelotClass(curves);
   if print_richelot then
-    print #richelotclass;
+    old_eqns := eval s[5];
+    old_curves := [HyperellipticCurve(R!elt[1], R!elt[2]) : elt in old_eqns];
+    print #{G2Invariants(elt) : elt in RichelotClass(old_curves)};
   end if;
   // Check that we obtained RichelotIsogenousSurfaces
   assert {G2Invariants(elt) : elt in richelotclass} subset {G2Invariants(c) : c in curves};
