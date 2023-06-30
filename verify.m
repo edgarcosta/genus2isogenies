@@ -7,19 +7,19 @@ function TracesOfFrobeniusQuick(C, B0, B1: exclude:={})
   D := Integers()!Discriminant(C);
   filename := Sprintf("temp_%o", Getpid());
   if hwlpolys then
-    cstr := sprint(Coefficients(HyperellipticPolynomials(SimplifiedModel(C))));
+    cstr := Sprint(Coefficients(HyperellipticPolynomials(SimplifiedModel(C))));
     k := Ceiling(Log(2,B1));
     cmd := Sprintf("hwlpolys %o %o 2 0 -1 0 %o &>/dev/null", cstr, k, filename);
     System(cmd);
   else
     f := HyperellipticPolynomials(SimplifiedModel(C));
     _<x> := Parent(f);
-    cstr := sprint(f);
+    cstr := Sprint(f);
     cmd := Sprintf("lpdata %o \"%o\" %o 3 &>/dev/null", filename, cstr, B1);
     System(cmd);
     filename cat:= "_lpdata.txt";
   end if;
-  S := [[atoi(c):c in Split(r,",")]: r in Split(Read(filename)) | "," in r];
+  S := [[StringToInteger(c):c in Split(r,",")]: r in Split(Read(filename)) | "," in r];
   System("rm " cat filename);
   X := IndexFibers(S,func<r|r[1]>:Unique,Project:=func<r|r[2]>);
   minp := 16*Genus(C)^2;
