@@ -14,6 +14,9 @@ From endomorphisms package:
 - PeriodMatrix
 - GeometricHomomorphismRepresentation
 */
+
+// example how to run it
+// time parallel -j 64 --eta -a data/output_g2database_2e20.txt.jun25 --joblog data/richelot_count.log  magma -b input:={} verify.m > data/richelot_count2
 hwlpolys := 0 eq System("which hwlpolys > /dev/null"); // soon to be available in a new version of smalljac
 
 
