@@ -258,7 +258,7 @@ def isogeny_graph_from_line(line, verbose=0, threads=1, reduced=True):
     # pick the first curve
     C = HyperellipticCurve(*map(R, input_eqns[0]))
     G, ells = isogeny_graph(C, cond, verbose=verbose, threads=threads, reduced=reduced, known_models=known_models)
-    curves = G.vertices(key=modular_invariants)
+    curves = G.vertices(sort=True, key=modular_invariants)
     eqns = [[pol.list() for pol in elt.hyperelliptic_polynomials()] for elt in curves]
     invs = list(map(modular_invariants, curves))
     assert invs == sorted(invs)
