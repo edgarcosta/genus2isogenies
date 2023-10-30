@@ -1,8 +1,12 @@
 # genus2isogenies
 
+Sage code supporting
+
+- \[ [arXiv](https://arxiv.org/abs/2301.10118) \] **Computing isogeny classes of typical principally polarized abelian surfaces over the rationals** by Raymond van Bommel, Shiva Chidambaram, Edgar Costa, and Jean Kieffer
+
 
 # Computation of isogeny classes
-The computation of isogeny classes from invariants can be on
+The computation of isogeny classes from invariants depends be on
  - [SageMath](https://www.sagemath.org/)
  - [pyhdme](https://github.com/edgarcosta/pyhdme) >= 0.0.6
 ```
