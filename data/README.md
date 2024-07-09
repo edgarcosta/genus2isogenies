@@ -1,5 +1,11 @@
 Each row of the output corresponds to an isogeny class.
 
+
+Files stored externally:
+ - [input_g2database_2e20.txt.lzma](https://math.mit.edu/~edgarc/files/genus2isogenies/input_g2database_2e20.txt.lzma) sha256sum: `5f804cc888c84fcfd5afb4343cb5ff70739af8241db0f325dd66aea77688784e`
+ - [joblog_g2database_2e20.txt.lzma](https://math.mit.edu/~edgarc/files/genus2isogenies/joblog_g2database_2e20.txt.lzma) sha256sum: `a0eaa9698b2310f82f84a5f34f91f49a67cef73eeefc6febcb313b3477397b9c`
+ - [output_g2database_2e20.txt.lzma](https://math.mit.edu/~edgarc/files/genus2isogenies/output_g2database_2e20.txt.lzma) sha256sum: `a8bf7c53be0bdf82b5876624e01faf6211238fe65bb854fe2502e3149b886f43`
+
 This is the description of the columns:
 1. Conductor
 2. LMFDB isogeny class label if known, otherwise `NULL`
