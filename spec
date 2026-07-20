@@ -5,6 +5,7 @@
     {
       shims.m
       antisymplectic.m
+      bhls.m
       selfcheck.m
     }
   }

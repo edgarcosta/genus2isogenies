@@ -1,0 +1,43 @@
+# Gluing package corpus. One entry per line, colon-delimited, no spaces.
+# Blank lines and lines starting with # are ignored.
+#
+# Run with check_gluing.m from the repo root:
+#   magma -b [tags:=tag1,tag2] [line:=<entry>] [oracle:=1] check_gluing.m
+# Batch: parallel -a data/gluing_corpus.txt magma -b line:={} check_gluing.m
+# oracle:=1 is a temporary flag (until Genus2Gluings exists) that calls
+# Genus2Elliptic2/3 + CanonicalGluingList directly instead.
+#
+# Line format:
+#   tag:field:E1:E2:n:count:proof:curves
+#
+# tag    one of bhls2, bhls3, lmfdb, empty, iso, eq, cm, pp, composite, nf, regress.
+# field  0 for Q, else the defining-polynomial coefficients of K (ascending).
+# E1,E2  a-invariant lists; over K each a-invariant is itself a coefficient
+#        list on the power basis.
+# n      level (glue along full n-torsion).
+# count  expected number of returned curves; -1 = do not check.
+# proof  expected info`proof ("certified", "traces-only"); "-" = do not check
+#        (always "-" for oracle-mode entries, which carry no certificate).
+# curves expected canonical output: a list of [fcoeffs,hcoeffs] pairs
+#        (ascending coefficients, y^2 + h(x)y = f(x), data/README.md
+#        conventions); [] for expected-empty; [-1] = do not check.
+#
+# bhls2/bhls3 entries below were produced by make_gluing_corpus.m, scanning
+# Cremona curves for pairs with isomorphic 2-torsion (resp. 3-torsion)
+# splitting fields and gluing with the BHLS algebraic formulas
+# (magma/gluing/bhls.m), then curated for a spread of distinct curves.
+bhls2:0:[0,0,1,0,-7]:[0,0,0,0,4]:2:1:-:[[[-7,0,0,0,0,0,1],[1]]]
+bhls2:0:[0,1,0,1,1]:[0,1,0,3,-5]:2:1:-:[[[-8,0,4,0,-2,0,1],[]]]
+bhls2:0:[0,1,0,2,0]:[0,-1,0,2,0]:2:1:-:[[[2,0,-5,0,5,0,-2],[]]]
+bhls2:0:[0,-1,0,-4,-2]:[0,1,0,-4,2]:2:1:-:[[[0,-1,0,1,0,-1],[]]]
+bhls2:0:[0,1,0,3,-1]:[0,0,1,2,0]:2:1:-:[[[-7,0,6,0,-2],[0,0,0,1]]]
+bhls2:0:[1,0,1,9,90]:[1,1,1,0,1]:2:1:-:[[[1,0,1,3,4,3,1],[1,1,1]]]
+bhls2:0:[0,1,0,0,4]:[0,0,0,1,-2]:2:2:-:[[[8,0,19,0,15,0,4],[]],[[0,1,-1,4,-1,1],[]]]
+bhls2:0:[0,-1,0,-5,6]:[0,1,0,-13,-4]:2:2:-:[[[9,0,16,0,8,0,1],[]],[[9,-6,1,-5,2,-1],[]]]
+bhls2:0:[0,0,0,0,1]:[0,0,0,6,-7]:2:2:-:[[[9,0,12,0,6,0,1],[]],[[0,1,3,6,3,1],[1,1,1,1]]]
+bhls2:0:[0,0,0,-11,-6]:[0,-1,0,-4,0]:2:2:-:[[[0,1,-5,4,-5,1],[]],[[8,28,19,32,7,4,-4],[]]]
+bhls3:0:[0,0,0,0,1]:[0,0,0,0,4]:3:1:-:[[[4,0,0,-5,0,0,1],[]]]
+bhls3:0:[0,1,0,4,4]:[1,0,1,-1,-2]:3:1:-:[[[-4,4,-7,6,-3,2],[]]]
+bhls3:0:[0,1,0,7,0]:[0,1,0,-5,-25]:3:1:-:[[[-4,4,-6,1,-1,-1],[]]]
+bhls3:0:[0,-1,0,-8,-16]:[0,-1,0,7,0]:3:1:-:[[[-4,-4,-5,0,0,1],[]]]
+bhls3:0:[1,-1,0,6,0]:[1,-1,0,3,-1]:3:1:-:[[[40,300,6,105,0,9],[]]]
