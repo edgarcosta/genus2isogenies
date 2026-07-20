@@ -1,0 +1,5261 @@
+{
+ "_provenance": {
+  "date": "2026-07-20",
+  "source": "LMFDB g2c_curves + g2c_endomorphisms",
+  "sql": "SELECT c.label, e.spl_fod_label, e.spl_fod_coeffs, e.spl_facs_coeffs, e.spl_facs_labels FROM g2c_curves c JOIN g2c_endomorphisms e ON c.label = e.label WHERE c.geom_end_alg = 'Q x Q' AND e.spl_fod_label != '1.1.1.1' ORDER BY c.label",
+  "magma_version": "2.29-8",
+  "sage_version": "10.8"
+ },
+ "entries": [
+  {
+   "id": "lmfdb-100352.a.100352.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-6272.1-b1",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -144,
+     32
+    ],
+    "B": [
+     128,
+     1600
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-100352.a.100352.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-6272.1-a1",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -144,
+     -32
+    ],
+    "B": [
+     128,
+     -1600
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-100800.a.100800.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-1575.1-a2",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     1872,
+     992
+    ],
+    "B": [
+     -91136,
+     -57280
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-100800.a.100800.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-1575.2-a2",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     1872,
+     -992
+    ],
+    "B": [
+     -91136,
+     57280
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-100800.b.705600.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-1575.2-b2",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     2704,
+     -1824
+    ],
+    "B": [
+     189440,
+     -134208
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-100800.b.705600.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-1575.1-b2",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     2704,
+     1824
+    ],
+    "B": [
+     189440,
+     134208
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-10240.c.10240.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-640.2-a3",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -16,
+     96
+    ],
+    "B": [
+     -1152,
+     64
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-10240.c.10240.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-640.1-a3",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -16,
+     -96
+    ],
+    "B": [
+     -1152,
+     -64
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-10496.a.20992.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.8.1-164.1-a2",
+   "field": [
+    2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -76,
+     -16
+    ],
+    "B": [
+     -104,
+     496
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-10496.a.20992.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.8.1-164.2-a2",
+   "field": [
+    2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -76,
+     16
+    ],
+    "B": [
+     -104,
+     -496
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-105984.a.105984.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-1656.1-a2",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     3024,
+     -2048
+    ],
+    "B": [
+     -190784,
+     133888
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-105984.a.105984.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-1656.2-a1",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     3024,
+     2048
+    ],
+    "B": [
+     -190784,
+     -133888
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-1088.a.1088.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-17.2-a2",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     400,
+     -288
+    ],
+    "B": [
+     -31744,
+     22464
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-1088.a.1088.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-17.1-a1",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     400,
+     288
+    ],
+    "B": [
+     -31744,
+     -22464
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-111168.c.333504.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.8.1-1737.4-b1",
+   "field": [
+    2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -368,
+     480
+    ],
+    "B": [
+     17792,
+     -2880
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-111168.c.333504.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.8.1-1737.3-b1",
+   "field": [
+    2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -368,
+     -480
+    ],
+    "B": [
+     17792,
+     2880
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-115200.a.230400.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-7200.2-d2",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -240,
+     32
+    ],
+    "B": [
+     704,
+     3904
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-115200.a.230400.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-7200.2-c2",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -240,
+     -32
+    ],
+    "B": [
+     704,
+     -3904
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-118464.a.118464.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.8.1-1851.4-a1",
+   "field": [
+    2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     "500/81",
+     "-8/81"
+    ],
+    "B": [
+     "-43024/729",
+     "-16424/729"
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-118464.a.118464.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.8.1-1851.1-a1",
+   "field": [
+    2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     "500/81",
+     "8/81"
+    ],
+    "B": [
+     "-43024/729",
+     "16424/729"
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-131328.f.787968.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.8.1-2052.4-c2",
+   "field": [
+    2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     848,
+     1472
+    ],
+    "B": [
+     -21056,
+     74368
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-131328.f.787968.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.8.1-2052.5-c2",
+   "field": [
+    2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     848,
+     -1472
+    ],
+    "B": [
+     -21056,
+     -74368
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-13248.a.13248.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-207.2-b1",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     464,
+     -288
+    ],
+    "B": [
+     6912,
+     -5056
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-13248.a.13248.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-207.1-b2",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     464,
+     288
+    ],
+    "B": [
+     6912,
+     5056
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-14016.b.14016.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.8.1-219.2-a1",
+   "field": [
+    2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     20,
+     -8
+    ],
+    "B": [
+     464,
+     -296
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-14016.b.14016.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.8.1-219.3-a1",
+   "field": [
+    2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     20,
+     8
+    ],
+    "B": [
+     464,
+     296
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-140800.a.140800.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.8.1-2200.2-a1",
+   "field": [
+    2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -428,
+     384
+    ],
+    "B": [
+     -17784,
+     -2720
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-140800.a.140800.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.8.1-2200.1-a1",
+   "field": [
+    2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -428,
+     -384
+    ],
+    "B": [
+     -17784,
+     2720
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-142400.a.142400.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-2225.2-c1",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -688,
+     -480
+    ],
+    "B": [
+     -11520,
+     -8768
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-142400.a.142400.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-2225.1-c1",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -688,
+     480
+    ],
+    "B": [
+     -11520,
+     8768
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-14912.a.14912.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-233.1-b1",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     1232,
+     -864
+    ],
+    "B": [
+     -93312,
+     66112
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-14912.a.14912.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-233.2-b1",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     1232,
+     864
+    ],
+    "B": [
+     -93312,
+     -66112
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-154880.a.154880.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-9680.1-a1",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -192,
+     32
+    ],
+    "B": [
+     416,
+     2752
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-154880.a.154880.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-9680.2-a1",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -192,
+     -32
+    ],
+    "B": [
+     416,
+     -2752
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-16128.a.32256.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-252.1-b3",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     692,
+     384
+    ],
+    "B": [
+     20808,
+     15968
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-16128.a.32256.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-252.2-b3",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     692,
+     -384
+    ],
+    "B": [
+     20808,
+     -15968
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-1696.b.434176.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-106.2-a3",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     "-118017/4",
+     48600
+    ],
+    "B": [
+     13549194,
+     "3575745/8"
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-1696.b.434176.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-106.1-a3",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     "-118017/4",
+     -48600
+    ],
+    "B": [
+     13549194,
+     "-3575745/8"
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-1792.a.3584.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-28.1-a5",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     592,
+     -384
+    ],
+    "B": [
+     -6848,
+     4608
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-1792.a.3584.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-28.2-a3",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     592,
+     384
+    ],
+    "B": [
+     -6848,
+     -4608
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-18432.c.589824.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-1152.1-b2",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -192,
+     64
+    ],
+    "B": [
+     1024,
+     3328
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-18432.c.589824.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-1152.1-a2",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -192,
+     -64
+    ],
+    "B": [
+     1024,
+     -3328
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-185600.j.185600.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     0,
+     32
+    ],
+    "B": [
+     -736,
+     -1856
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-185600.j.185600.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     0,
+     -32
+    ],
+    "B": [
+     -736,
+     1856
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-19008.a.57024.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.8.1-297.5-a1",
+   "field": [
+    2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -112,
+     352
+    ],
+    "B": [
+     -10112,
+     4544
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-19008.a.57024.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.8.1-297.4-a1",
+   "field": [
+    2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -112,
+     -352
+    ],
+    "B": [
+     -10112,
+     -4544
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-193600.a.193600.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-3025.1-a2",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     2628,
+     1768
+    ],
+    "B": [
+     183008,
+     130280
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-193600.a.193600.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-3025.1-c2",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     2628,
+     -1768
+    ],
+    "B": [
+     183008,
+     -130280
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-197824.a.197824.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.8.1-3091.4-a1",
+   "field": [
+    2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -76,
+     56
+    ],
+    "B": [
+     112,
+     -1448
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-197824.a.197824.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.8.1-3091.1-a1",
+   "field": [
+    2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -76,
+     -56
+    ],
+    "B": [
+     112,
+     1448
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-201152.a.201152.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-3143.2-a1",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -60,
+     40
+    ],
+    "B": [
+     -4736,
+     2920
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-201152.a.201152.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-3143.3-a1",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -60,
+     -40
+    ],
+    "B": [
+     -4736,
+     -2920
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-20992.a.20992.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-328.1-b1",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -140,
+     96
+    ],
+    "B": [
+     -872,
+     576
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-20992.a.20992.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-328.2-b1",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -140,
+     -96
+    ],
+    "B": [
+     -872,
+     -576
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-210432.a.210432.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.8.1-3288.4-a2",
+   "field": [
+    2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     52,
+     96
+    ],
+    "B": [
+     -280,
+     -576
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-210432.a.210432.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.8.1-3288.1-a2",
+   "field": [
+    2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     52,
+     -96
+    ],
+    "B": [
+     -280,
+     576
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-213120.a.426240.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -32,
+     24
+    ],
+    "B": [
+     -208,
+     -468
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-213120.a.426240.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -32,
+     -24
+    ],
+    "B": [
+     -208,
+     468
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-216832.a.433664.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-3388.2-b2",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     47952,
+     -33856
+    ],
+    "B": [
+     14832704,
+     -10488704
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-216832.a.433664.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-3388.1-b2",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     47952,
+     33856
+    ],
+    "B": [
+     14832704,
+     10488704
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-2169.a.175689.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.3.1-241.1-a2",
+   "field": [
+    1,
+    -1,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -2295,
+     2160
+    ],
+    "B": [
+     -100197,
+     -11016
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-2169.a.175689.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.3.1-241.2-a2",
+   "field": [
+    1,
+    -1,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -135,
+     -2160
+    ],
+    "B": [
+     -111213,
+     11016
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-219392.a.438784.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.8.1-3428.1-a1",
+   "field": [
+    2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -172,
+     32
+    ],
+    "B": [
+     -472,
+     224
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-219392.a.438784.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.8.1-3428.2-b1",
+   "field": [
+    2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -172,
+     -32
+    ],
+    "B": [
+     -472,
+     -224
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-21952.a.21952.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-343.1-c2",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     1360,
+     864
+    ],
+    "B": [
+     -65152,
+     -46656
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-21952.a.21952.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-343.2-c1",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     1360,
+     -864
+    ],
+    "B": [
+     -65152,
+     46656
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-225792.a.225792.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-3528.1-b2",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     4560,
+     3008
+    ],
+    "B": [
+     -355264,
+     -247424
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-225792.a.225792.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-3528.1-e2",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     4560,
+     -3008
+    ],
+    "B": [
+     -355264,
+     247424
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-225792.b.451584.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -112,
+     96
+    ],
+    "B": [
+     576,
+     2368
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-225792.b.451584.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -112,
+     -96
+    ],
+    "B": [
+     576,
+     -2368
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-233984.a.233984.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-3656.2-a1",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -12,
+     -16
+    ],
+    "B": [
+     8584,
+     5936
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-233984.a.233984.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-3656.1-a1",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -12,
+     16
+    ],
+    "B": [
+     8584,
+     -5936
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-2457.b.199017.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.3.1-273.4-a2",
+   "field": [
+    1,
+    -1,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -2295,
+     2448
+    ],
+    "B": [
+     120987,
+     -9720
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-2457.b.199017.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.3.1-273.1-a2",
+   "field": [
+    1,
+    -1,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     153,
+     -2448
+    ],
+    "B": [
+     111267,
+     9720
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-251136.b.251136.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     0,
+     160
+    ],
+    "B": [
+     160,
+     2752
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-251136.b.251136.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     0,
+     -160
+    ],
+    "B": [
+     160,
+     -2752
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-254528.a.254528.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-3977.3-a1",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     2000,
+     1248
+    ],
+    "B": [
+     153216,
+     111296
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-254528.a.254528.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-3977.2-a1",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     2000,
+     -1248
+    ],
+    "B": [
+     153216,
+     -111296
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-2560.a.5120.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-160.1-a3",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -48,
+     -32
+    ],
+    "B": [
+     448,
+     -704
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-2560.a.5120.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-160.2-a3",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -48,
+     32
+    ],
+    "B": [
+     448,
+     704
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-2560.a.819200.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-160.2-a4",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -48,
+     -448
+    ],
+    "B": [
+     8512,
+     4736
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-2560.a.819200.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-160.1-a4",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -48,
+     448
+    ],
+    "B": [
+     8512,
+     -4736
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-26112.b.78336.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.8.1-408.3-a1",
+   "field": [
+    2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     "-1072/81",
+     "128/81"
+    ],
+    "B": [
+     "-18112/729",
+     "-158464/729"
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-26112.b.78336.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.8.1-408.2-a1",
+   "field": [
+    2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     "-1072/81",
+     "-128/81"
+    ],
+    "B": [
+     "-18112/729",
+     "158464/729"
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-261312.a.261312.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.8.1-4083.4-b1",
+   "field": [
+    2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     4,
+     -72
+    ],
+    "B": [
+     2368,
+     1080
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-261312.a.261312.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.8.1-4083.1-b1",
+   "field": [
+    2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     4,
+     72
+    ],
+    "B": [
+     2368,
+     -1080
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-262656.a.262656.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.8.1-4104.4-b1",
+   "field": [
+    2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -688,
+     -64
+    ],
+    "B": [
+     -5440,
+     13184
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-262656.a.262656.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.8.1-4104.5-b1",
+   "field": [
+    2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -688,
+     64
+    ],
+    "B": [
+     -5440,
+     -13184
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-26624.a.26624.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-1664.2-a4",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     48,
+     160
+    ],
+    "B": [
+     -1280,
+     1600
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-26624.a.26624.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-1664.1-a4",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     48,
+     -160
+    ],
+    "B": [
+     -1280,
+     -1600
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-266240.a.266240.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -48,
+     128
+    ],
+    "B": [
+     128,
+     2176
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-266240.a.266240.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -48,
+     -128
+    ],
+    "B": [
+     128,
+     -2176
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-27200.d.680000.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-425.2-d1",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     208,
+     288
+    ],
+    "B": [
+     -3968,
+     -8640
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-27200.d.680000.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-425.1-d1",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     208,
+     -288
+    ],
+    "B": [
+     -3968,
+     8640
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-278528.a.278528.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -144,
+     64
+    ],
+    "B": [
+     448,
+     2176
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-278528.a.278528.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -144,
+     -64
+    ],
+    "B": [
+     448,
+     -2176
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-28672.d.458752.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-448.2-b2",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     704,
+     384
+    ],
+    "B": [
+     -18432,
+     -12800
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-28672.d.458752.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-448.1-b2",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     704,
+     -384
+    ],
+    "B": [
+     -18432,
+     12800
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-28672.f.458752.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-448.2-a2",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     704,
+     384
+    ],
+    "B": [
+     18432,
+     12800
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-28672.f.458752.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-448.1-a2",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     704,
+     -384
+    ],
+    "B": [
+     18432,
+     -12800
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-288000.c.288000.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     32,
+     96
+    ],
+    "B": [
+     -2016,
+     -1088
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-288000.c.288000.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     32,
+     -96
+    ],
+    "B": [
+     -2016,
+     1088
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-296960.a.296960.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     432,
+     352
+    ],
+    "B": [
+     5632,
+     10816
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-296960.a.296960.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     432,
+     -352
+    ],
+    "B": [
+     5632,
+     -10816
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-29952.d.29952.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-1872.1-a1",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -96,
+     32
+    ],
+    "B": [
+     -160,
+     448
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-29952.d.29952.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-1872.2-a1",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -96,
+     -32
+    ],
+    "B": [
+     -160,
+     -448
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-317696.a.635392.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-4964.2-a1",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     84,
+     32
+    ],
+    "B": [
+     -1064,
+     -2272
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-317696.a.635392.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-4964.3-a1",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     84,
+     -32
+    ],
+    "B": [
+     -1064,
+     2272
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-322048.a.644096.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     108,
+     40
+    ],
+    "B": [
+     520,
+     520
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-322048.a.644096.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     108,
+     -40
+    ],
+    "B": [
+     520,
+     -520
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-3264.a.3264.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.8.1-51.4-a1",
+   "field": [
+    2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     4,
+     24
+    ],
+    "B": [
+     -288,
+     88
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-3264.a.3264.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.8.1-51.1-a1",
+   "field": [
+    2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     4,
+     -24
+    ],
+    "B": [
+     -288,
+     -88
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-33280.a.66560.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-2080.2-b3",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     144,
+     224
+    ],
+    "B": [
+     -448,
+     3904
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-33280.a.66560.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-2080.3-b3",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     144,
+     -224
+    ],
+    "B": [
+     -448,
+     -3904
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-336384.a.336384.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     2000,
+     -1344
+    ],
+    "B": [
+     111168,
+     -78464
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-336384.a.336384.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     2000,
+     1344
+    ],
+    "B": [
+     111168,
+     78464
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-35072.b.70144.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-548.2-a1",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -12,
+     16
+    ],
+    "B": [
+     488,
+     752
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-35072.b.70144.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-548.1-a1",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -12,
+     -16
+    ],
+    "B": [
+     488,
+     -752
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-3584.a.3584.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-56.2-a3",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     336,
+     64
+    ],
+    "B": [
+     704,
+     3200
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-3584.a.3584.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-56.1-a4",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     336,
+     -64
+    ],
+    "B": [
+     704,
+     -3200
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-361152.a.361152.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.8.1-5643.9-a1",
+   "field": [
+    2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -796,
+     -296
+    ],
+    "B": [
+     -17968,
+     14248
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-361152.a.361152.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.8.1-5643.8-a1",
+   "field": [
+    2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -796,
+     296
+    ],
+    "B": [
+     -17968,
+     -14248
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-365056.a.365056.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     180,
+     -32
+    ],
+    "B": [
+     488,
+     32
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-365056.a.365056.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     180,
+     32
+    ],
+    "B": [
+     488,
+     -32
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-371200.b.742400.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -240,
+     -32
+    ],
+    "B": [
+     2752,
+     -3008
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-371200.b.742400.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -240,
+     32
+    ],
+    "B": [
+     2752,
+     3008
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-37440.b.149760.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-2340.3-a2",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     96,
+     -160
+    ],
+    "B": [
+     992,
+     2176
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-37440.b.149760.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-2340.2-a2",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     96,
+     160
+    ],
+    "B": [
+     992,
+     -2176
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-39168.a.78336.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-612.2-a2",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     276,
+     -176
+    ],
+    "B": [
+     4664,
+     -3280
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-39168.a.78336.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-612.1-a2",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     276,
+     176
+    ],
+    "B": [
+     4664,
+     3280
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-39168.b.235008.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.8.1-612.4-a1",
+   "field": [
+    2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -44,
+     96
+    ],
+    "B": [
+     -296,
+     576
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-39168.b.235008.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.8.1-612.3-a1",
+   "field": [
+    2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -44,
+     -96
+    ],
+    "B": [
+     -296,
+     -576
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-39168.c.705024.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-612.1-b1",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -3248,
+     2304
+    ],
+    "B": [
+     -39232,
+     27648
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-39168.c.705024.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-612.2-b1",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -3248,
+     -2304
+    ],
+    "B": [
+     -39232,
+     -27648
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-39872.a.39872.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-623.1-e1",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -108,
+     56
+    ],
+    "B": [
+     2608,
+     -1768
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-39872.a.39872.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-623.4-e1",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -108,
+     -56
+    ],
+    "B": [
+     2608,
+     1768
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-401472.a.401472.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -220,
+     72
+    ],
+    "B": [
+     -864,
+     1384
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-401472.a.401472.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -220,
+     -72
+    ],
+    "B": [
+     -864,
+     -1384
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-40960.c.655360.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-2560.2-a3",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -128,
+     192
+    ],
+    "B": [
+     -1792,
+     2304
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-40960.c.655360.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-2560.1-b3",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -128,
+     -192
+    ],
+    "B": [
+     -1792,
+     -2304
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-40960.d.655360.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-2560.1-a3",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     128,
+     192
+    ],
+    "B": [
+     -2304,
+     1792
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-40960.d.655360.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-2560.2-b3",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     128,
+     -192
+    ],
+    "B": [
+     -2304,
+     -1792
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-409600.c.409600.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -40,
+     48
+    ],
+    "B": [
+     -288,
+     -208
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-409600.c.409600.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -40,
+     -48
+    ],
+    "B": [
+     -288,
+     208
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-410688.a.410688.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     3188,
+     1992
+    ],
+    "B": [
+     236160,
+     161944
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-410688.a.410688.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     3188,
+     -1992
+    ],
+    "B": [
+     236160,
+     -161944
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-42048.a.126144.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.8.1-657.4-a2",
+   "field": [
+    2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -44,
+     -72
+    ],
+    "B": [
+     -864,
+     200
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-42048.a.126144.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.8.1-657.3-a2",
+   "field": [
+    2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -44,
+     72
+    ],
+    "B": [
+     -864,
+     -200
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-43264.d.86528.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-676.1-a1",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -816,
+     640
+    ],
+    "B": [
+     -20032,
+     13568
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-43264.d.86528.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-676.1-c1",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -816,
+     -640
+    ],
+    "B": [
+     -20032,
+     -13568
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-4352.b.278528.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-272.2-a2",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -240,
+     64
+    ],
+    "B": [
+     -1600,
+     -4480
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-4352.b.278528.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-272.1-a2",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -240,
+     -64
+    ],
+    "B": [
+     -1600,
+     4480
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-43520.c.87040.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-2720.1-c1",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -176,
+     -96
+    ],
+    "B": [
+     1088,
+     576
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-43520.c.87040.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-2720.4-c1",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -176,
+     96
+    ],
+    "B": [
+     1088,
+     -576
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-454400.b.908800.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     3408,
+     -2240
+    ],
+    "B": [
+     249280,
+     -173696
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-454400.b.908800.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     3408,
+     2240
+    ],
+    "B": [
+     249280,
+     173696
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-461312.a.922624.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     848,
+     480
+    ],
+    "B": [
+     20160,
+     20800
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-461312.a.922624.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     848,
+     -480
+    ],
+    "B": [
+     20160,
+     -20800
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-462080.a.462080.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -288,
+     32
+    ],
+    "B": [
+     992,
+     5056
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-462080.a.462080.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -288,
+     -32
+    ],
+    "B": [
+     992,
+     -5056
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-46400.d.928000.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-2900.4-a3",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -160,
+     -288
+    ],
+    "B": [
+     6048,
+     1792
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-46400.d.928000.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-2900.3-a3",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -160,
+     288
+    ],
+    "B": [
+     6048,
+     -1792
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-499968.a.999936.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -428,
+     288
+    ],
+    "B": [
+     2600,
+     -1728
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-499968.a.999936.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -428,
+     -288
+    ],
+    "B": [
+     2600,
+     1728
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-51200.a.256000.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-3200.2-b1",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -80,
+     -288
+    ],
+    "B": [
+     512,
+     1728
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-51200.a.256000.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-3200.2-a1",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -80,
+     288
+    ],
+    "B": [
+     512,
+     -1728
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-524800.a.524800.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     1488,
+     -128
+    ],
+    "B": [
+     -5312,
+     37120
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-524800.a.524800.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     1488,
+     128
+    ],
+    "B": [
+     -5312,
+     -37120
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-526528.a.526528.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.8.1-8227.3-a1",
+   "field": [
+    2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     196,
+     -72
+    ],
+    "B": [
+     864,
+     1240
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-526528.a.526528.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.8.1-8227.2-a1",
+   "field": [
+    2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     196,
+     72
+    ],
+    "B": [
+     864,
+     -1240
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-52992.a.105984.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-828.1-a2",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     720,
+     64
+    ],
+    "B": [
+     -5312,
+     -12416
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-52992.a.105984.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-828.2-a2",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     720,
+     -64
+    ],
+    "B": [
+     -5312,
+     12416
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-536256.a.536256.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.8.1-8379.3-a1",
+   "field": [
+    2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -560,
+     -864
+    ],
+    "B": [
+     -50048,
+     -5184
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-536256.a.536256.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.8.1-8379.4-a1",
+   "field": [
+    2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -560,
+     864
+    ],
+    "B": [
+     -50048,
+     5184
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-53824.a.53824.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-841.1-b1",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     16,
+     -96
+    ],
+    "B": [
+     -74368,
+     -51264
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-53824.a.53824.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-841.1-a1",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     16,
+     96
+    ],
+    "B": [
+     -74368,
+     51264
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-539712.a.539712.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     1488,
+     928
+    ],
+    "B": [
+     12800,
+     8384
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-539712.a.539712.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     1488,
+     -928
+    ],
+    "B": [
+     12800,
+     -8384
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-54208.a.54208.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-847.2-a2",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     1616,
+     -1056
+    ],
+    "B": [
+     25344,
+     -18880
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-54208.a.54208.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-847.1-a2",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     1616,
+     1056
+    ],
+    "B": [
+     25344,
+     18880
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-542720.a.542720.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     624,
+     416
+    ],
+    "B": [
+     11648,
+     15424
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-542720.a.542720.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     624,
+     -416
+    ],
+    "B": [
+     11648,
+     -15424
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-548352.a.548352.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     660,
+     304
+    ],
+    "B": [
+     -18664,
+     -10768
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-548352.a.548352.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     660,
+     -304
+    ],
+    "B": [
+     -18664,
+     10768
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-55872.a.55872.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-873.2-b1",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     784,
+     480
+    ],
+    "B": [
+     23680,
+     16704
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-55872.a.55872.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-873.1-b1",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     784,
+     -480
+    ],
+    "B": [
+     23680,
+     -16704
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-57344.a.917504.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-896.2-e2",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     144,
+     -32
+    ],
+    "B": [
+     704,
+     -832
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-57344.a.917504.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-896.1-e2",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     144,
+     32
+    ],
+    "B": [
+     704,
+     832
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-57344.b.917504.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-896.2-c2",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     144,
+     -32
+    ],
+    "B": [
+     -704,
+     832
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-57344.b.917504.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-896.1-c2",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     144,
+     32
+    ],
+    "B": [
+     -704,
+     -832
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-586432.a.586432.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.8.1-9163.3-a1",
+   "field": [
+    2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -28,
+     40
+    ],
+    "B": [
+     -1472,
+     2600
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-586432.a.586432.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.8.1-9163.2-a1",
+   "field": [
+    2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -28,
+     -40
+    ],
+    "B": [
+     -1472,
+     -2600
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-59904.a.119808.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-3744.2-a1",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     144,
+     -32
+    ],
+    "B": [
+     1856,
+     -1600
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-59904.a.119808.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-3744.1-a1",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     144,
+     32
+    ],
+    "B": [
+     1856,
+     1600
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-611776.a.611776.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     1936,
+     -1248
+    ],
+    "B": [
+     106624,
+     -76608
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-611776.a.611776.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     1936,
+     1248
+    ],
+    "B": [
+     106624,
+     76608
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-627776.a.627776.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     3472,
+     2208
+    ],
+    "B": [
+     316160,
+     228672
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-627776.a.627776.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     3472,
+     -2208
+    ],
+    "B": [
+     316160,
+     -228672
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-62976.a.62976.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.8.1-984.4-a2",
+   "field": [
+    2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     208,
+     576
+    ],
+    "B": [
+     -8640,
+     16000
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-62976.a.62976.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.8.1-984.1-a2",
+   "field": [
+    2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     208,
+     -576
+    ],
+    "B": [
+     -8640,
+     -16000
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-638208.a.638208.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     96,
+     224
+    ],
+    "B": [
+     1568,
+     5056
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-638208.a.638208.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     96,
+     -224
+    ],
+    "B": [
+     1568,
+     -5056
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-641600.a.641600.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -368,
+     -288
+    ],
+    "B": [
+     -59264,
+     -43200
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-641600.a.641600.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -368,
+     288
+    ],
+    "B": [
+     -59264,
+     43200
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-646400.a.646400.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     96,
+     160
+    ],
+    "B": [
+     -2720,
+     448
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-646400.a.646400.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     96,
+     -160
+    ],
+    "B": [
+     -2720,
+     -448
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-66560.b.266240.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-4160.4-a3",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     48,
+     128
+    ],
+    "B": [
+     -2176,
+     -128
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-66560.b.266240.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-4160.1-a3",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     48,
+     -128
+    ],
+    "B": [
+     -2176,
+     128
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-671744.d.671744.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     48,
+     64
+    ],
+    "B": [
+     -1856,
+     -2432
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-671744.d.671744.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     48,
+     -64
+    ],
+    "B": [
+     -1856,
+     2432
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-681984.a.681984.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -16,
+     288
+    ],
+    "B": [
+     -3456,
+     64
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-681984.a.681984.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -16,
+     -288
+    ],
+    "B": [
+     -3456,
+     -64
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-692736.a.692736.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     "788/81",
+     "-80/81"
+    ],
+    "B": [
+     "65704/729",
+     "-37360/729"
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-692736.a.692736.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     "788/81",
+     "80/81"
+    ],
+    "B": [
+     "65704/729",
+     "37360/729"
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-701952.a.701952.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     116,
+     -176
+    ],
+    "B": [
+     -904,
+     -2384
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-701952.a.701952.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     116,
+     176
+    ],
+    "B": [
+     -904,
+     2384
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-737280.a.737280.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     32,
+     192
+    ],
+    "B": [
+     1152,
+     4096
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-737280.a.737280.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     32,
+     -192
+    ],
+    "B": [
+     1152,
+     -4096
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-74240.a.148480.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-4640.2-b3",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     272,
+     288
+    ],
+    "B": [
+     1728,
+     6976
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-74240.a.148480.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-4640.3-b3",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     272,
+     -288
+    ],
+    "B": [
+     1728,
+     -6976
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-78336.a.705024.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-1224.2-b1",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -432,
+     320
+    ],
+    "B": [
+     26944,
+     -19840
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-78336.a.705024.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-1224.1-b1",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -432,
+     -320
+    ],
+    "B": [
+     26944,
+     19840
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-78912.a.78912.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-1233.2-b1",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     912,
+     -544
+    ],
+    "B": [
+     60928,
+     -44608
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-78912.a.78912.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-1233.1-b1",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     912,
+     544
+    ],
+    "B": [
+     60928,
+     44608
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-81920.a.81920.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-5120.2-f3",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -96,
+     -64
+    ],
+    "B": [
+     -128,
+     -1024
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-81920.a.81920.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-5120.1-f3",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -96,
+     64
+    ],
+    "B": [
+     -128,
+     1024
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-82432.a.82432.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-1288.4-c3",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     10320,
+     -6016
+    ],
+    "B": [
+     1328704,
+     -884992
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-82432.a.82432.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-1288.1-c3",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     10320,
+     6016
+    ],
+    "B": [
+     1328704,
+     884992
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-84224.a.168448.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-1316.3-a3",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     13136,
+     -3648
+    ],
+    "B": [
+     -880704,
+     1126528
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-84224.a.168448.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-1316.2-a3",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     13136,
+     3648
+    ],
+    "B": [
+     -880704,
+     -1126528
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-85248.a.85248.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-5328.2-a2",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -64,
+     -96
+    ],
+    "B": [
+     -288,
+     -1216
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-85248.a.85248.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-5328.1-a2",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -64,
+     96
+    ],
+    "B": [
+     -288,
+     1216
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-87040.a.348160.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-5440.4-a2",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -208,
+     192
+    ],
+    "B": [
+     -4608,
+     -2944
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-87040.a.348160.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-5440.1-a2",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -208,
+     -192
+    ],
+    "B": [
+     -4608,
+     2944
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-870400.a.870400.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -400,
+     288
+    ],
+    "B": [
+     -3456,
+     -4544
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-870400.a.870400.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -400,
+     -288
+    ],
+    "B": [
+     -3456,
+     4544
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-912576.a.912576.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     "652/27",
+     "-152/27"
+    ],
+    "B": [
+     "-5024/27",
+     "2344/27"
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-912576.a.912576.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     "652/27",
+     "152/27"
+    ],
+    "B": [
+     "-5024/27",
+     "-2344/27"
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-92160.g.829440.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-5760.1-a1",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     48,
+     32
+    ],
+    "B": [
+     -1024,
+     -3008
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-92160.g.829440.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-5760.2-a1",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     48,
+     -32
+    ],
+    "B": [
+     -1024,
+     3008
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-92416.d.184832.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-1444.1-e1",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -304,
+     -384
+    ],
+    "B": [
+     14400,
+     12800
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-92416.d.184832.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-1444.1-c1",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -304,
+     384
+    ],
+    "B": [
+     14400,
+     -12800
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-92800.d.928000.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-5800.4-a1",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -320,
+     288
+    ],
+    "B": [
+     8864,
+     3456
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-92800.d.928000.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.0.4.1-5800.3-a1",
+   "field": [
+    1,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     -320,
+     -288
+    ],
+    "B": [
+     8864,
+     -3456
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-97216.a.97216.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-1519.1-e2",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     1552,
+     -1056
+    ],
+    "B": [
+     78848,
+     -55872
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-97216.a.97216.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-1519.2-e2",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     1552,
+     1056
+    ],
+    "B": [
+     78848,
+     55872
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-9792.a.9792.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-153.2-a2",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     900,
+     -296
+    ],
+    "B": [
+     18704,
+     -20632
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-9792.a.9792.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": "2.2.8.1-153.1-a2",
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     900,
+     296
+    ],
+    "B": [
+     18704,
+     20632
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-999936.a.999936.1-0",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     23092,
+     -13056
+    ],
+    "B": [
+     -4078232,
+     3106368
+    ]
+   }
+  },
+  {
+   "id": "lmfdb-999936.a.999936.1-1",
+   "stratum": "lmfdb-qcurve",
+   "lmfdb_factor_label": null,
+   "field": [
+    -2,
+    0,
+    1
+   ],
+   "curve": {
+    "model": "AB",
+    "A": [
+     23092,
+     13056
+    ],
+    "B": [
+     -4078232,
+     -3106368
+    ]
+   }
+  }
+ ]
+}
