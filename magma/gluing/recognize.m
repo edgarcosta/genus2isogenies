@@ -91,6 +91,17 @@ every good p <= TraceBound (certificate (a)). Returns false when nothing survive
     end if;
     C0 := IntegralModel(C0);
 
+    // Extra geometric automorphisms (order > 2) admit non-quadratic twists: the
+    // search below only tries quadratic twists, so a wrong-but-isogenous twist
+    // can still pass the trace certificate (observed on bhls2 corpus entry 4,
+    // n = 2). Only the Algebraic path (n in {2, 3}) currently reconstructs these
+    // quotients correctly, so drop rather than risk certifying the wrong curve.
+    if #GeometricAutomorphismGroup(C0) gt 2 then
+        vprintf Gluing: "CurveFromInvariants: C0 has extra automorphisms (order %o > 2), quadratic-twist pinning cannot certify the right twist, dropping (the Algebraic path handles n in {2, 3})\n",
+            #GeometricAutomorphismGroup(C0);
+        return false, C0;
+    end if;
+
     // Candidate discriminants: +-1 times squarefree products of the bad primes
     // of the pair, of the reconstructed model, and 2. The connecting twist is
     // supported there: Jac(C) is isogenous to E1 x E2 (conductor over the E_i

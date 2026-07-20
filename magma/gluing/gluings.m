@@ -23,9 +23,11 @@
  * Both dispatch paths finish through CanonicalGluingList; outputs agree only
  * for curves with geometric automorphism group of order 2. Gluings with larger
  * automorphism groups (bielliptic; sextic/quartic twists) are currently produced
- * only by the Algebraic path at n in {2, 3}, and are dropped with a vprint by
- * the Periods path. proof is "traces-only" until Task 9 supplies the exact
- * completeness certificate; metadata blocks carry stable_count -1 accordingly.
+ * only by the Algebraic path at n in {2, 3}: CurveFromInvariants detects order > 2
+ * on the reconstructed model and drops the quotient with a vprint, since quadratic-
+ * twist pinning cannot certify the right twist there. proof is "traces-only" until
+ * Task 9 supplies the exact completeness certificate; metadata blocks carry
+ * stable_count -1 accordingly.
  */
 
 function gluingInfoFmt()
