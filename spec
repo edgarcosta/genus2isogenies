@@ -1,0 +1,10 @@
+{
+  magma
+  {
+    gluing
+    {
+      shims.m
+      selfcheck.m
+    }
+  }
+}
