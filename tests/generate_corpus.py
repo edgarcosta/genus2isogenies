@@ -1,12 +1,28 @@
 """Corpus generator. assemble_inputs() adds fixture/differential entries to
 corpus_curves.json; compute_oracles() (Task 3) adds `expect` blocks and emits
-tests/test_isogenyprimes.m and tests/run_differential.m."""
+tests/test_isogenyprimes.m and tests/run_differential.m.
+
+Usage:
+    sage -python tests/generate_corpus.py            # full run: writes the
+        corpus with `expect` blocks and tests/test_isogenyprimes.m +
+        tests/run_differential.m (multi-hour; the orchestrator runs this).
+    sage -python tests/generate_corpus.py --smoke    # deterministic subset,
+        emits /tmp/smoke_*.m only, never touches the committed corpus or
+        tests/*.m (fast; used to verify the emitters before the full run)."""
+import datetime
 import json
+import sys
 from sage.all import (QQ, ZZ, PolynomialRing, NumberField, EllipticCurve,
-                      kronecker_symbol, set_random_seed, prime_range)
+                      kronecker_symbol, set_random_seed, prime_range, gcd)
+from sage.arith.misc import fundamental_discriminant
+from sage.parallel.decorate import fork
 
 SEED = 20260720
 MAZUR = [2, 3, 5, 7, 11, 13, 17, 19, 37, 43, 67, 163]
+ORACLE_TIMEOUT = 120   # per-curve per-oracle cap (seconds) for the full run
+SMOKE_TIMEOUT = 20     # shorter cap for --smoke: the machinery check stays fast
+                       # (the number-field per-ell sweep is inherently ~50-120s)
+_ACTIVE_CAP = ORACLE_TIMEOUT   # set by compute_oracles(); read by capped()
 
 def K_from(coeffs):
     R = PolynomialRing(QQ, 'x')
@@ -136,8 +152,602 @@ def assemble_inputs(data):
         es.append(entry(f"diff-cmj-15-{i}", "diff-cmj", K5, EllipticCurve(K5, j=jv)))
     return data
 
-if __name__ == "__main__":
+# ===========================================================================
+# Task 3: oracle computation and Magma test-file emitters.
+#
+# The oracles below reconstruct each entry's K and E in Sage the same way the
+# emitted Magma BuildField/BuildCurve preamble does. Sage and Magma may pick
+# conjugate roots of the defining polynomial, but every oracle value used in an
+# assert (O(E), CM data, congruence-trace gcd) is a Galois invariant, and the
+# golden charpolys are recorded for a Q-rational curve, so the reconstruction is
+# consistent on both sides.
+# ===========================================================================
+
+def sage_field(coeffs):
+    R = PolynomialRing(QQ, 'x')
+    cc = [QQ(c) for c in coeffs]
+    if cc == [QQ(0), QQ(1)]:
+        return QQ
+    return NumberField(R(cc), 'w')
+
+def sage_elt(K, vecc):
+    v = [QQ(c) for c in vecc]
+    return v[0] if K is QQ else K(v)
+
+def sage_curve(K, model):
+    if model["model"] == "AB":
+        return EllipticCurve(K, [0, 0, 0, sage_elt(K, model["A"]),
+                                 sage_elt(K, model["B"])])
+    return EllipticCurve(K, [sage_elt(K, a) for a in model["ainvs"]])
+
+def rebuild(e):
+    K = sage_field(e["field"])
+    E = sage_curve(K, e["curve"])
+    E2 = sage_curve(K, e["curve2"]) if "curve2" in e else None
+    return K, E, E2
+
+def is_deg1(K):
+    return (K is QQ) or (K.absolute_degree() == 1)
+
+def capped(name, thunk, dropped):
+    """Run thunk in a forked subprocess with a hard timeout (_ACTIVE_CAP) and
+    return its result. fork() kills the subprocess on timeout, so this bounds even
+    the PARI/C sections of isogenies_prime_degree that alarm()/AlarmInterrupt
+    cannot interrupt (a huge-coefficient X_0 curve hangs an alarm for minutes).
+    On timeout, or an unhandled error in the child, fork returns a 'NO DATA'
+    sentinel string; record the drop and return None."""
+    runner = fork(lambda _: thunk(), timeout=_ACTIVE_CAP, verbose=False)
+    r = runner(0)
+    if isinstance(r, str) and r.startswith("NO DATA"):
+        dropped.append(name)
+        return None
+    return r
+
+def deg1_curve_over_Q(e):
+    """The isomorphic Q-model of a degree-one entry (a degree-1 NumberField is
+    canonically Q). Used so O(E) is computed with fast rational arithmetic:
+    isogenies_prime_degree over a degree-1 NumberField times out."""
+    m = e["curve"]
+    if m["model"] == "AB":
+        return EllipticCurve(QQ, [0, 0, 0, QQ(m["A"][0]), QQ(m["B"][0])])
+    return EllipticCurve(QQ, [QQ(a[0]) for a in m["ainvs"]])
+
+def oracle_oE(E, deg1, dropped):
+    """O(E) = { ell : isogenies_prime_degree(ell) nonempty }, DIRECT per-ell
+    construction only. Full Mazur list (incl. 163) over degree-one fields; primes
+    <= 100 over number fields. E is the curve to sweep (a Q-model for degree-one
+    entries; see deg1_curve_over_Q). ell must be a Sage Integer: a Python int
+    trips isogenies_prime_degree's internal l.is_prime() call."""
+    sweep = [ZZ(p) for p in MAZUR] if deg1 else list(prime_range(101))
+    def go():
+        out = []
+        for ell in sweep:
+            try:
+                # Degree-one entries sweep a Q-model (fast, and QQ's
+                # isogenies_prime_degree has no minimal_models kwarg). Over
+                # number fields pass minimal_models=False: we only need
+                # nonemptiness, and building codomain minimal models is wasted
+                # work that also trips a Sage round() bug on some inputs.
+                if deg1:
+                    phis = E.isogenies_prime_degree(ZZ(ell))
+                else:
+                    phis = E.isogenies_prime_degree(ZZ(ell), minimal_models=False)
+                if phis:
+                    out.append(int(ell))
+            except Exception:
+                # No constructible isogeny (ValueError/NotImplementedError) or a
+                # Sage arithmetic failure for this ell: skip it. Safe for the
+                # containment asserts (a missed ell only weakens, never breaks);
+                # the equality asserts run only over Q, which never raises here.
+                # AlarmInterrupt is a BaseException, so the 120s cap still fires.
+                pass
+        return out
+    return capped("oE", go, dropped)
+
+def oracle_cm(E, K, dropped):
+    """Geometric CM (E.has_cm() over Qbar). cm_discriminant() is the ORDER
+    discriminant D_O = f^2 D_F; derive D_F and f, and CMInBaseField as the
+    IsSquare test on D_F (never square over Q, so degree-1 CM is not in K)."""
+    def go():
+        if not E.has_cm():
+            return {"is_cm": False}
+        DO = ZZ(E.cm_discriminant())
+        DF = ZZ(fundamental_discriminant(DO))
+        f = ZZ(DO // DF).isqrt()
+        ib = bool(K(DF).is_square()) if K is not QQ else bool(QQ(DF).is_square())
+        return {"is_cm": True, "order_disc": int(DO), "fund_disc": int(DF),
+                "f": int(f), "in_base_field": ib}
+    return capped("cm", go, dropped)
+
+def oracle_soft(E, dropped):
+    """Sage reducible_primes (SOFT, print-only tightness comparison)."""
+    def go():
+        try:
+            rp = E.galois_representation().reducible_primes()
+        except Exception:   # print-only; AlarmInterrupt (drop) still propagates
+            return None
+        return sorted(int(p) for p in rp)
+    return capped("soft", go, dropped)
+
+def oracle_golden(E, K, dropped):
+    """Charpoly triples for the gate curve over Q(sqrt29): p=7 splits, p=3 is
+    inert, both good for 11a1. E is Q-rational, so the trace is prime-above
+    independent and the recorded [Norm, -a, 1] matches any prime above p."""
+    def go():
+        res = {}
+        for tag, p in (("split", 7), ("inert", 3)):
+            P = K.primes_above(p)[0]
+            fp = E.reduction(P).frobenius_polynomial()
+            res[tag] = {"p": int(p), "norm": int(P.norm()),
+                        "charpoly": [int(c) for c in fp.list()]}
+        return res
+    return capped("golden", go, dropped)
+
+def _cong_terms(E1, E2, K, max_norm):
+    """[(Norm(q), p_q*(a_q(E1)-a_q(E2)))] over prime ideals q good for both
+    curves (coprime to both conductors), Norm(q) <= max_norm. The gcd of the
+    second components is order-independent, so no sorting is needed here."""
+    terms = []
+    if K is QQ:
+        N1, N2 = ZZ(E1.conductor()), ZZ(E2.conductor())
+        for p in prime_range(max_norm + 1):
+            if N1 % p == 0 or N2 % p == 0:
+                continue
+            terms.append((int(p), ZZ(p) * (ZZ(E1.ap(p)) - ZZ(E2.ap(p)))))
+    else:
+        N1, N2 = E1.conductor(), E2.conductor()
+        for P in K.primes_of_bounded_norm(max_norm):
+            if P.divides(N1) or P.divides(N2):
+                continue
+            p = ZZ(P.smallest_integer())   # rational prime below P (residue char)
+            a1 = ZZ(E1.reduction(P).trace_of_frobenius())
+            a2 = ZZ(E2.reduction(P).trace_of_frobenius())
+            terms.append((int(P.norm()), p * (a1 - a2)))
+    return terms
+
+def _cong_escalate(terms, norm_bound, max_norm_bound):
+    """Spec-pinned B-phase escalation on G := gcd of the terms: zero-sentinel
+    (G == 0 is a formal TOP, never a plateau, never factored), doubling from
+    norm_bound to max_norm_bound, plateau stop (a set unchanged across a doubling,
+    including one landing exactly at the cap), G == 1 absorbing early exit, and
+    the single-evaluation rule (stabilized iff the set is empty). Returns the
+    reproduction expect {primes, kind, stabilized, bound}: kind 'Finite' if the
+    final G is nonzero, else 'ZeroAtCap' (the engine then goes to the BFS at
+    degree >= 2 or returns Undecided at degree 1)."""
+    def gcd_upto(b):
+        G = ZZ(0)
+        for (nrm, t) in terms:
+            if nrm <= b:
+                G = gcd(G, t)
+        return G
+    bound = norm_bound
+    prev = None
+    while True:
+        G = gcd_upto(bound)
+        if G == 1:
+            return {"primes": [], "kind": "Finite", "stabilized": True,
+                    "bound": int(bound)}
+        cur = None if G == 0 else frozenset(int(p) for p in G.prime_divisors())
+        if prev is not None and cur is not None and cur == prev:
+            return {"primes": sorted(cur), "kind": "Finite",
+                    "stabilized": True, "bound": int(bound)}
+        if bound >= max_norm_bound:
+            if cur is None:
+                return {"primes": None, "kind": "ZeroAtCap",
+                        "stabilized": False, "bound": int(bound)}
+            return {"primes": sorted(cur), "kind": "Finite",
+                    "stabilized": False, "bound": int(bound)}
+        prev = cur
+        bound = min(2 * bound, max_norm_bound)
+
+def oracle_cong(E1, E2, K, dropped, norm_bound=1000, max_norm_bound=8000,
+                name="cong"):
+    def go():
+        terms = _cong_terms(E1, E2, K, max_norm_bound)
+        return _cong_escalate(terms, norm_bound, max_norm_bound)
+    return capped(name, go, dropped)
+
+GATE_IDS = {"fixture-gate-inert", "fixture-gate-split"}
+
+def compute_oracles(entries, cap=ORACLE_TIMEOUT):
+    """Attach an `expect` block to every entry in place. Returns the aggregated
+    [(id, oracle)] drop list for the emitted header. `cap` is the per-oracle
+    timeout (seconds)."""
+    global _ACTIVE_CAP
+    _ACTIVE_CAP = cap
+    agg = []
+    n = len(entries)
+    for i, e in enumerate(entries):
+        eid = e["id"]
+        dropped = []
+        K, E, E2 = rebuild(e)
+        expect = {"deg1": is_deg1(K)}
+        if E2 is not None:
+            # Only the fixture-cong-* pairs are asserted (congruence section);
+            # diff-congpair pairs are differential-only (the driver calls the
+            # engine and prints; no oracle) and are isogenous, so the engine
+            # returns AllPrimes, not the gcd's Finite.
+            if e["stratum"].startswith("fixture-cong"):
+                expect["cong"] = oracle_cong(E, E2, K, dropped)
+                if e["stratum"] == "fixture-cong-twist":
+                    expect["cong_lowbound"] = oracle_cong(
+                        E, E2, K, dropped, norm_bound=2, max_norm_bound=2,
+                        name="cong_lowbound")
+        else:
+            cm = oracle_cm(E, K, dropped)
+            expect["cm"] = cm
+            is_cm = bool(cm and cm.get("is_cm"))
+            Eo = deg1_curve_over_Q(e) if (expect["deg1"] and K is not QQ) else E
+            expect["oE"] = oracle_oE(Eo, expect["deg1"], dropped)
+            if (not expect["deg1"]) and (not is_cm):
+                expect["soft_reducible"] = oracle_soft(E, dropped)
+            if eid in GATE_IDS:
+                expect["golden"] = oracle_golden(E, K, dropped)
+        expect["dropped"] = dropped
+        e["expect"] = expect
+        agg.extend((eid, nm) for nm in dropped)
+        print("oracle %d/%d %s%s" % (i + 1, n, eid,
+              ("  DROPPED:" + ",".join(dropped)) if dropped else ""))
+    return agg
+
+# --- Magma literal helpers ---------------------------------------------------
+
+def _mnum(v):
+    return str(v)   # JSON ints/strings are valid Magma integer/rational literals
+
+def _mseq(coords):
+    return "[" + ", ".join(_mnum(c) for c in coords) + "]"
+
+def _ainvs_rows(model):
+    if model["model"] == "AB":
+        return [[0], [0], [0], model["A"], model["B"]]
+    return model["ainvs"]
+
+def _mainvs(model):
+    return "[ " + ", ".join(_mseq(r) for r in _ainvs_rows(model)) + " ]"
+
+def _mfield(coeffs):
+    return "[" + ", ".join(_mnum(c) for c in coeffs) + "]"
+
+def _mset(primes):
+    return ("{ " + ", ".join(str(p) for p in primes) + " }") if primes else "{ Integers() | }"
+
+def _mlist(ints):
+    return ("[ " + ", ".join(str(p) for p in ints) + " ]") if ints else "[ Integers() | ]"
+
+def _build1(e):
+    return ["    K := BuildField(%s);" % _mfield(e["field"]),
+            "    E := BuildCurve(K, %s);" % _mainvs(e["curve"])]
+
+def _build2(e):
+    return ["    K := BuildField(%s);" % _mfield(e["field"]),
+            "    E1 := BuildCurve(K, %s);" % _mainvs(e["curve"]),
+            "    E2 := BuildCurve(K, %s);" % _mainvs(e["curve2"])]
+
+PREAMBLE = r'''// ==========================================================================
+// GENERATED by tests/generate_corpus.py -- DO NOT EDIT BY HAND.
+%(header)s// ==========================================================================
+if assigned spec then useSpec := spec; else useSpec := "magma/spec"; end if;
+if useSpec ne "" then
+    // CHIMP supplies the star/bracket charpoly intrinsics the engine needs.
+    ok, _ := IsIntrinsic("PowerCharacteristicPolynomial");
+    error if not ok, "CHIMP is not attached; AttachSpec your CHIMP.spec first";
+    AttachSpec(useSpec);
+end if;
+// useSpec eq "" is the red-state syntactic check: no engine spec, CHIMP not needed.
+if not assigned section then section := "all"; end if;
+if not assigned cmscope then cmscope := "1"; end if;
+
+R<x> := PolynomialRing(Rationals());
+
+function BuildField(coeffs)
+    if coeffs eq [0, 1] then return Rationals(); end if;
+    return NumberField(R ! coeffs);
+end function;
+
+function Elt(K, v)
+    if Type(K) eq FldRat then return K ! v[1]; end if;
+    return &+[ (Rationals() ! v[i]) * K.1^(i-1) : i in [1..#v] ];
+end function;
+
+function BuildCurve(K, ainvs)
+    return EllipticCurve([ Elt(K, a) : a in ainvs ]);
+end function;
+
+function PrimeAbove(K, p, i)
+    return Decomposition(Integers(K), p)[i][1];
+end function;
+'''
+
+def _sec_golden(gates):
+    L = ["procedure Test_golden()"]
+    for e in gates:
+        eid = e["id"]
+        g = e["expect"].get("golden")
+        if g is None:
+            L.append('    printf "  SKIP %o: golden dropped\\n", "' + eid + '";')
+            continue
+        L += _build1(e)
+        sp, ip = g["split"], g["inert"]
+        L.append("    qs := PrimeAbove(K, %d, 1);" % sp["p"])
+        L.append("    qi := PrimeAbove(K, %d, 1);" % ip["p"])
+        L.append("    assert [Integers() ! c : c in Coefficients(FrobeniusCharpoly(E, qs))] eq %s;  // %s split charpoly" % (_mlist(sp["charpoly"]), eid))
+        L.append("    assert [Integers() ! c : c in Coefficients(FrobeniusCharpoly(E, qi))] eq %s;  // %s inert charpoly" % (_mlist(ip["charpoly"]), eid))
+        if eid == "fixture-gate-inert":
+            L.append("    assert BillereyRq(E, qi) eq BillereyBl(E, %d);  // inert gate R_q = B_l" % ip["p"])
+        else:
+            L.append("    assert (BillereyRq(E, qs) ne BillereyBl(E, %d)) or (BillereyBl(E, %d) eq 0);  // split: gate must not hold" % (sp["p"], sp["p"]))
+    L.append('    printf "SECTION golden: PASS\\n";')
+    L.append("end procedure;\n")
+    return "\n".join(L)
+
+def _sec_branch1(entries):
+    L = ["procedure Test_branch1()"]
+    for e in entries:
+        eid = e["id"]; oE = e["expect"].get("oE")
+        L += _build1(e)
+        L.append("    L, info := IsogenyPrimes(E);")
+        L.append('    assert info`Source eq "IsogenyPrimes";  // %s' % eid)
+        L.append('    assert info`Kind eq "Finite";')
+        L.append("    assert info`Exact;")
+        if oE is None:
+            L.append('    printf "  SKIP %o: oE dropped\\n", "' + eid + '";')
+        else:
+            L.append("    assert Set(L) eq %s;  // exact O(E), complete by Mazur" % _mset(oE))
+            L.append("    for ell in %s do assert MayBeReducible(ell, L, info); end for;" % _mlist(oE))
+    L.append('    printf "SECTION branch1: PASS\\n";')
+    L.append("end procedure;\n")
+    return "\n".join(L)
+
+def _sec_branch2(entries):
+    L = ["procedure Test_branch2()"]
+    for e in entries:
+        eid = e["id"]; exp = e["expect"]; oE = exp.get("oE"); soft = exp.get("soft_reducible")
+        L += _build1(e)
+        L.append("    L, info := IsogenyPrimes(E);")
+        L.append('    assert info`Source eq "IsogenyPrimes";  // %s' % eid)
+        L.append("    assert not info`Exact;")
+        if oE is None:
+            L.append('    printf "  SKIP %o: oE dropped\\n", "' + eid + '";')
+        else:
+            L.append("    for ell in %s do assert MayBeReducible(ell, L, info); end for;  // containment" % _mlist(oE))
+        if eid == "fixture-localglobal":
+            L.append("    assert 7 in Set(L);            // local-global false positive kept")
+            if oE is not None:
+                L.append("    assert 7 notin %s;            // ... but no global 7-isogeny" % _mset(oE))
+        if eid == "fixture-ex58":
+            L.append("    assert info`BoundsUsed[2] ne 0;  // R-phase ran (B_l = 0 for all l)")
+        if soft is None:
+            L.append('    printf "  branch2 %o soft=UNAVAILABLE L=%o\\n", "' + eid + '", Sort(SetToSequence(Set(L)));')
+        else:
+            L.append('    printf "  branch2 %o soft=%o L=%o\\n", "' + eid + '", ' + _mlist(soft) + ', Sort(SetToSequence(Set(L)));')
+    L.append('    printf "SECTION branch2: PASS\\n";')
+    L.append("end procedure;\n")
+    return "\n".join(L)
+
+def _sec_cm(entries):
+    L = ["procedure Test_cm()"]
+    for e in entries:
+        eid = e["id"]; exp = e["expect"]; oE = exp.get("oE"); cm = exp.get("cm") or {}
+        in_bf = bool(cm.get("in_base_field"))
+        kind = "CMFamily" if in_bf else "Finite"
+        exact = bool(exp.get("deg1"))   # degree-1 CM takes branch 1 (Exact true)
+        L += _build1(e)
+        L.append("    L, info := IsogenyPrimes(E);")
+        L.append('    assert info`Source eq "IsogenyPrimes";  // %s' % eid)
+        L.append("    assert info`IsCM;")
+        L.append("    assert info`CMOrderDiscriminant eq %d;" % cm["order_disc"])
+        L.append("    assert info`CMFundamentalDiscriminant eq %d;" % cm["fund_disc"])
+        L.append("    assert info`CMConductor eq %d;" % cm["f"])
+        L.append("    assert info`CMInBaseField eq %s;" % ("true" if in_bf else "false"))
+        L.append('    assert info`Kind eq "%s";' % kind)
+        L.append("    assert %sinfo`Exact;" % ("" if exact else "not "))
+        if oE is None:
+            L.append('    printf "  SKIP %o: oE dropped\\n", "' + eid + '";')
+        elif kind == "Finite":
+            L.append("    assert %s subset Set(L);  // O(E) subset L" % _mset(oE))
+        else:
+            L.append("    for ell in %s do assert MayBeReducible(ell, L, info); end for;  // CMFamily denotation" % _mlist(oE))
+        if eid == "fixture-cm-1728-Qi":
+            if oE is not None:
+                L.append("    assert 13 in %s;  // 13 construction-reducible (F-family)" % _mset(oE))
+            L.append("    assert HasPrimeIsogeny(E, 5);  // split sample: F subset R(E)")
+            L.append("    assert HasPrimeIsogeny(E, 2);  // ramified sample")
+        if eid == "fixture-cm-nonmax":
+            L.append("    assert MayBeReducible(2, L, info) eq (2 in Set(L));  // family clause rejects p | f unless in L")
+    L.append('    printf "SECTION cm: PASS\\n";')
+    L.append("end procedure;\n")
+    return "\n".join(L)
+
+def _sec_congruence(congs):
+    L = ["procedure Test_congruence()"]
+    for e in congs:
+        eid = e["id"]; strat = e["stratum"]; cong = e["expect"].get("cong")
+        L += _build2(e)
+        if strat == "fixture-cong-isogenous":
+            L.append("    L, info := CongruencePrimes(E1, E2);")
+            L.append('    assert info`Source eq "CongruencePrimes";  // %s' % eid)
+            L.append('    assert info`Kind eq "AllPrimes";       // isogenous over Q (IsIsogenous)')
+            L.append("    L2, info2 := CongruencePrimes(E1, E2 : KnownIsogenous := true);")
+            L.append('    assert info2`Kind eq "AllPrimes";')
+            L.append('    assert info2`CertificationMethod eq "Supplied";')
+        elif strat == "fixture-cong-twist":
+            L.append("    L, info := CongruencePrimes(E1, E2);        // %s" % eid)
+            L.append('    assert info`Kind eq "Finite";')
+            if cong and cong.get("primes") is not None:
+                L.append("    assert Set(L) eq %s;" % _mset(cong["primes"]))
+            L.append("    L2, info2 := CongruencePrimes(E1, E2 : NormBound := 2, MaxNormBound := 2);")
+            L.append('    assert info2`Kind eq "Undecided";     // G = 0 at cap 2; deg-1 short circuits')
+            L.append('    assert info2`Kind ne "AllPrimes";     // twist guard: same-j must not certify')
+        else:   # fixture-cong-finite
+            L.append("    L, info := CongruencePrimes(E1, E2);        // %s" % eid)
+            L.append('    assert info`Kind eq "Finite";')
+            if cong and cong.get("primes") is not None:
+                if eid == "fixture-cong-2" and 2 in cong["primes"]:
+                    L.append("    assert 2 in Set(L);  // ell = 2 congruence")
+                L.append("    assert Set(L) eq %s;" % _mset(cong["primes"]))
+    L.append('    printf "SECTION congruence: PASS\\n";')
+    L.append("end procedure;\n")
+    return "\n".join(L)
+
+def _sec_fixtures(byid):
+    L = ["procedure Test_fixtures()"]
+    e = byid.get("fixture-deg1-fldnum")
+    if e is not None:
+        oE = e["expect"].get("oE")
+        L += _build1(e)
+        L.append("    assert AbsoluteDegree(BaseRing(E)) eq 1;  // dispatch on absolute degree")
+        L.append("    L, info := IsogenyPrimes(E);")
+        L.append("    assert info`Exact;                        // branch-1 semantics")
+        L.append('    assert info`Kind eq "Finite";')
+        if oE is not None:
+            L.append("    assert Set(L) eq %s;" % _mset(oE))
+    L.append('    printf "SECTION fixtures: PASS\\n";')
+    L.append("end procedure;\n")
+    return "\n".join(L)
+
+def _dispatch():
+    return "\n".join([
+        'if section eq "all" or section eq "golden" then Test_golden(); end if;',
+        'if section eq "all" or section eq "branch1" then Test_branch1(); end if;',
+        'if section eq "all" or section eq "branch2" then Test_branch2(); end if;',
+        'if (section eq "all" or section eq "cm") and cmscope ne "0" then Test_cm(); end if;',
+        'if section eq "all" or section eq "congruence" then Test_congruence(); end if;',
+        'if section eq "all" or section eq "fixtures" then Test_fixtures(); end if;',
+        'printf "ALL SELECTED SECTIONS PASS\\n";',
+    ])
+
+def emit_test_file(entries, header, path):
+    byid = {e["id"]: e for e in entries}
+    gates = [e for e in entries if e["id"] in GATE_IDS]
+    # Only fixture-cong-* pairs are asserted; diff-congpair is differential-only.
+    congs = [e for e in entries if e.get("stratum", "").startswith("fixture-cong")]
+    b1, b2, cml = [], [], []
+    for e in entries:
+        if "curve2" in e:
+            continue
+        exp = e["expect"]; cm = exp.get("cm") or {}
+        if cm.get("is_cm"):
+            cml.append(e)
+        elif exp.get("deg1"):
+            b1.append(e)
+        else:
+            b2.append(e)
+    parts = [PREAMBLE % {"header": header}, "",
+             _sec_golden(gates), _sec_branch1(b1), _sec_branch2(b2),
+             _sec_cm(cml), _sec_congruence(congs), _sec_fixtures(byid),
+             _dispatch(), ""]
+    with open(path, "w") as f:
+        f.write("\n".join(parts))
+    print("wrote %s" % path)
+
+DIFF_HELPERS = r'''
+if not assigned out then out := ""; end if;
+diffLines := [];
+
+function BoolStr(b)
+    return b select "1" else "0";
+end function;
+
+function NormPrimes(L)
+    S := Sort(SetToSequence(SequenceToSet([ Integers() ! p : p in L ])));
+    return Join([ IntegerToString(p) : p in S ], ",");
+end function;
+
+procedure EmitIso(~lines, id, L, info)
+    if info`IsCM then cmd := IntegerToString(info`CMOrderDiscriminant); else cmd := "0"; end if;
+    Append(~lines, id cat ":" cat info`Kind cat ":" cat BoolStr(info`Exact) cat ":" cat NormPrimes(L) cat ":" cat cmd);
+end procedure;
+
+procedure EmitCong(~lines, id, L, info)
+    Append(~lines, id cat ":" cat info`Kind cat ":" cat BoolStr(info`Exact) cat ":" cat BoolStr(info`Stabilized) cat ":" cat NormPrimes(L) cat ":" cat info`CertificationMethod);
+end procedure;
+'''
+
+def _diff_entry(e):
+    eid = e["id"]
+    if "curve2" in e:
+        return "\n".join([
+            "K := BuildField(%s);" % _mfield(e["field"]),
+            "E1 := BuildCurve(K, %s);" % _mainvs(e["curve"]),
+            "E2 := BuildCurve(K, %s);" % _mainvs(e["curve2"]),
+            "Lc, infoc := CongruencePrimes(E1, E2);",
+            'EmitCong(~diffLines, "%s", Lc, infoc);' % eid])
+    is_cm = bool((e["expect"].get("cm") or {}).get("is_cm"))
+    body = ["K := BuildField(%s);" % _mfield(e["field"]),
+            "E := BuildCurve(K, %s);" % _mainvs(e["curve"]),
+            "Li, infoi := IsogenyPrimes(E);",
+            'EmitIso(~diffLines, "%s", Li, infoi);' % eid]
+    if is_cm:
+        body = ['if cmscope ne "0" then'] + body + ["end if;"]
+    return "\n".join(body)
+
+def emit_differential_driver(entries, header, path):
+    parts = [PREAMBLE % {"header": header}, DIFF_HELPERS, ""]
+    parts += [_diff_entry(e) for e in entries]
+    parts += ["", "Sort(~diffLines);",
+              'if out ne "" then',
+              '    PrintFile(out, Join(diffLines, "\\n") : Overwrite := true);',
+              "else",
+              '    for line in diffLines do printf "%o\\n", line; end for;',
+              "end if;",
+              'printf "DIFFERENTIAL LINES: %o\\n", #diffLines;']
+    with open(path, "w") as f:
+        f.write("\n".join(parts) + "\n")
+    print("wrote %s" % path)
+
+def smoke_subset(entries):
+    """Deterministic subset: every fixture-* and sage-doc-* entry, plus the
+    first 3 entries of every other stratum. Original order is preserved."""
+    keep, cnt = set(), {}
+    for e in entries:
+        eid = e["id"]
+        if eid.startswith("fixture-") or eid.startswith("sage-doc-"):
+            keep.add(eid)
+        else:
+            s = e["stratum"]; cnt[s] = cnt.get(s, 0) + 1
+            if cnt[s] <= 3:
+                keep.add(eid)
+    return [e for e in entries if e["id"] in keep]
+
+def build_header(mode, prov, agg, cap):
+    dl = "; ".join("%s:%s" % (i, nm) for (i, nm) in agg) if agg else "none"
+    lines = [
+        "// mode: %s (per-oracle cap %ds)" % (mode, cap),
+        "// sage %s | magma %s | date %s | seed %s" % (
+            prov.get("sage_version", "?"), prov.get("magma_version", "?"),
+            datetime.date.today().isoformat(), SEED),
+        "// LMFDB SQL: %s" % prov.get("sql", "?"),
+        "// dropped oracles (entry:oracle): %s" % dl,
+    ]
+    return "".join(l + "\n" for l in lines)
+
+def _ensure_inputs(d):
+    if not any(e["id"].startswith("fixture-") for e in d["entries"]):
+        d = assemble_inputs(d)
+    return d
+
+def main():
+    smoke = "--smoke" in sys.argv[1:]
     d = json.load(open("tests/corpus_curves.json"))
-    d = assemble_inputs(d)
-    json.dump(d, open("tests/corpus_curves.json", "w"), indent=1, default=str)
-    print("entries:", len(d["entries"]))
+    d = _ensure_inputs(d)
+    prov = d.get("_provenance", {})
+    if smoke:
+        entries = smoke_subset(d["entries"])
+        print("smoke subset: %d / %d entries" % (len(entries), len(d["entries"])))
+        agg = compute_oracles(entries, cap=SMOKE_TIMEOUT)
+        header = build_header("smoke", prov, agg, SMOKE_TIMEOUT)
+        emit_test_file(entries, header, "/tmp/smoke_test_isogenyprimes.m")
+        emit_differential_driver(entries, header, "/tmp/smoke_run_differential.m")
+        print("smoke DONE: %d entries, %d dropped" % (len(entries), len(agg)))
+    else:
+        entries = d["entries"]
+        agg = compute_oracles(entries, cap=ORACLE_TIMEOUT)
+        header = build_header("full", prov, agg, ORACLE_TIMEOUT)
+        json.dump(d, open("tests/corpus_curves.json", "w"), indent=1, default=str)
+        emit_test_file(entries, header, "tests/test_isogenyprimes.m")
+        emit_differential_driver(entries, header, "tests/run_differential.m")
+        print("full DONE: %d entries, %d dropped" % (len(entries), len(agg)))
+
+if __name__ == "__main__":
+    main()
