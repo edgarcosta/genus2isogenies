@@ -303,7 +303,7 @@ def reducible_ell(C, conductor, bound=500):
         Q2p = (bp * x - p - p * x**2) * (x + 1) ** 2 - ap**2 * x**2
         return Q2p.resultant(x**f - 1)
 
-    # compute a supset of non surjective good primes of A
+    # compute a superset of non surjective good primes of A
     tests = [onedim_subrep, twodim_subrep1, twodim_subrep2]
     res = [0 for _ in tests]
     for p in prime_range(bound):
@@ -323,7 +323,7 @@ def reducible_ell(C, conductor, bound=500):
     # thus we add the prime divisors of the conductor
     ells = set(sum([elt.prime_divisors() for elt in res], ZZ(conductor).prime_divisors()))
 
-    # there are some good primes p that we also loose due to bad model
+    # there are some good primes p that we also lose due to bad model
     polys = [Lpolynomial(C, p) for p in prime_range(bound) if p not in bad_primes]
     polys = [elt for elt in polys if elt]
     new_ells = []
