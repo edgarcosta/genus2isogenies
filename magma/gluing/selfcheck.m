@@ -32,5 +32,34 @@ intrinsic GluingSelfCheck() -> BoolElt
     N, incon := GluingModulus(EllipticCurve("11a1"), EllipticCurve("14a1"));
     assert not incon and N ge 1;
 
+    // analytic.m checks: 6 anti-symplectic quotients at n = 2 (|SL2(F2)| = 6,
+    // no ModMinus collapse at 2), each classified jacobian or product.
+    E1 := EllipticCurve("14a1"); E2 := EllipticCurve("46a1");
+    qs := GluedPeriodMatrices(E1, E2, 2 : Precision := 80);
+    assert #qs eq 6;
+    assert forall{q : q in qs | q`type in ["jacobian", "product"]};
+
+    // EllipticPeriodBasis: orientation normalized and conjugation is an involution.
+    ws, Mconj := EllipticPeriodBasis(E1, 60);
+    assert Im(ws[1] / ws[2]) gt 0;
+    assert Mconj^2 eq IdentityMatrix(Integers(), 2);
+
+    // Step 5 (BHLS numeric cross-check): for the first bhls2 corpus pair, the
+    // Igusa-Clebsch invariants of every algebraically glued curve must appear,
+    // up to weighted-projective normalization, among the jacobian-type
+    // analytic quotients (compared to 20 digits).
+    B1 := EllipticCurve([0,0,1,0,-7]); B2 := EllipticCurve([0,0,0,0,4]);
+    absIC := func< I | [ I[1]^5 / I[4], I[2]^5 / I[4]^2, I[3]^5 / I[4]^3 ] >;
+    exactAbs := [absIC(IgusaClebschInvariants(C)) : C in CanonicalGluingList(Genus2Elliptic2(B1, B2))];
+    assert #exactAbs gt 0;
+    CC := ComplexField(80);
+    bqs := GluedPeriodMatrices(B1, B2, 2 : Precision := 80);
+    jacAbs := [absIC(q`invariants) : q in bqs | q`type eq "jacobian"];
+    assert #jacAbs gt 0;
+    for ea in exactAbs do
+        assert exists{ja : ja in jacAbs |
+            Max([Abs(CC!ea[t] - ja[t]) / (Abs(CC!ea[t]) + 1) : t in [1..3]]) lt 10^(-20)};
+    end for;
+
     return true;
 end intrinsic;

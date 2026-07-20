@@ -7,6 +7,7 @@
       antisymplectic.m
       bhls.m
       modulus.m
+      analytic.m
       selfcheck.m
     }
   }
