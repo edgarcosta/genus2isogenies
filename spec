@@ -4,6 +4,7 @@
     gluing
     {
       shims.m
+      antisymplectic.m
       selfcheck.m
     }
   }
