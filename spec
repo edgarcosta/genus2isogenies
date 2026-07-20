@@ -5,9 +5,11 @@
     {
       shims.m
       antisymplectic.m
-      bhls.m
       modulus.m
+      bhls.m
       analytic.m
+      recognize.m
+      gluings.m
       selfcheck.m
     }
   }

@@ -61,15 +61,21 @@ cm:0:[0,0,1,0,-7]:[0,0,1,0,-7]:2:-1:-:[-1]
 # below, checked in Magma: EulerFactor(C, p) eq EulerFactor(E1, p) *
 # EulerFactor(E2, p) at 5 primes of good reduction, and GluingModulus(E1, E2)
 # equals n exactly (so in particular n divides it). n is thus an inferred
-# gluing level, not yet proven correct or complete: Genus2Gluings (Task 7) may
-# return C at a different n, or return more curves than the single LMFDB
-# witness found here. count/curves are left -1/[-1] accordingly; each comment
-# names the LMFDB curve and its canonical (ReducedMinimalWeierstrassModel)
-# equation for Task 7 to check against.
-# 726.a.1452.1 (E1=66c3, E2=11a3): canonical C = [[0,-2,2,-6,-2,1],[0,1,0,1]]
-lmfdb:0:[1,0,0,-10065,-389499]:[0,-1,1,0,0]:5:-1:-:[-1]
-# 2028.a.64896.1 (E1=26a3, E2=78a4): canonical C = [[5,9,6,6,4,1,1],[0,1,1]]
-lmfdb:0:[1,0,1,0,0]:[1,1,0,-20739,1140957]:5:-1:-:[-1]
+# gluing level, only a NECESSARY condition. Task 7 firmed the lmfdb rows up with
+# Genus2Gluings, and in both cases the named LMFDB curve is ABSENT from the n=5
+# gluings: the engine (validated at n=2 and n=3) enumerates every anti-symplectic
+# (det -1) isomorphism E1[5] -> E2[5], a full (5,5)-gluing would sit among the
+# 120 quotients, but the LMFDB curve's Igusa-Clebsch invariants match none of
+# them (checked geometrically, precision-robust). So each Jac(C) is isogenous to
+# E1 x E2 but not via a (5,5)-gluing isogeny. What Genus2Gluings DOES return is
+# the actual set of (5,5)-gluings of the pair: empty for 66c3 x 11a3 (no
+# Q-rational quotient), and one other genus-2 curve for 26a3 x 78a4 (L-function
+# equal to E1 x E2 verified to TraceBound). The rows are firmed to those outputs;
+# pp/composite rows stay -1/[-1] (non-prime n, skipped until Tasks 10-11).
+# 726.a.1452.1 (E1=66c3, E2=11a3): LMFDB C=[[0,-2,2,-6,-2,1],[0,1,0,1]] is NOT a (5,5)-gluing; pair has none
+lmfdb:0:[1,0,0,-10065,-389499]:[0,-1,1,0,0]:5:0:-:[]
+# 2028.a.64896.1 (E1=26a3, E2=78a4): LMFDB C=[[5,9,6,6,4,1,1],[0,1,1]] is NOT a (5,5)-gluing; pair glues to the curve below
+lmfdb:0:[1,0,1,0,0]:[1,1,0,-20739,1140957]:5:1:-:[[[0,-4,-57,-159,246,-105,14],[0,1,0,1]]]
 # 450.a.2700.1 (E1=15a7, E2=30a8): canonical C = [[0,1,3,3,3,1],[1,0,0,1]]
 pp:0:[1,1,1,-80,242]:[1,0,1,-454,-544]:4:-1:-:[-1]
 # 720.b.116640.1 (E1=30a6, E2=24a4): canonical C = [[-90,0,39,0,-6],[0,1,0,1]]

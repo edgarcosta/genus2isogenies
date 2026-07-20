@@ -15,6 +15,10 @@ wanted := tags eq "" select false else Split(tags, ",");
 // of an outer global, as opposed to "assigned" checks, do cross into
 // procedure scope, the same way "wanted" is read inside RunLine below).
 oracleMode := assigned oracle;
+// algorithm:=Periods (or Algebraic) forces Genus2Gluings' Algorithm parameter;
+// default "Auto". Captured as a plain global for the same cross-scope reason as
+// oracleMode above.
+algMode := assigned algorithm select algorithm else "Auto";
 
 function ParseCurve(K, s)  // K = shared base field (Rationals() or a NumberField); s = eval'able a-invariant list
     a := eval s;
@@ -42,6 +46,9 @@ procedure RunLine(L)
     K := field cmpeq 0 select Rationals() else NumberField(PolynomialRing(Rationals())!field);
     E1 := ParseCurve(K, e1); E2 := ParseCurve(K, e2);
     n := StringToInteger(ns);
+    // Genus2Gluings requires prime n in this task; non-prime levels (pp, composite,
+    // nf entries) are skipped in engine mode until Tasks 10-11 lift that restriction.
+    if not oracleMode and not IsPrime(n) then return; end if;
     if oracleMode then
         cs := CanonicalGluingList(n eq 2 select Genus2Elliptic2(E1, E2) else Genus2Elliptic3(E1, E2));
         info := rec<recformat<proof : MonStgElt> | proof := "-">;
@@ -51,7 +58,7 @@ procedure RunLine(L)
         // definition time, even in a dead branch (confirmed empirically), so
         // a direct call here would fail to compile before Task 7 defines it.
         // Same technique as the SiegelReduce shim in shims.m.
-        cs, info := eval "Genus2Gluings(E1, E2, n)";
+        cs, info := eval "Genus2Gluings(E1, E2, n : Algorithm := algMode)";
     end if;
     count := StringToInteger(cnt);
     if count ge 0 then assert #cs eq count; end if;
