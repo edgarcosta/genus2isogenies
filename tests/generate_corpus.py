@@ -8,7 +8,11 @@ Usage:
         tests/run_differential.m (multi-hour; the orchestrator runs this).
     sage -python tests/generate_corpus.py --smoke    # deterministic subset,
         emits /tmp/smoke_*.m only, never touches the committed corpus or
-        tests/*.m (fast; used to verify the emitters before the full run)."""
+        tests/*.m (fast; used to verify the emitters before the full run).
+    sage -python tests/generate_corpus.py --inputs-only   # re-runs assembly
+        only and writes tests/corpus_curves.json; no oracle computation, no
+        `expect` blocks, no tests/*.m (fast; use after editing assemble_inputs
+        to refresh the corpus ahead of the multi-hour full run)."""
 import datetime
 import json
 import sys
@@ -42,6 +46,11 @@ def entry(id_, stratum, K, E, E2=None):
     return e
 
 def assemble_inputs(data):
+    # Idempotent: drop every previously-assembled entry before appending fresh
+    # ones, so re-running assembly regenerates exactly the fixture/differential
+    # strata instead of duplicating them. The 250 lmfdb-qcurve entries (Task 1)
+    # and _provenance are untouched.
+    data["entries"] = [e for e in data["entries"] if e.get("stratum") == "lmfdb-qcurve"]
     es = data["entries"]
     set_random_seed(SEED)
     R = PolynomialRing(QQ, 'x'); x = R.gen()
@@ -90,10 +99,15 @@ def assemble_inputs(data):
     es.append(entry("fixture-cong-isogpair", "fixture-cong-isogenous", QQ, E14, E14b))
     Etw = E14.quadratic_twist(5)
     es.append(entry("fixture-cong-twist", "fixture-cong-twist", QQ, E14, Etw))
-    # ell=2 congruence and non-congruent control (Cremona-Freitas style pair
-    # is added with its expectation in Task 3 from the 14a/14b trace data).
+    # ell=2 congruence: 15a1 and 17a2 both have full rational 2-torsion
+    # (two_torsion_rank 2), so Galois acts trivially on E[2] for both, giving
+    # a_q(E1) - a_q(E2) = 0 mod 4 for every good q (injectivity of torsion
+    # under reduction); different conductors rule out isogeny. Verified: the
+    # trace-gcd oracle gives primes = [2] (gcd = 4 over q < 8000, stabilizing
+    # at bound 2000). The former pair (11a1, 14a1) was NOT 2-congruent (oracle
+    # gcd = 1, i.e. empty primes) despite the fixture's name.
     es.append(entry("fixture-cong-2", "fixture-cong-finite", QQ,
-                    EllipticCurve(QQ, '11a1'), EllipticCurve(QQ, '14a1')))
+                    EllipticCurve(QQ, '15a1'), EllipticCurve(QQ, '17a2')))
     es.append(entry("fixture-cong-control", "fixture-cong-finite", QQ,
                     EllipticCurve(QQ, '11a1'), EllipticCurve(QQ, '37a1')))
     # sage-doc examples over number fields (known reducible_primes docstrings):
@@ -723,14 +737,22 @@ def build_header(mode, prov, agg, cap):
     return "".join(l + "\n" for l in lines)
 
 def _ensure_inputs(d):
-    if not any(e["id"].startswith("fixture-") for e in d["entries"]):
-        d = assemble_inputs(d)
-    return d
+    """assemble_inputs() is idempotent (drops and regenerates every non-LMFDB
+    entry itself), so this always re-runs it rather than guarding on whether
+    fixtures are already present -- a presence guard would skip picking up
+    corpus edits (e.g. a fixture pair correction) on a re-run."""
+    return assemble_inputs(d)
 
 def main():
-    smoke = "--smoke" in sys.argv[1:]
+    args = sys.argv[1:]
+    smoke = "--smoke" in args
+    inputs_only = "--inputs-only" in args
     d = json.load(open("tests/corpus_curves.json"))
     d = _ensure_inputs(d)
+    if inputs_only:
+        json.dump(d, open("tests/corpus_curves.json", "w"), indent=1, default=str)
+        print("inputs-only DONE: %d entries" % len(d["entries"]))
+        return
     prov = d.get("_provenance", {})
     if smoke:
         entries = smoke_subset(d["entries"])
