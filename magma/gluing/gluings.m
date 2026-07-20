@@ -15,9 +15,11 @@
  *        "Auto"      -> BHLS when n in {2, 3} and the curves are non-isomorphic
  *                       and the BHLS requires hold, else the analytic path;
  *        "Periods"   -> always analytic.
- *   4. Analytic path: GluedPeriodMatrices, RecognizeIgusaClebsch each Jacobian
- *      quotient, reconstruct + pin twist (CurveFromInvariants), CanonicalGluingList.
- *      A near-rational recognition failure doubles the precision and retries
+ *   4. Analytic path: GluedPeriodMatrices (conjugation-filtered), a two-pass
+ *      precision sweep (cheap 40-digit look, then RecognizeIgusaClebsch each
+ *      surviving Jacobian quotient at working precision), reconstruct + pin
+ *      twist (CurveFromInvariants), CanonicalGluingList. A near-rational
+ *      recognition failure at working precision doubles it and retries
  *      (at most 3 times).
  *
  * Both dispatch paths finish through CanonicalGluingList; outputs agree only
@@ -45,6 +47,23 @@ end function;
 // inside that intrinsic's body.
 function fieldPrecision(C)
     return Precision(C);
+end function;
+
+// Pass 1 of the two-pass sweep (Genus2Gluings below): a coarse, fixed-
+// threshold look at whether a Jacobian-type quotient is plausibly Q-rational,
+// cheap enough to run on every conjugation-filtered candidate at the fixed
+// low pass-1 precision (40 digits). Mirrors recognize.m's I2-pivot
+// normalization (I2 is the only weight dividing 4, 6 and 10) but with a fixed
+// gate (1e-10) rather than RecognizeIgusaClebsch/IgusaClebschNearRational's
+// precision-scaled one (1e-20 at 40 digits): pass 1's job is to not miss a
+// genuine rational quotient to roundoff in a deliberately cheap computation,
+// not to make the final call, so it uses the looser threshold.
+function LooksRationalIC(IC)
+    I2 := IC[1]; I4 := IC[2]; I6 := IC[3]; I10 := IC[4];
+    gate := 10^-10;
+    if Abs(I10) le gate then return false; end if;
+    if Abs(I2^5 / I10) lt gate then return false; end if;
+    return Abs(Im(I4 / I2^2)) lt gate and Abs(Im(I6 / I2^3)) lt gate and Abs(Im(I10 / I2^5)) lt gate;
 end function;
 
 intrinsic Genus2Gluings(E1::CrvEll, E2::CrvEll, n::RngIntElt
@@ -121,38 +140,74 @@ curve), products (recognized <j1, j2> pairs of the product-type quotients), prec
 
     // Analytic (periods) path.
     //
-    // Phase 1 (recognition, with precision retry): recognize the Igusa-Clebsch
-    // invariants of the Jacobian-type quotients. The precision is doubled only
-    // while doing so strictly grows the number of recognitions; a plateau with
-    // near-rational quotients still unrecognized means those residual quotients
-    // are conjugates defined over a number field (Task 8 resolves them) or carry
-    // extra automorphisms this reconstruction cannot pin, and further precision
-    // will not recover them. The recognition-only loop keeps the (expensive)
-    // twist search out of the retry, so n with many quotients stays affordable.
-    prec := Precision;
+    // Phase 1 (recognition), a two-pass precision sweep over the conjugation-
+    // filtered candidates GluedPeriodMatrices enumerates:
+    //   Pass 1 runs once at a fixed low precision (40 digits, far below the
+    //   n-scaled working precision below). Product-type quotients are
+    //   recognized (or dropped) right here and never revisited: they never
+    //   reach the (expensive) twist search in phase 2 either, so 40 digits is
+    //   already enough for their j-invariants. Jacobian-type quotients that
+    //   LooksRationalIC flags as plausibly rational are forwarded, by their
+    //   psi, to pass 2; one that is visibly complex even at that loose gate is
+    //   dropped without ever paying for a full-precision period/theta
+    //   computation, which is where the cost of a large candidate pool lives.
+    //   Pass 2 recomputes ONLY the forwarded psis, starting at the working
+    //   precision (the n/height heuristic, or the caller's Precision
+    //   override), and doubles it only while doing so strictly grows the
+    //   number of recognitions; a plateau with near-rational quotients still
+    //   unrecognized means those residual quotients are conjugates defined
+    //   over a number field (Task 8's filter above already removed the
+    //   non-equivariant bulk) or carry extra automorphisms this
+    //   reconstruction cannot pin, and further precision will not recover
+    //   them.
+    pass1 := GluedPeriodMatrices(E1, E2, n : Precision := 40);
+    products := [];
+    survivorPsis := [];
+    njacobian := 0;
+    for r in pass1 do
+        if r`type eq "product" then
+            ok1, j1 := RecognizeRational(r`invariants[1]);
+            ok2, j2 := RecognizeRational(r`invariants[2]);
+            if ok1 and ok2 then
+                Append(~products, <j1, j2>);
+            else
+                vprintf Gluing: "Genus2Gluings: product quotient not over Q, skipping\n";
+            end if;
+            continue;
+        end if;
+        njacobian +:= 1;
+        if LooksRationalIC(r`invariants) then
+            Append(~survivorPsis, r`psi);
+        end if;
+    end for;
+    vprintf Gluing: "Genus2Gluings: pass 1 (precision 40) kept %o/%o jacobian candidate(s) for the full-precision pass\n",
+        #survivorPsis, njacobian;
+
+    prec := (Precision cmpeq false) select GluingPrecisionHeuristic(E1, E2, n) else Precision;
     doublings := 0;
     prevRecognized := -1;
-    recIC := []; recPsi := []; products := []; usedPrec := 0;
-    while true do
-        qs := GluedPeriodMatrices(E1, E2, n : Precision := prec);
-        inv0 := qs[1]`invariants;
-        usedPrec := fieldPrecision(Parent(inv0[1]));
-        recIC := []; recPsi := []; products := []; nearFail := 0;
-        for r in qs do
-            if r`type eq "product" then
-                ok1, j1 := RecognizeRational(r`invariants[1]);
-                ok2, j2 := RecognizeRational(r`invariants[2]);
-                if ok1 and ok2 then
-                    Append(~products, <j1, j2>);
-                else
-                    vprintf Gluing: "Genus2Gluings: product quotient not over Q, skipping\n";
-                end if;
+    recIC := []; recPsi := []; usedPrec := 40;
+    while #survivorPsis gt 0 do
+        ws1 := EllipticPeriodBasis(E1, prec);
+        ws2 := EllipticPeriodBasis(E2, prec);
+        usedPrec := fieldPrecision(Universe(ws1));
+        recIC := []; recPsi := []; nearFail := 0;
+        for psi in survivorPsis do
+            P := GluedBigPeriodMatrix(ws1, ws2, psi, n);
+            tau := SmallFromBig(P);
+            typ, inv := NumericInvariants(tau);
+            if typ eq "product" then
+                // Defensive: the product/jacobian gate in NumericInvariants
+                // tightens with precision, so a pass-1 jacobian call flipping
+                // to product here is not expected (not observed on the
+                // corpus); either way it is not a recognizable quotient.
+                vprintf Gluing: "Genus2Gluings: pass 2 reclassified a psi as product (unexpected), skipping\n";
                 continue;
             end if;
-            okIC, ICQ := RecognizeIgusaClebsch(r`invariants);
+            okIC, ICQ := RecognizeIgusaClebsch(inv);
             if okIC then
-                Append(~recIC, ICQ); Append(~recPsi, r`psi);
-            elif IgusaClebschNearRational(r`invariants) then
+                Append(~recIC, ICQ); Append(~recPsi, psi);
+            elif IgusaClebschNearRational(inv) then
                 nearFail +:= 1;
             end if;
         end for;

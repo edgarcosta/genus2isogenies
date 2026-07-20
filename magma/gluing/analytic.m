@@ -169,25 +169,69 @@ y^2 = x (x-1)(x-e1)(x-e2)(x-e3) from RosenhainInvariants.}
     return "jacobian", IgusaClebschInvariants(C);
 end intrinsic;
 
-intrinsic GluedPeriodMatrices(E1::CrvEll, E2::CrvEll, n::RngIntElt : Precision := false) -> SeqEnum
+intrinsic GluingPrecisionHeuristic(E1::CrvEll, E2::CrvEll, n::RngIntElt) -> RngIntElt
+{Default analytic precision (decimal digits) for gluing E1, E2 at level n:
+40 + 10 n + 5 ceil(log10(1 + H)), H the largest a-invariant height of E1, E2.
+Shared by GluedPeriodMatrices (its Precision default) and Genus2Gluings' pass 2
+(gluings.m), which needs the same number ahead of calling GluedPeriodMatrices.}
+    H := Max(CurveHeight(E1), CurveHeight(E2));
+    return 40 + 10 * n + 5 * Ceiling(Log(10, 1 + H));
+end intrinsic;
+
+intrinsic GluedPeriodMatrices(E1::CrvEll, E2::CrvEll, n::RngIntElt : Precision := false, Filter := true) -> SeqEnum
 {All quotients (E1 x E2)/graph(psi) over the anti-symplectic psi : E1[n] -> E2[n],
 for prime n. Each entry is a record <psi, P, taured, type, invariants>: psi the
 determinant -1 matrix, P the 2x4 big period matrix, taured the Siegel-reduced
 small period matrix, type one of "jacobian" or "product", invariants the numeric
 Igusa-Clebsch quadruple or pair of j-invariants. Precision defaults to
-40 + 10 n + 5 ceil(log10(1 + H)), H the largest a-invariant height.}
+GluingPrecisionHeuristic(E1, E2, n). Filter (default true) restricts psi to the
+conjugation-equivariance necessary condition below; Filter := false enumerates
+every anti-symplectic psi (the "all quotients over C" contract).}
     require BaseRing(E1) cmpeq BaseRing(E2): "curves must share a base field";
     require IsPrime(n): "GluedPeriodMatrices currently supports prime n only";
     if Precision cmpeq false then
-        H := Max(CurveHeight(E1), CurveHeight(E2));
-        prec := 40 + 10 * n + 5 * Ceiling(Log(10, 1 + H));
+        prec := GluingPrecisionHeuristic(E1, E2, n);
     else
         prec := Precision;
     end if;
     vprintf Gluing: "GluedPeriodMatrices: n=%o, precision=%o\n", n, prec;
-    ws1 := EllipticPeriodBasis(E1, prec);
-    ws2 := EllipticPeriodBasis(E2, prec);
-    psis := AntiSymplecticIsomorphisms(n : ModMinus := false);
+    ws1, c1 := EllipticPeriodBasis(E1, prec);
+    ws2, c2 := EllipticPeriodBasis(E2, prec);
+    psisAll := AntiSymplecticIsomorphisms(n : ModMinus := false);
+    // Conjugation-equivariance filter, empirically derived (see the commit
+    // introducing this parameter, not the naive paper formula): a point of
+    // E[n] is a coordinate vector v against the w1,w2 basis, but conjugation
+    // is defined on the BASIS (Conjugate(w_i) = sum_j c[i,j] w_j, per
+    // EllipticPeriodBasis), so it acts on coordinate vectors by c^TRANSPOSE,
+    // not c. The graph of psi is stable under the diagonal conjugation action
+    // on E1[n] x E2[n] (necessary for it to be Galois-stable, hence for a
+    // Q-rational quotient) iff psi * c1^T = c2^T * psi.
+    //
+    // Checked against 5 independent corpus pairs (4 order-2 bhls3 + the
+    // productive lmfdb n=5 pair): this transposed, plus-sign relation is the
+    // only one of the 4 candidates (+-, transposed or not) satisfied by every
+    // one of the 10 known-Q-rational psi found by brute force; in particular
+    // the untransposed minus-sign guess (the naive "antiholomorphic sign
+    // flip") holds on all 4 bhls3 pairs but fails outright on the lmfdb pair.
+    // Also checked on the exceptional high-automorphism bhls2 corpus entry 1
+    // (aut group order up to 24): 3 psis there land on byte-identical rational
+    // invariants (the target's extra automorphisms make non-equivariant psi
+    // coincide with an equivariant one in moduli), and this relation is the
+    // one that picks out exactly the truly equivariant psi among the 3.
+    // For prime n the c_i are always conjugate to diag(1,-1) (order 2, det -1,
+    // forced since Im(w1/w2) > 0 rules out c_i = +-I), which makes the filter
+    // provably tight for odd n: it cuts the n(n-1)(n+1)-size candidate pool to
+    // exactly n - 1 survivors (solutions of s t = k, k a fixed nonzero
+    // constant, in Z/n), not just "roughly n^2".
+    if Filter then
+        R := Integers(n);
+        c1T := Transpose(ChangeRing(c1, R));
+        c2T := Transpose(ChangeRing(c2, R));
+        psis := [psi : psi in psisAll | ChangeRing(psi, R) * c1T eq c2T * ChangeRing(psi, R)];
+    else
+        psis := psisAll;
+    end if;
+    vprintf Gluing: "GluedPeriodMatrices: %o candidate psi (%o total, Filter:=%o)\n", #psis, #psisAll, Filter;
     fmt := recformat< psi : Mtrx, P : Mtrx, taured : Mtrx, type : MonStgElt, invariants : SeqEnum >;
     out := [];
     for psi in psis do
