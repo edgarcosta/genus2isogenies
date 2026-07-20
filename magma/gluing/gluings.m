@@ -5,7 +5,9 @@
  * record of provenance and certificates.
  *
  * Pipeline:
- *   1. require prime n (general n is Tasks 10-11) and base field Q.
+ *   1. require prime n (general n is Tasks 10-11), base field Q, and the
+ *      Algorithm parameter's applicability (e.g. "Algebraic" implies n in
+ *      {2, 3} and non-isomorphic E1, E2), before anything else runs.
  *   2. Congruence prefilter: if GluingModulus is conclusive and n does not
  *      divide it, no gluing exists; return empty with proof "certified".
  *   3. Dispatch:
@@ -18,10 +20,12 @@
  *      A near-rational recognition failure doubles the precision and retries
  *      (at most 3 times).
  *
- * Both dispatch paths finish through CanonicalGluingList, so the returned curve
- * list is identical whichever route produced it. proof is "traces-only" until
- * Task 9 supplies the exact completeness certificate; metadata blocks carry
- * stable_count -1 accordingly.
+ * Both dispatch paths finish through CanonicalGluingList; outputs agree only
+ * for curves with geometric automorphism group of order 2. Gluings with larger
+ * automorphism groups (bielliptic; sextic/quartic twists) are currently produced
+ * only by the Algebraic path at n in {2, 3}, and are dropped with a vprint by
+ * the Periods path. proof is "traces-only" until Task 9 supplies the exact
+ * completeness certificate; metadata blocks carry stable_count -1 accordingly.
  */
 
 function gluingInfoFmt()
@@ -61,6 +65,21 @@ curve), products (recognized <j1, j2> pairs of the product-type quotients), prec
     require Type(BaseRing(E1)) eq FldRat and Type(BaseRing(E2)) eq FldRat:
         "Genus2Gluings currently requires E1 and E2 over Q";
 
+    // Dispatch validation, ahead of the fast path below: an Algorithm choice
+    // that does not apply to this (E1, E2, n) must error, even when the pair
+    // is certifiably empty (e.g. Algorithm := "Algebraic" at n = 5 must raise
+    // the n in {2, 3} require, not silently return an empty list).
+    tryAlgebraic := false;
+    algebraicStrict := false;   // "Algebraic": let the BHLS requires propagate
+    if Algorithm eq "Algebraic" then
+        require n in {2, 3}: "the \"Algebraic\" algorithm is only defined for n in {2, 3}";
+        require not IsIsomorphic(E1, E2):
+            "the \"Algebraic\" algorithm requires non-isomorphic curves";
+        tryAlgebraic := true; algebraicStrict := true;
+    elif Algorithm eq "Auto" then
+        if n in {2, 3} and not IsIsomorphic(E1, E2) then tryAlgebraic := true; end if;
+    end if;
+
     // Congruence-obstruction fast path: a rational n-gluing forces n | a_p(E1) -
     // a_p(E2) at every good p, hence n | GluingModulus. When that modulus is
     // conclusive (not every scanned trace agreed) and n does not divide it, the
@@ -71,18 +90,6 @@ curve), products (recognized <j1, j2> pairs of the product-type quotients), prec
             blocks := [<n, 1, -1, 0, false>], psis := [], products := [],
             precision := 0, tracebound := TraceBound >;
         return emptyCurves(), info;
-    end if;
-
-    // Dispatch.
-    tryAlgebraic := false;
-    algebraicStrict := false;   // "Algebraic": let the BHLS requires propagate
-    if Algorithm eq "Algebraic" then
-        require n in {2, 3}: "the \"Algebraic\" algorithm is only defined for n in {2, 3}";
-        require not IsIsomorphic(E1, E2):
-            "the \"Algebraic\" algorithm requires non-isomorphic curves";
-        tryAlgebraic := true; algebraicStrict := true;
-    elif Algorithm eq "Auto" then
-        if n in {2, 3} and not IsIsomorphic(E1, E2) then tryAlgebraic := true; end if;
     end if;
 
     usedAlgebraic := false;

@@ -270,11 +270,42 @@ intrinsic Genus2Elliptic3(E1::MonStgElt,E2::MonStgElt) -> SeqEnum[CrvHyp]
     return Genus2Elliptic3(EllipticCurve(E1),EllipticCurve(E2));
 end intrinsic;
 
+function CoeffPairLexLt(p, q)
+    // Deterministic total order on <fcoeffs, hcoeffs> pairs: compare fcoeffs
+    // entrywise on their common prefix (first difference decides, else the
+    // shorter sequence is smaller), then break ties the same way on hcoeffs.
+    for pr in [<p[1], q[1]>, <p[2], q[2]>] do
+        a := pr[1]; b := pr[2];
+        n := Min(#a, #b);
+        for i in [1..n] do
+            if a[i] ne b[i] then return a[i] lt b[i]; end if;
+        end for;
+        if #a ne #b then return #a lt #b; end if;
+    end for;
+    return false;
+end function;
+
+function SignCanonicalize(C)
+    // ReducedMinimalWeierstrassModel is not canonical under x -> -x: isomorphic
+    // curves reached via different gluing code paths can reduce to models that
+    // differ exactly by f(x) -> f(-x), h(x) -> h(-x). (x, y) -> (-x, y) is an
+    // isomorphism onto that alternative model, so break the tie deterministically
+    // by keeping whichever of the two reduced models is lexicographically smaller.
+    f, h := HyperellipticPolynomials(C);
+    C2 := ReducedMinimalWeierstrassModel(HyperellipticCurve(Evaluate(f, -Parent(f).1), Evaluate(h, -Parent(h).1)));
+    f2, h2 := HyperellipticPolynomials(C2);
+    p := <Coefficients(f), Coefficients(h)>;
+    p2 := <Coefficients(f2), Coefficients(h2)>;
+    if CoeffPairLexLt(p2, p) then return C2; end if;
+    return C;
+end function;
+
 intrinsic CanonicalGluingList(cs::SeqEnum) -> SeqEnum
-{Reduce, deduplicate up to isomorphism over Q, and sort by normalized Igusa
-invariants. The canonical output form shared by every gluing code path.}
+{Reduce, canonicalize under x -> -x, deduplicate up to isomorphism over Q, and
+sort by normalized Igusa invariants. The canonical output form shared by every
+gluing code path.}
     if #cs eq 0 then return [Parent(HyperellipticCurve(PolynomialRing(Rationals()).1^5 + 1))| ]; end if;
-    red := [ReducedMinimalWeierstrassModel(C) : C in cs];
+    red := [SignCanonicalize(ReducedMinimalWeierstrassModel(C)) : C in cs];
     out := [];
     for C in red do
         if forall{D : D in out | not IsIsomorphic(C, D)} then Append(~out, C); end if;
