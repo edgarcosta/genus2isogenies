@@ -16,10 +16,9 @@ wanted := tags eq "" select false else Split(tags, ",");
 // procedure scope, the same way "wanted" is read inside RunLine below).
 oracleMode := assigned oracle;
 
-function ParseCurve(field, s)  // s = eval'able a-invariant list
+function ParseCurve(K, s)  // K = shared base field (Rationals() or a NumberField); s = eval'able a-invariant list
     a := eval s;
-    if field cmpeq 0 then return EllipticCurve([Rationals() | x : x in a]); end if;
-    K := NumberField(PolynomialRing(Rationals())!field);
+    if Type(K) eq FldRat then return EllipticCurve([Rationals() | x : x in a]); end if;
     return EllipticCurve([K | K!x : x in a]);
 end function;
 
@@ -36,7 +35,12 @@ procedure RunLine(L)
     // the wrong algorithm under the requested n's label.
     if oracleMode and tag notin ["bhls2", "bhls3"] then return; end if;
     field := eval fld;
-    E1 := ParseCurve(field, e1); E2 := ParseCurve(field, e2);
+    // Build K once and share it between E1 and E2: two separate NumberField()
+    // calls on the same defining polynomial produce fields that are
+    // isomorphic but not cmpeq, which fails GluingModulus/Genus2Gluings'
+    // "curves must share a base field" require.
+    K := field cmpeq 0 select Rationals() else NumberField(PolynomialRing(Rationals())!field);
+    E1 := ParseCurve(K, e1); E2 := ParseCurve(K, e2);
     n := StringToInteger(ns);
     if oracleMode then
         cs := CanonicalGluingList(n eq 2 select Genus2Elliptic2(E1, E2) else Genus2Elliptic3(E1, E2));
