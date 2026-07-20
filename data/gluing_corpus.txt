@@ -41,3 +41,16 @@ bhls3:0:[0,1,0,4,4]:[1,0,1,-1,-2]:3:1:-:[[[-4,4,-7,6,-3,2],[]]]
 bhls3:0:[0,1,0,7,0]:[0,1,0,-5,-25]:3:1:-:[[[-4,4,-6,1,-1,-1],[]]]
 bhls3:0:[0,-1,0,-8,-16]:[0,-1,0,7,0]:3:1:-:[[[-4,-4,-5,0,0,1],[]]]
 bhls3:0:[1,-1,0,6,0]:[1,-1,0,3,-1]:3:1:-:[[[40,300,6,105,0,9],[]]]
+#
+# empty/iso/eq/cm entries exercise the GluingModulus prefilter (magma/gluing/modulus.m)
+# and degenerate inputs ahead of Genus2Gluings (Task 7). empty pairs were checked
+# in Magma to confirm n does not divide GluingModulus(E1, E2): 11a1/15a1 has N=1
+# (certified empty for every n >= 2); 15a1/17a1 has N=4, and 5 does not divide it.
+# iso/eq/cm pairs are behavior-only contracts (must not crash, modulus is
+# inconclusive for all three); count/proof/curves are left as -1/-/[-1] until
+# the analytic engine exists.
+empty:0:[0,-1,1,-10,-20]:[1,1,1,-10,-10]:5:0:certified:[]
+empty:0:[1,1,1,-10,-10]:[1,-1,1,-1,-14]:5:0:certified:[]
+iso:0:[0,-1,1,-10,-20]:[0,-1,1,-7820,-263580]:2:-1:-:[-1]
+eq:0:[0,-1,1,-10,-20]:[0,-1,1,-10,-20]:2:-1:-:[-1]
+cm:0:[0,0,1,0,-7]:[0,0,1,0,-7]:2:-1:-:[-1]

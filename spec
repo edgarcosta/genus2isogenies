@@ -6,6 +6,7 @@
       shims.m
       antisymplectic.m
       bhls.m
+      modulus.m
       selfcheck.m
     }
   }

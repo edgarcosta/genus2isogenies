@@ -26,5 +26,11 @@ intrinsic GluingSelfCheck() -> BoolElt
                             AntiSymplecticIsomorphisms(3 : ModMinus := false)[1] *], [2, 3]);
     assert BaseRing(C) eq Integers(6) and Determinant(C) eq -1;
 
+    // modulus.m checks
+    N, incon := GluingModulus(EllipticCurve("11a1"), EllipticCurve("11a1"));
+    assert incon;                                    // identical curves: all differences zero
+    N, incon := GluingModulus(EllipticCurve("11a1"), EllipticCurve("14a1"));
+    assert not incon and N ge 1;
+
     return true;
 end intrinsic;

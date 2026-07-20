@@ -30,6 +30,11 @@ procedure RunLine(L)
     tag, fld, e1, e2, ns, cnt, prf, crv :=
         Explode([parts[i] : i in [1..8]]);
     if wanted cmpne false and tag notin wanted then return; end if;
+    // Oracle mode only knows the n=2/n=3 BHLS formulas (see dispatch below);
+    // any other tag either has n outside {2,3} or is a degenerate pair the
+    // formulas were never curated for, so skip rather than silently running
+    // the wrong algorithm under the requested n's label.
+    if oracleMode and tag notin ["bhls2", "bhls3"] then return; end if;
     field := eval fld;
     E1 := ParseCurve(field, e1); E2 := ParseCurve(field, e2);
     n := StringToInteger(ns);
