@@ -73,6 +73,7 @@ or, in `~/.magmarc`, for every session:
 ```
 AttachSpec("~/projects/genus2isogenies/spec");
 ```
+If CHIMP (https://github.com/edgarcosta/CHIMP) is also attached, attach this spec AFTER it: both define `Genus2Elliptic2`/`Genus2Elliptic3` and `NormalizedIgusaInvariants`, the later `AttachSpec` wins, and CHIMP's copies degrade without `gp`.
 
 ## Genus2Gluings
 
@@ -86,7 +87,7 @@ intrinsic Genus2Gluings(E1::CrvEll, E2::CrvEll, n::RngIntElt
 - `Proof := "Auto"`: drives the exact completeness certificate. `"Auto"` attempts it for prime blocks with ell <= 13, but its Galois-group-size cutoff (DegreeBound 2400) means it typically only succeeds up to ell = 5 for a generic pair (ell = 7 for congruent mod-ell pairs), else falling back to `"traces-only"`; `true` requires it for every prime block and hard-errors if the exact layer declines; `false` skips it. Any boolean expression works, e.g. `Proof := n le 17` in a sweep to demand certification up to a chosen cutoff.
 - `TraceBound := 1000`: good primes checked when pinning the quadratic twist against E1 x E2's Euler factors.
 
-Also overloaded for `y^2 = f1`, `y^2 = f2` (univariate cubics/quartics) and for Cremona labels as strings, e.g. `Genus2Gluings("99a2", "99b3", 6)`; the string overload accepts Cremona labels only.
+Also overloaded for `y^2 = f1`, `y^2 = f2` (monic univariate cubics) and for Cremona labels as strings, e.g. `Genus2Gluings("99a2", "99b3", 6)`; the string overload accepts Cremona labels only.
 
 ## Example
 
