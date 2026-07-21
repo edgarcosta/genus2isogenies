@@ -108,10 +108,21 @@ composite:0:[1,0,1,-1,0]:[1,0,0,-103,-411]:6:0:certified:[]
 # 600.a.18000.1 (E1=20a3, E2=30a6): LMFDB C=[[0,-1,-4,3,3,-2],[0,1,0,1]] is NOT a (6,6)-gluing; pair has none (2-block exact count 0, so certified empty)
 composite:0:[0,1,0,-36,-140]:[1,0,1,-334,-2368]:6:0:certified:[]
 #
-# nf entry: E1 and its Galois conjugate E2 over the real quadratic field
-# K = Q(sqrt5) (theta^2 = theta + 1); E1 = LMFDB 2.2.5.1-31.1-a1, conductor
-# norm 31, not a base change from Q, so E1 and E2 are non-isomorphic. n=8 is
-# GluingModulus(E1, E2) computed over K (modulus.m's number-field branch).
-# g2c has no genus-2-over-number-field data, so there is no LMFDB curve to
-# name; count/curves are -1/[-1] until Genus2Gluings exists.
-nf:[-1,-1,1]:[[1,0],[1,1],[0,1],[0,1],[0,0]]:[[1,0],[2,-1],[1,-1],[1,-1],[0,0]]:8:-1:-:[-1]
+# nf entry (experimental number-field inputs, Task 13). E1 and its Galois conjugate
+# E2 over the real quadratic field K = Q(sqrt5) (theta^2 = theta + 1); E1 = LMFDB
+# 2.2.5.1-31.1-a1, conductor norm 31, not a base change from Q, so E1 and E2 are
+# non-isomorphic. n=8 is GluingModulus(E1, E2) computed over K (modulus.m's
+# number-field branch); as for the lmfdb/pp rows this is only a NECESSARY condition.
+# Genus2Gluings runs the analytic periods path at the first (real) infinite place of
+# K (EllipticPeriodBasis embeds each curve there; E2 at place 1 is E1 at place 2, so
+# the complex torus is the archimedean piece of Res_{K/Q}(E1)). Firmed to EMPTY: no
+# anti-symplectic psi gives a Q-rational quotient. Checked by brute force -- all 384
+# psi mod 8 enumerated directly (no lift), min Im of the I2-normalized Igusa-Clebsch
+# invariants 7.8e-6 (>> the 1e-10 gate); at level 2 the min is a stable 0.00158822...
+# across 80/150/250 digits and identical from the other embedding, so genuinely
+# non-real, not a precision or embedding artifact. The lift sweep runs over K and
+# finds 0 rational-looking survivors already at level 2, so no (8,8)-gluing. proof is
+# "traces-only" (the exact completeness layer and BHLS are Q-only; over K only the
+# congruence certified-empty path certifies, and here n=8 divides the modulus so it
+# does not fire).
+nf:[-1,-1,1]:[[1,0],[1,1],[0,1],[0,1],[0,0]]:[[1,0],[2,-1],[1,-1],[1,-1],[0,0]]:8:0:traces-only:[]

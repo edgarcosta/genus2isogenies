@@ -67,6 +67,27 @@ quotient. False when I2 is projectively zero or a coordinate is visibly complex.
     return forall{q : q in Q | Abs(Im(q)) le gate};
 end intrinsic;
 
+// Rational prime p usable for the quadratic-twist certificate, and the target
+// degree-4 Euler factor EulerFactor(E1,.)*EulerFactor(E2,.) (coerced into Pol) to
+// compare against EulerFactor(C0^d, p). Over Q (isNF false) every prime is usable
+// and . = p. Over a number field K only primes p with a degree-1 unramified prime
+// P | p are usable (the "split" primes, v1 restriction) and . = P: there K_P = Q_p,
+// so Frob_P = Frob_p on the l-adic Tate module and L_p(Jac C/Q) = L_P(Jac C_K) =
+// L_P(E1) L_P(E2) (base change of the K-isogeny Jac C_K ~ E1 x E2). Any such P above
+// p gives the same product, so no P1/P2 assignment is needed. OK is MaximalOrder(K)
+// over a number field (unused over Q).
+function twistTarget(E1, E2, p, isNF, OK, Pol)
+    if not isNF then
+        return true, Pol ! (EulerFactor(E1, p) * EulerFactor(E2, p));
+    end if;
+    for f in Factorization(p * OK) do
+        if f[2] eq 1 and Degree(f[1]) eq 1 then
+            return true, Pol ! (EulerFactor(E1, f[1]) * EulerFactor(E2, f[1]));
+        end if;
+    end for;
+    return false, Pol ! 1;
+end function;
+
 intrinsic CurveFromInvariants(ICQ::SeqEnum, E1::CrvEll, E2::CrvEll : TraceBound := 1000) -> BoolElt, CrvHyp
 {Reconstruct a genus-2 curve over Q from the rational Igusa-Clebsch quadruple ICQ
 and pin its quadratic twist against E1 x E2. C0 := HyperellipticCurveFromIgusaClebsch(ICQ)
@@ -76,10 +97,20 @@ A d survives when EulerFactor(QuadraticTwist(C0, d), p) = EulerFactor(E1, p)
 EulerFactor(E2, p) at the first 5 good primes; the survivors are then checked at
 every good p <= TraceBound (certificate (a)). Returns false when nothing survives
 (the recognition was spurious); errors when two non-isomorphic curves survive
-(ambiguous twist).}
+(ambiguous twist).
+
+E1, E2 over a number field K (experimental, Task 13): the reconstruction C0 and
+its twists stay over Q (ICQ is rational), and the twist certificate compares at the
+"split" rational primes p only, EulerFactor(E1, P) EulerFactor(E2, P) for a
+degree-1 unramified prime P | p (twistTarget). This is a necessary condition family
+(a family, since only split p are used) that separates quadratic twists; the loud
+uniqueness/ambiguity contract is unchanged.}
     require #ICQ eq 4: "ICQ must be a length-4 Igusa-Clebsch quadruple";
-    require Type(BaseRing(E1)) eq FldRat and Type(BaseRing(E2)) eq FldRat:
-        "E1 and E2 must be defined over Q";
+    K := BaseRing(E1);
+    require BaseRing(E2) cmpeq K: "E1 and E2 must share a base field";
+    require Type(K) eq FldRat or ISA(Type(K), FldNum):
+        "E1 and E2 must be defined over Q or a common number field";
+    isNF := Type(K) ne FldRat;
     C0 := HyperellipticCurveFromIgusaClebsch(ICQ);
     // HyperellipticCurveFromIgusaClebsch can return a model over a quadratic
     // field when the field of moduli is not a field of definition (Mestre
@@ -107,30 +138,41 @@ every good p <= TraceBound (certificate (a)). Returns false when nothing survive
     // supported there: Jac(C) is isogenous to E1 x E2 (conductor over the E_i
     // bad primes), and C0 may carry spurious bad primes from the reconstruction
     // that the twist must cancel.
-    badset := {2} join Seqset(BadPrimes(C0))
-                    join Seqset(BadPrimes(E1)) join Seqset(BadPrimes(E2));
+    // Rational bad primes: over Q, the bad primes of C0 and both E_i (with 2).
+    // Over K, BadPrimes is not defined for CrvEll[FldNum], so use the rational
+    // primes below the E_i conductors and the ramified primes of K (disc OK).
+    if isNF then
+        OK := MaximalOrder(K);
+        badE := {2} join Seqset(PrimeDivisors(Integers() ! Norm(Conductor(E1))))
+                     join Seqset(PrimeDivisors(Integers() ! Norm(Conductor(E2))))
+                     join Seqset(PrimeDivisors(Integers() ! Discriminant(OK)));
+    else
+        OK := Integers();
+        badE := {2} join Seqset(BadPrimes(E1)) join Seqset(BadPrimes(E2));
+    end if;
+    badset := badE join Seqset(BadPrimes(C0));
     primeset := Sort(Setseq(badset));
     ds := [Integers() | 1];
     for p in primeset do ds cat:= [d * p : d in ds]; end for;
     ds cat:= [-d : d in ds];
 
-    // A prime is good for every candidate twist and both E_i once it avoids
-    // badset (every candidate d is supported there, so p does not divide d and
-    // KroneckerSymbol(d, p) = +-1).
-
-    // For a good p, EulerFactor(QuadraticTwist(C0, d), p) = EulerFactor(C0, p)
-    // with T |-> KroneckerSymbol(d, p) * T, so EulerFactor(C0, p) is computed
-    // once per prime and reused across all candidate d.
-    screen := [];
+    // A usable prime avoids badset (every candidate d is supported there, so p
+    // does not divide d and KroneckerSymbol(d, p) = +-1) and, over K, splits to a
+    // degree-1 unramified prime P | p (twistTarget); the target degree-4 factor to
+    // match EulerFactor(C0^d, p) against is EulerFactor(E1,.) EulerFactor(E2,.),
+    // . = p over Q and . = P over K. For a good p, EulerFactor(QuadraticTwist(C0,
+    // d), p) = EulerFactor(C0, p) with T |-> KroneckerSymbol(d, p) T, so
+    // EulerFactor(C0, p) is computed once per prime and reused across candidate d.
+    Pol := PolynomialRing(Integers()); T := Pol.1;
+    screen := []; tgScreen := [];
     p := 1;
     while #screen lt 5 do
         p := NextPrime(p);
-        if p notin badset then Append(~screen, p); end if;
+        if p in badset then continue; end if;
+        ok, tg := twistTarget(E1, E2, p, isNF, OK, Pol);
+        if ok then Append(~screen, p); Append(~tgScreen, tg); end if;
     end while;
-    Pol := Parent(EulerFactor(C0, screen[1]));
-    T := Pol.1;
-    efScreen := [EulerFactor(C0, p) : p in screen];
-    tgScreen := [EulerFactor(E1, p) * EulerFactor(E2, p) : p in screen];
+    efScreen := [Pol ! EulerFactor(C0, q) : q in screen];
     survivors := [d : d in ds |
         forall{i : i in [1 .. #screen] |
             Evaluate(efScreen[i], KroneckerSymbol(d, screen[i]) * T) eq tgScreen[i]}];
@@ -139,10 +181,14 @@ every good p <= TraceBound (certificate (a)). Returns false when nothing survive
         return false, C0;
     end if;
 
-    // Full trace certificate at every good p <= TraceBound.
-    fullp := [p : p in PrimesUpTo(TraceBound) | p notin badset];
-    efFull := [EulerFactor(C0, p) : p in fullp];
-    tgFull := [EulerFactor(E1, p) * EulerFactor(E2, p) : p in fullp];
+    // Full trace certificate at every usable good p <= TraceBound.
+    fullp := []; tgFull := [];
+    for p in PrimesUpTo(TraceBound) do
+        if p in badset then continue; end if;
+        ok, tg := twistTarget(E1, E2, p, isNF, OK, Pol);
+        if ok then Append(~fullp, p); Append(~tgFull, tg); end if;
+    end for;
+    efFull := [Pol ! EulerFactor(C0, q) : q in fullp];
     survfull := [d : d in survivors |
         forall{i : i in [1 .. #fullp] |
             Evaluate(efFull[i], KroneckerSymbol(d, fullp[i]) * T) eq tgFull[i]}];
@@ -154,7 +200,14 @@ every good p <= TraceBound (certificate (a)). Returns false when nothing survive
     // Distinct twisting discriminants can give isomorphic curves (curves whose
     // Jacobian carries extra automorphisms, e.g. CM, admit several L-equivalent
     // twists that coincide); only genuinely non-isomorphic survivors are an
-    // ambiguity.
+    // ambiguity. Over a number field K this ambiguity is INTRINSIC and expected on
+    // a non-empty gluing: C and its twist by disc(K) are K-isomorphic (disc(K) is a
+    // square in K), so both have Jac splitting over K as E1 x E2, and NO K-Euler
+    // factor (split or inert) separates them (chi_disc(K)(p) = +1 at split p, and
+    // squares to +1 at inert p). The K-gluing data thus pins C over Q only up to
+    // disc(K)-twist; v1 keeps the loud contract (surfacing this as an error) rather
+    // than silently choosing a descent. The corpus nf pair glues to nothing, so it
+    // never reaches here; a non-empty K input is out of v1 scope.
     reps := [];
     for d in survfull do
         C := QuadraticTwist(C0, d);

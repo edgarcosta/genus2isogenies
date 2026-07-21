@@ -591,12 +591,19 @@ block's rational-looking survivor orbit count; the composite certificate compare
 PRODUCT of block graph counts against the analytic graph count and a disagreement is a hard
 error), psis (a gluing matrix per returned curve), products (recognized <j1, j2> pairs of
 the product-type quotients), precision (digits of the successful analytic pass), and
-tracebound. Base field is Q; Task 13 lifts that restriction.}
+tracebound. Base field is Q, or (experimental, Task 13) a number field K with E1, E2 over the
+same K and the first infinite place of K real: number-field inputs run the analytic periods
+path at one fixed real embedding (EllipticPeriodBasis), recognize over Q, and are always
+"traces-only" (the exact/BHLS layers are Q-only) except for congruence-certified-empty
+blocks; prime-power levels only.}
     require n ge 2: "n must be at least 2";
     require Algorithm in ["Auto", "Algebraic", "Periods"]:
         "Algorithm must be one of \"Auto\", \"Algebraic\", \"Periods\"";
-    require Type(BaseRing(E1)) eq FldRat and Type(BaseRing(E2)) eq FldRat:
-        "Genus2Gluings currently requires E1 and E2 over Q";
+    K := BaseRing(E1);
+    require BaseRing(E2) cmpeq K: "E1 and E2 must share a base field";
+    require Type(K) eq FldRat or ISA(Type(K), FldNum):
+        "Genus2Gluings requires E1, E2 over Q or a common number field";
+    isNF := Type(K) ne FldRat;
     require Proof cmpeq "Auto" or Proof cmpeq true or Proof cmpeq false:
         "Proof must be \"Auto\", true, or false";
 
@@ -606,6 +613,8 @@ tracebound. Base field is Q; Task 13 lifts that restriction.}
     if not IsPrimePower(n) then
         require Algorithm ne "Algebraic":
             "the \"Algebraic\" algorithm is only defined for n in {2, 3}";
+        require not isNF:
+            "number-field inputs (Task 13, experimental) support prime-power levels only; composite n is not yet handled over a number field";
         return gluingCompositeCRT(E1, E2, n, Precision, Proof, TraceBound);
     end if;
 
@@ -621,9 +630,15 @@ tracebound. Base field is Q; Task 13 lifts that restriction.}
     // reconcile its rational-quotient count with the exact graph count by the
     // {psi, -psi}-fold and rational-isogeny gate this module uses, so isogenous
     // pairs (the degenerate iso/eq/cm inputs) stay "traces-only".
-    runExact := ((Proof cmpeq true) or (Proof cmpeq "Auto" and ell le 13))
+    // Over a number field the exact completeness layer (exact.m) and BHLS both
+    // require Q, and IsIsogenous is not available for CrvEll[FldNum], so force the
+    // certificate off: number-field blocks are traces-only in v1 (the congruence
+    // certified-empty path below still applies, GluingModulus holding over K). The
+    // "and" short-circuits, so IsIsogenous is never evaluated over K.
+    runExact := (not isNF)
+        and ((Proof cmpeq true) or (Proof cmpeq "Auto" and ell le 13))
         and not IsIsogenous(E1, E2);
-    strict := (Proof cmpeq true);
+    strict := (not isNF) and (Proof cmpeq true);
 
     // Dispatch validation, ahead of the fast path below: an Algorithm choice
     // that does not apply to this (E1, E2, n) must error, even when the pair
@@ -632,12 +647,15 @@ tracebound. Base field is Q; Task 13 lifts that restriction.}
     tryAlgebraic := false;
     algebraicStrict := false;   // "Algebraic": let the BHLS requires propagate
     if Algorithm eq "Algebraic" then
+        require not isNF:
+            "the \"Algebraic\" algorithm (BHLS) requires E1, E2 over Q; number-field inputs use the analytic periods path";
         require n in {2, 3}: "the \"Algebraic\" algorithm is only defined for n in {2, 3}";
         require not IsIsomorphic(E1, E2):
             "the \"Algebraic\" algorithm requires non-isomorphic curves";
         tryAlgebraic := true; algebraicStrict := true;
     elif Algorithm eq "Auto" then
-        if n in {2, 3} and not IsIsomorphic(E1, E2) then tryAlgebraic := true; end if;
+        // BHLS is Q-only; over K the "and" short-circuits before IsIsomorphic.
+        if (not isNF) and n in {2, 3} and not IsIsomorphic(E1, E2) then tryAlgebraic := true; end if;
     end if;
 
     // Congruence-obstruction fast path: a rational n-gluing forces n | a_p(E1) -

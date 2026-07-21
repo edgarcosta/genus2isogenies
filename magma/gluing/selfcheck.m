@@ -179,5 +179,28 @@ intrinsic GluingSelfCheck() -> BoolElt
     assert exists{c : c in csAllg | IsIsomorphic(c, witnessC)};
     assert exists{c : c in csAllg | IsIsomorphic(c, directC)};
 
+    // Task 13 (number-field inputs, experimental). K = Q(sqrt5); Enf1 = LMFDB
+    // 2.2.5.1-31.1-a1 and its Galois conjugate Enf2 (the nf corpus pair).
+    // EllipticPeriodBasis at the fixed first (real) infinite place returns a
+    // positively oriented lattice whose tau reproduces the embedded jInvariant
+    // (validates the place-1 period pair, ordering included) with an involutive
+    // conjugation matrix; GluingModulus over K is unchanged; and the full n = 8
+    // pipeline runs (~0.2 s) to its firmed empty, traces-only output (the lift
+    // sweep finds no rational-looking survivor at level 2 over K).
+    Qxnf<xnf> := PolynomialRing(Rationals());
+    Knf<th> := NumberField(xnf^2 - xnf - 1);
+    Enf1 := EllipticCurve([Knf | 1, 1 + th, th, th, 0]);
+    Enf2 := EllipticCurve([Knf | 1, 2 - th, 1 - th, 1 - th, 0]);
+    wsnf, Mnf := EllipticPeriodBasis(Enf1, 60);
+    assert Im(wsnf[1] / wsnf[2]) gt 0;
+    assert Mnf^2 eq IdentityMatrix(Integers(), 2);
+    assert Abs(jInvariant(wsnf[1] / wsnf[2])
+        - Evaluate(jInvariant(Enf1), InfinitePlaces(Knf)[1] : Precision := 60)) lt 10^-30;
+    Nnf, inconnf := GluingModulus(Enf1, Enf2);
+    assert Nnf eq 8 and not inconnf;
+    csnf, infonf := Genus2Gluings(Enf1, Enf2, 8);
+    assert #csnf eq 0 and infonf`proof eq "traces-only"
+        and infonf`blocks eq [<2, 3, -1, 0, false>];
+
     return true;
 end intrinsic;

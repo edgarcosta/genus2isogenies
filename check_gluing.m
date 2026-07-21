@@ -52,12 +52,9 @@ procedure RunLine(L)
     K := field cmpeq 0 select Rationals() else NumberField(PolynomialRing(Rationals())!field);
     E1 := ParseCurve(K, e1); E2 := ParseCurve(K, e2);
     n := StringToInteger(ns);
-    // Genus2Gluings supports any n >= 2 over Q: prime powers n = ell^e via lifting (Task 10),
-    // composite n via CRT composition of the prime-power blocks (Task 11). The base-field guard
-    // still skips number-field pairs (the nf entry) until Task 13.
-    if not oracleMode then
-        if Type(K) ne FldRat then return; end if;
-    end if;
+    // Genus2Gluings supports any n >= 2 over Q (prime powers via lifting, Task 10;
+    // composite via CRT of prime-power blocks, Task 11) and, experimentally
+    // (Task 13), prime-power levels over a number field (the nf entry).
     expected := eval crv;
     // algorithm:=Periods only reconstructs curves with geometric automorphism group
     // of order 2 (no non-quadratic-twist reconstruction, see gluings.m); skip the

@@ -71,9 +71,28 @@ intrinsic EllipticPeriodBasis(E::CrvEll, prec::RngIntElt) -> SeqEnum, Mtrx
 {Period basis [w1, w2] of E to prec decimal digits, normalized so Im(w1/w2) > 0,
 together with the 2x2 integer matrix of complex conjugation on that basis
 (Conjugate(w_i) = sum_j M[i,j] w_j). Asserts M reproduces the conjugates to half
-working precision and is an involution.}
+working precision and is an involution.
+
+Base field. Over Q this is Periods(E). Over a number field K (experimental,
+Task 13) it is the period basis of E embedded at ONE fixed real place: the first
+InfinitePlaces(K) entry, required real (a complex place would need conjugate-pair
+handling, deferred). Periods(E : Precision) over K returns one period pair per
+infinite place in InfinitePlaces(K) order; we take place 1's pair. The embedded
+curve is defined over R, so complex conjugation acts on its lattice exactly as
+over Q and the same solve-and-round recovers M. Both curves in a gluing must use
+this same embedding: the complex torus is embedding-dependent, but the rational
+gluing output it recognizes is not.}
     require prec ge 10: "precision too low";
-    ws := Periods(E : Precision := prec);
+    K := BaseRing(E);
+    if Type(K) eq FldRat then
+        ws := Periods(E : Precision := prec);
+    else
+        require ISA(Type(K), FldNum):
+            "EllipticPeriodBasis: base field must be Q or a number field";
+        require IsReal(InfinitePlaces(K)[1]):
+            "EllipticPeriodBasis over a number field requires the first infinite place to be real (complex embeddings need conjugate-pair handling, deferred)";
+        ws := Periods(E : Precision := prec)[1];   // period pair at InfinitePlaces(K)[1]
+    end if;
     if Im(ws[1] / ws[2]) lt 0 then ws := [ws[2], ws[1]]; end if;
     w1 := ws[1]; w2 := ws[2];
     RR := RealField(prec);
