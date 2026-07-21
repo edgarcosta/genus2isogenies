@@ -730,7 +730,10 @@ if assigned spec then useSpec := spec; else useSpec := "magma/spec"; end if;
 if useSpec ne "" then
     // CHIMP supplies the star/bracket charpoly intrinsics the engine needs.
     ok, _ := IsIntrinsic("PowerCharacteristicPolynomial");
-    error if not ok, "CHIMP is not attached; AttachSpec your CHIMP.spec first";
+    if not ok then
+        printf "SUITE FAILED: CHIMP is not attached (PowerCharacteristicPolynomial absent); AttachSpec your CHIMP.spec first\n";
+        quit 1;
+    end if;
     AttachSpec(useSpec);
 end if;
 // useSpec eq "" is the red-state syntactic check: no engine spec, CHIMP not needed.
@@ -743,7 +746,7 @@ okEngine, _ := IsIntrinsic("IsogenyPrimes");
 okEngine2, _ := IsIntrinsic("CongruencePrimes");
 if not (okEngine and okEngine2) then
     printf "SUITE FAILED: engine intrinsics not attached (red state)\n";
-    quit;
+    quit 1;
 end if;
 
 R<x> := PolynomialRing(Rationals());
@@ -997,11 +1000,13 @@ def _dispatch():
         L.append('        printf "SECTION %s: FAIL: procedure not declared (spec/engine not attached?)\\n";' % name)
         L.append("    end if;")
         L.append("end if;")
-    L.append("if ok then")
-    L.append('    printf "ALL SELECTED SECTIONS PASS\\n";')
-    L.append("else")
+    # Failure quits nonzero so batch drivers and CI see it; success falls
+    # through to PASS and Magma's default exit 0.
+    L.append("if not ok then")
     L.append('    printf "SUITE FAILED\\n";')
+    L.append("    quit 1;")
     L.append("end if;")
+    L.append('printf "ALL SELECTED SECTIONS PASS\\n";')
     return "\n".join(L)
 
 def emit_test_file(entries, header, path):

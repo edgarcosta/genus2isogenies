@@ -9,7 +9,10 @@ if assigned spec then useSpec := spec; else useSpec := "magma/spec"; end if;
 if useSpec ne "" then
     // CHIMP supplies the star/bracket charpoly intrinsics the engine needs.
     ok, _ := IsIntrinsic("PowerCharacteristicPolynomial");
-    error if not ok, "CHIMP is not attached; AttachSpec your CHIMP.spec first";
+    if not ok then
+        printf "SUITE FAILED: CHIMP is not attached (PowerCharacteristicPolynomial absent); AttachSpec your CHIMP.spec first\n";
+        quit 1;
+    end if;
     AttachSpec(useSpec);
 end if;
 // useSpec eq "" is the red-state syntactic check: no engine spec, CHIMP not needed.
@@ -22,7 +25,7 @@ okEngine, _ := IsIntrinsic("IsogenyPrimes");
 okEngine2, _ := IsIntrinsic("CongruencePrimes");
 if not (okEngine and okEngine2) then
     printf "SUITE FAILED: engine intrinsics not attached (red state)\n";
-    quit;
+    quit 1;
 end if;
 
 R<x> := PolynomialRing(Rationals());
@@ -4616,8 +4619,8 @@ if section eq "all" or section eq "regression" then
         printf "SECTION regression: FAIL: procedure not declared (spec/engine not attached?)\n";
     end if;
 end if;
-if ok then
-    printf "ALL SELECTED SECTIONS PASS\n";
-else
+if not ok then
     printf "SUITE FAILED\n";
+    quit 1;
 end if;
+printf "ALL SELECTED SECTIONS PASS\n";
