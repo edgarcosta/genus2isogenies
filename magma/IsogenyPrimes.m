@@ -59,6 +59,18 @@ function ConductorSupport(E)
     return [ pr[1] : pr in Factorization(N) ];
 end function;
 
+// Transport an absolute-degree-one curve to an equivalent curve over Q: every
+// a-invariant of a degree-one FldNum coerces to Rationals(), and a curve already
+// over FldRat is returned unchanged. Only valid on AbsoluteDegree-1 input (the
+// coercion errors otherwise); the sole caller guards it with deg eq 1. Needed
+// because IsIsogenous errors on CrvEll over FldNum on Magma 2.29-8.
+function RationalModel(E)
+    if Type(BaseRing(E)) eq FldRat then
+        return E;
+    end if;
+    return EllipticCurve([Rationals() | a : a in aInvariants(E)]);
+end function;
+
 //////////////////////////////////////////////////////////////////////////
 // FrobeniusCharpoly
 //
@@ -1084,10 +1096,11 @@ semantics section for the exact guarantee.}
             CertificationMethod := "Supplied" >;
     end if;
 
-    // Step 1: over Q, IsIsogenous decides all primes at once. It is guarded to
-    // FldRat because it errors on CrvEll over FldNum on this Magma version;
-    // a degree-one FldNum therefore falls through to the gcd loop instead.
-    if deg eq 1 and Type(K) eq FldRat and IsIsogenous(E1norm, E2norm) then
+    // Step 1: absolute degree one -> IsIsogenous over Q decides all primes at
+    // once. Dispatch is on absolute degree, not the Magma type: a genuine
+    // degree-one FldNum is transported to Q by RationalModel first, because
+    // IsIsogenous errors on CrvEll over FldNum on Magma 2.29-8.
+    if deg eq 1 and IsIsogenous(RationalModel(E1norm), RationalModel(E2norm)) then
         vprint IsogenyPrimes, 1: "CongruencePrimes: IsIsogenous over Q -> AllPrimes";
         return [Integers()|], rec< CongruencePrimesInfo |
             Source := "CongruencePrimes",

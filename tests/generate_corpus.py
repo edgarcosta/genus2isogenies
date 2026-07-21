@@ -146,6 +146,13 @@ def assemble_inputs(data):
     K1 = NumberField(x - 1, 'w')
     es.append(entry("fixture-deg1-fldnum", "fixture-deg1-fldnum", K1,
                     EllipticCurve(K1, [0, -1, 1, -10, -20])))
+    # fixture-cong-deg1-fldnum: CongruencePrimes on a genuine degree-one FldNum
+    # pair (11a1, 11a2, isogenous over Q) must certify AllPrimes via IsIsogenous
+    # after transport to Q -- the same absolute-degree dispatch as
+    # fixture-deg1-fldnum, exercised on the two-curve entry point.
+    es.append(entry("fixture-cong-deg1-fldnum", "fixture-cong-deg1-fldnum", K1,
+                    EllipticCurve(K1, [0, -1, 1, -10, -20]),
+                    EllipticCurve(K1, [0, -1, 1, -7820, -263580])))
     # fixture-localglobal: j = 2268945/128 over Q(i) (7 passes local tests, no
     # global 7-isogeny; verified in review round 3).
     Ki = NumberField(x**2 + 1, 'i')
@@ -905,7 +912,13 @@ def _sec_congruence(congs):
     for e in congs:
         eid = e["id"]; strat = e["stratum"]; cong = e["expect"].get("cong")
         L += _build2(e)
-        if strat == "fixture-cong-isogenous":
+        if eid == "fixture-cong-deg1-fldnum":
+            L.append("    L, info := CongruencePrimes(E1, E2);        // %s" % eid)
+            L.append("    assert AbsoluteDegree(BaseRing(E1)) eq 1;   // genuine FldNum of degree 1")
+            L.append('    assert info`Kind eq "AllPrimes";            // absolute-degree dispatch, certified')
+            L.append("    assert info`Exact;")
+            L.append('    assert info`CertificationMethod eq "IsIsogenous";')
+        elif strat == "fixture-cong-isogenous":
             L.append("    L, info := CongruencePrimes(E1, E2);")
             L.append('    assert info`Source eq "CongruencePrimes";  // %s' % eid)
             L.append('    assert info`Kind eq "AllPrimes";       // isogenous over Q (IsIsogenous)')

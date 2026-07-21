@@ -9587,6 +9587,64 @@
    }
   },
   {
+   "id": "fixture-cong-deg1-fldnum",
+   "stratum": "fixture-cong-deg1-fldnum",
+   "field": [
+    "-1",
+    "1"
+   ],
+   "curve": {
+    "model": "ainvs",
+    "ainvs": [
+     [
+      "0"
+     ],
+     [
+      "-1"
+     ],
+     [
+      "1"
+     ],
+     [
+      "-10"
+     ],
+     [
+      "-20"
+     ]
+    ]
+   },
+   "curve2": {
+    "model": "ainvs",
+    "ainvs": [
+     [
+      "0"
+     ],
+     [
+      "-1"
+     ],
+     [
+      "1"
+     ],
+     [
+      "-7820"
+     ],
+     [
+      "-263580"
+     ]
+    ]
+   },
+   "expect": {
+    "deg1": true,
+    "cong": {
+     "primes": null,
+     "kind": "ZeroAtCap",
+     "stabilized": false,
+     "bound": 8000
+    },
+    "dropped": []
+   }
+  },
+  {
    "id": "fixture-localglobal",
    "stratum": "fixture-localglobal",
    "field": [
@@ -9892,7 +9950,9 @@
      61
     ],
     "dropped": [
-     "oE:ell=73"
+     "oE:ell=73",
+     "oE:ell=89",
+     "oE:ell=97"
     ]
    }
   },

@@ -3,7 +3,7 @@
 // mode: add-regressions (.superpowers/sdd/P.out) (per-oracle cap 120s)
 // sage 10.8 | magma 2.29-8 | date 2026-07-21 | seed 20260720
 // LMFDB SQL: SELECT c.label, e.spl_fod_label, e.spl_fod_coeffs, e.spl_facs_coeffs, e.spl_facs_labels FROM g2c_curves c JOIN g2c_endomorphisms e ON c.label = e.label WHERE c.geom_end_alg = 'Q x Q' AND e.spl_fod_label != '1.1.1.1' ORDER BY c.label
-// dropped oracles (entry:oracle): fixture-cm-1728-Qi:oE:ell=97; fixture-cm-nonmax:oE:ell=73
+// dropped oracles (entry:oracle): fixture-cm-1728-Qi:oE:ell=97; fixture-cm-nonmax:oE:ell=73; fixture-cm-nonmax:oE:ell=89; fixture-cm-nonmax:oE:ell=97
 // ==========================================================================
 if assigned spec then useSpec := spec; else useSpec := "magma/spec"; end if;
 if useSpec ne "" then
@@ -2307,6 +2307,14 @@ procedure Test_cm()
 end procedure;
 
 procedure Test_congruence()
+    K := BuildField([-1, 1]);
+    E1 := BuildCurve(K, [ [0], [-1], [1], [-10], [-20] ]);
+    E2 := BuildCurve(K, [ [0], [-1], [1], [-7820], [-263580] ]);
+    L, info := CongruencePrimes(E1, E2);        // fixture-cong-deg1-fldnum
+    assert AbsoluteDegree(BaseRing(E1)) eq 1;   // genuine FldNum of degree 1
+    assert info`Kind eq "AllPrimes";            // absolute-degree dispatch, certified
+    assert info`Exact;
+    assert info`CertificationMethod eq "IsIsogenous";
     K := BuildField([0, 1]);
     E1 := BuildCurve(K, [ [1], [0], [1], [4], [-6] ]);
     E2 := BuildCurve(K, [ [1], [0], [1], [4], [-6] ]);
