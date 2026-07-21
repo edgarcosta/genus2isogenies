@@ -14,7 +14,16 @@ Usage:
     sage -python tests/generate_corpus.py --inputs-only   # re-runs assembly
         only and writes tests/corpus_curves.json; no oracle computation, no
         `expect` blocks, no tests/*.m (fast; use after editing assemble_inputs
-        to refresh the corpus ahead of the full run)."""
+        to refresh the corpus ahead of the full run).
+    sage -python tests/generate_corpus.py --add-regressions [out_file]
+        # bakes a `regression` key onto each corpus entry named in out_file
+        (default .superpowers/sdd/P.out; the P==C differential format: a
+        curve2 entry is id:kind:exact:stabilized:primes:certmethod, else
+        id:kind:exact:primes:cmdisc), then re-emits tests/test_isogenyprimes.m
+        so its `regression` section asserts straight from the json. Must run
+        AFTER a full run (needs entries' `expect` blocks already populated);
+        does not call assemble_inputs/compute_oracles, so it never touches
+        corpus_curves.json's entries beyond adding the `regression` key."""
 import datetime
 import json
 import os
@@ -32,6 +41,7 @@ except Exception:      # optional; the modular-polynomial screen degrades to ski
 
 SEED = 20260720
 MAZUR = [2, 3, 5, 7, 11, 13, 17, 19, 37, 43, 67, 163]
+REGRESSION_DEFAULT_OUT = ".superpowers/sdd/P.out"   # --add-regressions default
 ORACLE_TIMEOUT = 120   # cap (seconds) per oracle, and per-ell for the oE
                        # construction certificate (steps 2-3 of the cascade)
 ENTRY_TIMEOUT = 1800   # outer per-entry fork cap (compute_oracles): a backstop
@@ -221,6 +231,48 @@ def assemble_inputs(data):
     jr = H.roots(K5, multiplicities=False)
     for i, jv in enumerate(jr):
         es.append(entry(f"diff-cmj-15-{i}", "diff-cmj", K5, EllipticCurve(K5, j=jv)))
+    # fixture-h1 (h>1 crash class, found in code review of Task P-7/C-12):
+    # EXACT non-minimal Weierstrass models over class-number>1 fields,
+    # promoted as regression fixtures for the Reduction-on-non-minimal-model
+    # crash fixed in P (e9a9344) and C (7c384a5). Scaling [a1,a2,a3,a4,a6] ->
+    # [u a1, u^2 a2, u^3 a3, u^4 a4, u^6 a6] is a genuine Weierstrass change of
+    # variable (isomorphic curve, generally non-minimal at primes dividing u),
+    # so Sage's own oE/CM oracles are unaffected by it (isogenies_prime_degree/
+    # has_cm/cm_discriminant do not require a minimal model): these three flow
+    # through the ordinary _compute_expect_for_entry pipeline like any other
+    # entry. Only the emitted BuildCurve must reproduce the scaled ainvs
+    # exactly, so never call a minimal-model method on these curves. Placed
+    # last in assembly (after every seeded/random block above) so nothing here
+    # can perturb the shared PRNG state the diff-generic-*/diff-x0-*/
+    # diff-congpair-* draws above depend on.
+    def _scale_ainvs(ainvs, u):
+        a1, a2, a3, a4, a6 = ainvs
+        return (u*a1, u**2*a2, u**3*a3, u**4*a4, u**6*a6)
+    K5m = NumberField(x**2 + 5, 'w')     # Q(sqrt-5), disc -20, h = 2
+    K6m = NumberField(x**2 + 6, 'w')     # Q(sqrt-6), disc -24, h = 2
+    assert K5m.class_number() == 2
+    assert K6m.class_number() == 2
+    # (a) CM j=1728 (order disc -4, i.e. Z[i]) non-minimal at 3.
+    Ecm1728 = EllipticCurve(QQ, [0, 0, 0, 1, 0])
+    assert Ecm1728.has_cm() and Ecm1728.cm_discriminant() == -4
+    a_ainvs = _scale_ainvs(Ecm1728.ainvs(), 3)
+    assert a_ainvs == (0, 0, 0, 81, 0)
+    es.append(entry("fixture-h1-cm1728", "fixture-h1", K5m,
+                    EllipticCurve(K5m, list(a_ainvs))))
+    # (b) 11a1 (no CM, conductor 11) non-minimal at the good prime 3.
+    E11q = EllipticCurve(QQ, '11a1')
+    assert not E11q.has_cm() and E11q.conductor() % 3 != 0
+    b_ainvs = _scale_ainvs(E11q.ainvs(), 3)
+    assert b_ainvs == (0, -9, 27, -810, -14580)
+    es.append(entry("fixture-h1-11a1", "fixture-h1", K5m,
+                    EllipticCurve(K5m, list(b_ainvs))))
+    # (c) 37a1 (no CM, conductor 37) non-minimal at the good prime 7.
+    E37q = EllipticCurve(QQ, '37a1')
+    assert not E37q.has_cm() and E37q.conductor() % 7 != 0
+    c_ainvs = _scale_ainvs(E37q.ainvs(), 7)
+    assert c_ainvs == (0, 0, 343, -2401, 0)
+    es.append(entry("fixture-h1-37a1", "fixture-h1", K6m,
+                    EllipticCurve(K6m, list(c_ainvs))))
     return data
 
 # ===========================================================================
@@ -815,6 +867,9 @@ def _sec_cm(entries):
             L.append("    assert HasPrimeIsogeny(E, 2);  // ramified sample")
         if eid == "fixture-cm-nonmax":
             L.append("    assert MayBeReducible(2, L, info) eq (2 in Set(L));  // family clause rejects p | f unless in L")
+        if eid == "fixture-h1-cm1728":
+            if oE is not None:
+                L.append("    for ell in %s do assert MayBeReducible(ell, L, info); end for;  // h1 fixture: non-minimal-model containment" % _mlist(oE))
     L.append('    printf "SECTION cm: PASS\\n";')
     L.append("end procedure;\n")
     return "\n".join(L)
@@ -866,6 +921,39 @@ def _sec_fixtures(byid):
     L.append("end procedure;\n")
     return "\n".join(L)
 
+def _sec_regression(entries):
+    """Model-agreed regression asserts, baked from each entry's `regression`
+    key (attached by --add-regressions from a P==C differential .out file; see
+    add_regressions()). Reads only the json -- never re-parses a .out file at
+    emission time -- so this section is empty-but-harmless (declares the
+    procedure, prints PASS) on a corpus that has never had --add-regressions
+    applied. Entries are emitted in id order (matching the sorted .out file)
+    regardless of their order in the corpus."""
+    L = ["// model-agreed regression (P == C on 2026-07-21), not an external oracle.",
+         "procedure Test_regression()"]
+    regs = sorted((e for e in entries if "regression" in e), key=lambda e: e["id"])
+    for e in regs:
+        eid = e["id"]; r = e["regression"]
+        if r["congruence"]:
+            L += _build2(e)
+            L.append("    L, info := CongruencePrimes(E1, E2);  // %s" % eid)
+            L.append("    assert Set(L) eq %s;" % _mset(r["primes"]))
+            L.append('    assert info`Kind eq "%s";' % r["kind"])
+            L.append("    assert %sinfo`Exact;" % ("" if r["exact"] else "not "))
+            L.append("    assert %sinfo`Stabilized;" % ("" if r["stabilized"] else "not "))
+            L.append('    assert info`CertificationMethod eq "%s";' % r["certmethod"])
+        else:
+            L += _build1(e)
+            L.append("    L, info := IsogenyPrimes(E);  // %s" % eid)
+            L.append("    assert Set(L) eq %s;" % _mset(r["primes"]))
+            L.append('    assert info`Kind eq "%s";' % r["kind"])
+            L.append("    assert %sinfo`Exact;" % ("" if r["exact"] else "not "))
+            L.append("    assert (info`IsCM select info`CMOrderDiscriminant else 0) eq %d;"
+                      % r["cmdisc"])
+    L.append('    printf "SECTION regression: PASS\\n";')
+    L.append("end procedure;\n")
+    return "\n".join(L)
+
 _DISPATCH_SECTIONS = [
     ("golden", 'section eq "all" or section eq "golden"', "Test_golden"),
     ("branch1", 'section eq "all" or section eq "branch1"', "Test_branch1"),
@@ -873,6 +961,10 @@ _DISPATCH_SECTIONS = [
     ("cm", '(section eq "all" or section eq "cm") and cmscope ne "0"', "Test_cm"),
     ("congruence", 'section eq "all" or section eq "congruence"', "Test_congruence"),
     ("fixtures", 'section eq "all" or section eq "fixtures"', "Test_fixtures"),
+    # cmscope does NOT gate this section: every regression entry is
+    # shared-scope by construction (P.out/C.out are themselves generated at
+    # cmscope:=0, so no CM-only entry ever gets a `regression` key).
+    ("regression", 'section eq "all" or section eq "regression"', "Test_regression"),
 ]
 
 def _dispatch():
@@ -931,6 +1023,7 @@ def emit_test_file(entries, header, path):
     parts = [PREAMBLE % {"header": header}, "",
              _sec_golden(gates), _sec_branch1(b1), _sec_branch2(b2),
              _sec_cm(cml), _sec_congruence(congs), _sec_fixtures(byid),
+             _sec_regression(entries),
              _dispatch(), ""]
     with open(path, "w") as f:
         f.write("\n".join(parts))
@@ -1017,6 +1110,70 @@ def build_header(mode, prov, agg, cap):
     ]
     return "".join(l + "\n" for l in lines)
 
+def _parse_out_line(line, byid):
+    """Parse one P==C differential line against the corpus (by id, to decide
+    which of the two field layouts applies): a congruence entry (its corpus
+    entry has a curve2) is id:kind:exact:stabilized:primes:certmethod (6
+    fields); an isogeny entry is id:kind:exact:primes:cmdisc (5 fields). Either
+    field count mismatching the entry's actual curve2-ness is a corpus/out-file
+    desync and raised loudly rather than silently mis-parsed."""
+    parts = line.split(":")
+    eid = parts[0]
+    e = byid.get(eid)
+    assert e is not None, "add-regressions: id %r not found in corpus (%r)" % (eid, line)
+    is_cong = "curve2" in e
+    if is_cong:
+        assert len(parts) == 6, (
+            "add-regressions: %r has curve2 (congruence) but line has %d "
+            "fields, expected 6: %r" % (eid, len(parts), line))
+        _, kind, exact, stabilized, primes, certmethod = parts
+        rec = {"congruence": True, "kind": kind,
+               "exact": bool(int(exact)), "stabilized": bool(int(stabilized)),
+               "primes": [int(p) for p in primes.split(",")] if primes else [],
+               "certmethod": certmethod}
+    else:
+        assert len(parts) == 5, (
+            "add-regressions: %r has no curve2 (isogeny) but line has %d "
+            "fields, expected 5: %r" % (eid, len(parts), line))
+        _, kind, exact, primes, cmdisc = parts
+        rec = {"congruence": False, "kind": kind,
+               "exact": bool(int(exact)),
+               "primes": [int(p) for p in primes.split(",")] if primes else [],
+               "cmdisc": int(cmdisc)}
+    return eid, rec
+
+def add_regressions(out_path, json_path="tests/corpus_curves.json"):
+    """--add-regressions mode: parse out_path (P.out format) and attach the
+    parsed record as a `regression` key on the matching corpus entry (by id),
+    then re-emit tests/test_isogenyprimes.m so its `regression` section
+    (_sec_regression) reads the freshly baked data straight from the json.
+    Does NOT call assemble_inputs/compute_oracles: this must run against an
+    already-fully-populated corpus_curves.json (entries + `expect` blocks) from
+    a prior full run -- assemble_inputs drops and rebuilds the very
+    fixture/differential entries this attaches `regression` to, and
+    compute_oracles is minutes of work this mode has no need to redo."""
+    d = json.load(open(json_path))
+    entries = d["entries"]
+    byid = {e["id"]: e for e in entries}
+    n = 0
+    with open(out_path) as f:
+        for line in f:
+            line = line.rstrip("\n")
+            if not line:
+                continue
+            eid, rec = _parse_out_line(line, byid)
+            byid[eid]["regression"] = rec
+            n += 1
+    json.dump(d, open(json_path, "w"), indent=1, default=str)
+    agg = []
+    for e in entries:
+        expect = e.get("expect") or {}
+        agg.extend((e["id"], nm) for nm in (expect.get("dropped") or []))
+    prov = d.get("_provenance", {})
+    header = build_header("add-regressions (%s)" % out_path, prov, agg, ORACLE_TIMEOUT)
+    emit_test_file(entries, header, "tests/test_isogenyprimes.m")
+    print("add-regressions DONE: %d regression records attached from %s" % (n, out_path))
+
 def _ensure_inputs(d):
     """assemble_inputs() is idempotent (drops and regenerates every non-LMFDB
     entry itself), so this always re-runs it rather than guarding on whether
@@ -1026,6 +1183,13 @@ def _ensure_inputs(d):
 
 def main():
     args = sys.argv[1:]
+    if "--add-regressions" in args:
+        idx = args.index("--add-regressions")
+        out_path = REGRESSION_DEFAULT_OUT
+        if idx + 1 < len(args) and not args[idx + 1].startswith("--"):
+            out_path = args[idx + 1]
+        add_regressions(out_path)
+        return
     smoke = "--smoke" in args
     inputs_only = "--inputs-only" in args
     d = json.load(open("tests/corpus_curves.json"))

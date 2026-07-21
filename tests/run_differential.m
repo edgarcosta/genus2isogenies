@@ -3,7 +3,7 @@
 // mode: full (per-oracle cap 120s)
 // sage 10.8 | magma 2.29-8 | date 2026-07-21 | seed 20260720
 // LMFDB SQL: SELECT c.label, e.spl_fod_label, e.spl_fod_coeffs, e.spl_facs_coeffs, e.spl_facs_labels FROM g2c_curves c JOIN g2c_endomorphisms e ON c.label = e.label WHERE c.geom_end_alg = 'Q x Q' AND e.spl_fod_label != '1.1.1.1' ORDER BY c.label
-// dropped oracles (entry:oracle): fixture-cm-1728-Qi:oE:ell=97; fixture-cm-nonmax:oE:ell=73; fixture-cm-nonmax:oE:ell=97
+// dropped oracles (entry:oracle): fixture-cm-1728-Qi:oE:ell=97; fixture-cm-nonmax:oE:ell=73
 // ==========================================================================
 if assigned spec then useSpec := spec; else useSpec := "magma/spec"; end if;
 if useSpec ne "" then
@@ -1356,6 +1356,20 @@ E := BuildCurve(K, [ [0, 0], [0, 0], [0, 0], [-111189649725/2, -49727382705/2], 
 Li, infoi := IsogenyPrimes(E);
 EmitIso(~diffLines, "diff-cmj-15-1", Li, infoi);
 end if;
+if cmscope ne "0" then
+K := BuildField([5, 0, 1]);
+E := BuildCurve(K, [ [0, 0], [0, 0], [0, 0], [81, 0], [0, 0] ]);
+Li, infoi := IsogenyPrimes(E);
+EmitIso(~diffLines, "fixture-h1-cm1728", Li, infoi);
+end if;
+K := BuildField([5, 0, 1]);
+E := BuildCurve(K, [ [0, 0], [-9, 0], [27, 0], [-810, 0], [-14580, 0] ]);
+Li, infoi := IsogenyPrimes(E);
+EmitIso(~diffLines, "fixture-h1-11a1", Li, infoi);
+K := BuildField([6, 0, 1]);
+E := BuildCurve(K, [ [0, 0], [0, 0], [343, 0], [-2401, 0], [0, 0] ]);
+Li, infoi := IsogenyPrimes(E);
+EmitIso(~diffLines, "fixture-h1-37a1", Li, infoi);
 
 Sort(~diffLines);
 if out ne "" then
