@@ -659,6 +659,10 @@ R<x> := PolynomialRing(Rationals());
 
 function BuildField(coeffs)
     if coeffs eq [0, 1] then return Rationals(); end if;
+    // NumberField(R!coeffs) collapses a degree-1 defining polynomial to
+    // FldRat in this Magma version; force a genuine FldNum here so the
+    // degree-one dispatch path is actually exercised.
+    if #coeffs eq 2 then return RationalsAsNumberField(); end if;
     return NumberField(R ! coeffs);
 end function;
 
