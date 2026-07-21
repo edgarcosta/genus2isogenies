@@ -22,6 +22,7 @@ import sys
 from sage.all import (QQ, ZZ, PolynomialRing, NumberField, EllipticCurve,
                       kronecker_symbol, set_random_seed, prime_range, gcd)
 from sage.arith.misc import fundamental_discriminant
+from sage.schemes.elliptic_curves.gal_reps_number_field import Billerey_B_l
 from sage.parallel.decorate import fork, parallel
 from sage.parallel.ncpus import ncpus as _sage_ncpus
 try:
@@ -82,15 +83,44 @@ def assemble_inputs(data):
     set_random_seed(SEED)
     R = PolynomialRing(QQ, 'x'); x = R.gen()
     # fixture-ex58: Billerey Example 5.8, K = Q(sqrt-3, sqrt-7), conductor 2*O_K.
+    # r3, r7 are ARBITRARY roots of x^2+3, x^2+7 in the absolute field (Sage's
+    # .roots() order is implementation-defined), so r3*r7 can land on either
+    # sign of sqrt(21); only one sign reproduces the paper's curve (the other
+    # is an unrelated curve with a huge conductor and nonvanishing B_l, since
+    # flipping s21 alone -- unlike flipping s3 or s7 -- is not a field
+    # automorphism). Build both signs and keep the one with conductor norm 16,
+    # so the fixture is self-verifying instead of trusting root order.
     K58 = NumberField((x**2 + 3, x**2 + 7), names=('s3', 's7')).absolute_field('t')
     r3 = (x**2 + 3).roots(K58, multiplicities=False)[0]
     r7 = (x**2 + 7).roots(K58, multiplicities=False)[0]
-    r21 = r3 * r7          # sqrt(-3)*sqrt(-7) = sqrt(21)
-    a4 = QQ(81)/4 * (69 + 43*r3 + 29*r7 + 17*r21)
-    a6 = 162 * (207 - 84*r3 - 54*r7 + 46*r21)
-    E58 = EllipticCurve(K58, [0, 0, 0, a4, a6])
+    ex58_candidates = []
+    for sign in (1, -1):
+        r21 = sign * r3 * r7
+        a4 = QQ(81)/4 * (69 + 43*r3 + 29*r7 + 17*r21)
+        a6 = 162 * (207 - 84*r3 - 54*r7 + 46*r21)
+        ex58_candidates.append(EllipticCurve(K58, [0, 0, 0, a4, a6]))
+    ex58_matches = [Ec for Ec in ex58_candidates if Ec.conductor().norm() == 16]
+    assert len(ex58_matches) == 1, "expected exactly one sqrt(21) sign to give conductor norm 16"
+    E58 = ex58_matches[0]
     assert not E58.has_cm()
+    # B_l must vanish at every admissible auxiliary prime (r >= 5, r coprime to
+    # 6*Disc(K)*Norm(cond E)) -- the fixture's entire point: it forces the
+    # engine's B-phase to exhaust its cap and fall through to the R-phase
+    # (asserted as `BoundsUsed[2] ne 0` in Test_branch2). Check the first three
+    # admissible primes.
+    bad58 = ZZ(6) * K58.discriminant() * E58.conductor().norm()
+    admissible58 = [r for r in prime_range(1000) if r >= 5 and bad58 % r != 0][:3]
+    assert len(admissible58) == 3
+    for r in admissible58:
+        assert Billerey_B_l(E58, r) == 0, "B_l(%d) != 0 -- wrong ex58 curve" % r
     es.append(entry("fixture-ex58", "fixture-ex58", K58, E58))
+    # Re-seed: factoring the huge-conductor rejected candidate and the
+    # Billerey_B_l checks above draw from Sage's shared PRNG (current_randstate,
+    # e.g. via randomized factoring), which would otherwise shift every
+    # ZZ.random_element() draw below (diff-generic-*/diff-x0-*/diff-congpair-*)
+    # relative to the pre-fix corpus. Reset to a fresh, deterministic SEED so
+    # this fixture's extra computation is invisible to the rest of assembly.
+    set_random_seed(SEED)
     # gate fixtures over Q(sqrt 29): 11a1 base-changed; 3 is inert, choose a
     # split prime too (7 splits since kronecker(29,7)=1).
     K29 = NumberField(x**2 - 29, 'w')
