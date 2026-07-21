@@ -280,11 +280,23 @@ end intrinsic;
 //   TensorCharacteristicPolynomial(f, g) roots -> products a*b (composed_op mul)
 //////////////////////////////////////////////////////////////////////////
 
+// Fetch a CHIMP intrinsic by name at call time. Nothing in this package's call
+// graph may name a CHIMP intrinsic statically: on Magma 2.29-8 an absent one
+// aborts at bind time, before the top-of-body requires can report it. This
+// error is the backstop for callers that slip past those requires.
+function ChimpIntrinsic(name)
+    ok, f := IsIntrinsic(name);
+    error if not ok, Sprintf(
+        "IsogenyPrimes package: CHIMP is not attached (%o absent); AttachSpec CHIMP first", name);
+    return f;
+end function;
+
 // Composed product (Sage composed_op with mul) of a nonempty polynomial seq.
 function StarProductPolys(fs)
+    tcp := ChimpIntrinsic("TensorCharacteristicPolynomial");
     g := fs[1];
     for i in [2 .. #fs] do
-        g := TensorCharacteristicPolynomial(g, fs[i]);
+        g := tcp(g, fs[i]);
     end for;
     return g;
 end function;
@@ -324,6 +336,7 @@ end function;
 // then skips l (safe: fewer auxiliary primes still give a superset). On a model
 // minimal at good primes -- which admissibility guarantees -- this never fires.
 function BilPlStar(E, l, DiscE)
+    pcp := ChimpIntrinsic("PowerCharacteristicPolynomial");
     OK := Integers(BaseRing(E));
     factors := [];
     for pr in Decomposition(OK, l) do
@@ -332,7 +345,7 @@ function BilPlStar(E, l, DiscE)
             return false, _;
         end if;
         cp := FrobeniusCharpoly(E, q);
-        Append(~factors, PowerCharacteristicPolynomial(cp, 12 * pr[2]));
+        Append(~factors, pcp(cp, 12 * pr[2]));
     end for;
     return true, StarProductPolys(factors);
 end function;
@@ -364,9 +377,10 @@ end function;
 // GCD(Res(P, compose_power(Q, k)), B), the k = 0 factor included (the term the
 // PQM file drops), or 0 as soon as a resultant vanishes.
 function BilRqValue(E, q, d, h, gamma, B)
+    pcp := ChimpIntrinsic("PowerCharacteristicPolynomial");
     Zx := PolynomialRing(Integers());
-    P := PowerCharacteristicPolynomial(FrobeniusCharpoly(E, q), 12*h);
-    Qpoly := PowerCharacteristicPolynomial(Zx ! MinimalPolynomial(gamma), 12);
+    P := pcp(FrobeniusCharpoly(E, q), 12*h);
+    Qpoly := pcp(Zx ! MinimalPolynomial(gamma), 12);
     Rq := 1;
     for k in [0 .. d div 2] do
         factor := Resultant(P, ComposePower(Qpoly, k));
@@ -382,6 +396,8 @@ intrinsic BillereyBl(E::CrvEll, l::RngIntElt) -> RngIntElt
 {Billerey's B_l (Theorem 2.4 of arXiv:0908.1084) for E over a number field at
 the rational prime l: the product over k = 0 .. d/2 of P_l^* evaluated at
 l^(12k), where P_l^* is equation (9). Exposed for the inert-principal gate.}
+    require IsIntrinsic("PowerCharacteristicPolynomial") :
+        "BillereyBl: CHIMP is not attached (PowerCharacteristicPolynomial absent); AttachSpec CHIMP first";
     require Type(BaseRing(E)) eq FldNum :
         "BillereyBl: E must be defined over a number field";
     d := AbsoluteDegree(BaseRing(E));
@@ -396,6 +412,8 @@ intrinsic BillereyRq(E::CrvEll, q::RngOrdIdl) -> RngIntElt
 the prime ideal q, with the pinned deviation h = ord([q]) in Cl(K) in place of
 the class number. The full product over k = 0 .. d/2, k = 0 included. Exposed
 for the inert-principal gate (R_q = B_l for l inert, q = (l)).}
+    require IsIntrinsic("PowerCharacteristicPolynomial") :
+        "BillereyRq: CHIMP is not attached (PowerCharacteristicPolynomial absent); AttachSpec CHIMP first";
     require Type(BaseRing(E)) eq FldNum :
         "BillereyRq: E must be defined over a number field";
     require IsPrime(q) : "BillereyRq: q must be a prime ideal";
