@@ -15,7 +15,7 @@ function CanonicalizeRationalInvariants (v,w)
     d := LCM([Denominator(a):a in v]);
     for p in PrimeDivisors(d) do
         n := Max([Ceiling(Valuation(Denominator(v[i]),p)/w[i]):i in I]);
-        if n gt 0 then v := [p^(n*w[i]):i in [1..#v]]; end if;
+        if n gt 0 then v := [v[i]*p^(n*w[i]):i in [1..#v]]; end if;
     end for;
     v := [Integers()!a:a in v];
     O := [i:i in I|IsOdd(w[i])];
@@ -32,7 +32,7 @@ intrinsic NormalizedIgusaInvariants (C::CrvHyp) -> SeqEnum
 { Normalized Igusa invariants of genus 2 hyperelliptic curve (the invariants must lie in Q, but the curve need not be defined over Q). }
     require Genus(C) eq 2: "Genus 2 curve required.";
     inv := IgusaInvariants(C);
-    require &and[c in Rationals():c in inv]: "The Igusa-Clebsch invariants must lie in Q.";
+    require &and[c in Rationals():c in inv]: "The Igusa invariants must lie in Q.";
     return CanonicalizeRationalInvariants([Rationals()!c:c in inv], [2,4,6,8,10]);
 end intrinsic;
 
@@ -253,20 +253,20 @@ function BHLS3(f,g)
 end function;
 
 intrinsic Genus2Elliptic3(f::RngUPolElt,g::RngUPolElt) -> SeqEnum[CrvHyp]
-{ Given non-isomorphic elliptic curves with isomorphic 2-torsion Galois modules, returns a list of hyperelliptic curves C that is a degree-2 cover of both E1 and E2 using the algorithm given in Reinier-Howe-Lauter-Stevenhagen (MR3349314). }
+{ Given non-isomorphic elliptic curves with isomorphic 3-torsion Galois modules, returns a list of hyperelliptic curves C that is a degree-3 cover of both E1 and E2 using the algorithm given in Reinier-Howe-Lauter-Stevenhagen (MR3349314). }
     hs := BHLS3(f,g);
     return [reduce(MinimalWeierstrassModel(HyperellipticCurve(h))) : h in hs];
 end intrinsic;
 
 intrinsic Genus2Elliptic3(E1::CrvEll,E2::CrvEll) -> SeqEnum[CrvHyp]
-{ Given non-isomorphic elliptic curves with isomorphic 2-torsion Galois modules, returns a list of hyperelliptic curves C that is a degree-2 cover of both E1 and E2 using the algorithm given in Reinier-Howe-Lauter-Stevenhagen (MR3349314), which is based on Howe-Leprevost-Poonen (MR2514865). }
+{ Given non-isomorphic elliptic curves with isomorphic 3-torsion Galois modules, returns a list of hyperelliptic curves C that is a degree-3 cover of both E1 and E2 using the algorithm given in Reinier-Howe-Lauter-Stevenhagen (MR3349314), which is based on Howe-Leprevost-Poonen (MR2514865). }
     f := HyperellipticPolynomials(WeierstrassModel(E1));
     g := HyperellipticPolynomials(WeierstrassModel(E2));
     return Genus2Elliptic3(f,g);
 end intrinsic;
 
 intrinsic Genus2Elliptic3(E1::MonStgElt,E2::MonStgElt) -> SeqEnum[CrvHyp]
-{ Given non-isomorphic elliptic curves with isomorphic 2-torsion Galois modules, returns a list of hyperelliptic curves C that is a degree-2 cover of both E1 and E2 using the algorithm given in Reinier-Howe-Lauter-Stevenhagen (MR3349314), which is based on Howe-Leprevost-Poonen (MR2514865). }
+{ Given non-isomorphic elliptic curves with isomorphic 3-torsion Galois modules, returns a list of hyperelliptic curves C that is a degree-3 cover of both E1 and E2 using the algorithm given in Reinier-Howe-Lauter-Stevenhagen (MR3349314), which is based on Howe-Leprevost-Poonen (MR2514865). }
     return Genus2Elliptic3(EllipticCurve(E1),EllipticCurve(E2));
 end intrinsic;
 

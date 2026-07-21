@@ -46,6 +46,12 @@ intrinsic GluingSelfCheck() -> BoolElt
     assert Im(ws[1] / ws[2]) gt 0;
     assert Mconj^2 eq IdentityMatrix(Integers(), 2);
 
+    // NormalizedIgusaInvariants must be model-independent, including
+    // non-integral models (regression: denominator clearing dropped v[i]).
+    Qx<x> := PolynomialRing(Rationals());
+    assert NormalizedIgusaInvariants(x^5 + x/3 + 1, Qx!0)
+        eq NormalizedIgusaInvariants(9*x^5 + 3*x + 9, Qx!0);
+
     // Step 5 (BHLS numeric cross-check): for the first bhls2 corpus pair, the
     // Igusa-Clebsch invariants of every algebraically glued curve must appear,
     // up to weighted-projective normalization, among the jacobian-type
