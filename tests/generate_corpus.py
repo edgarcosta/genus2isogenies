@@ -33,6 +33,10 @@ SEED = 20260720
 MAZUR = [2, 3, 5, 7, 11, 13, 17, 19, 37, 43, 67, 163]
 ORACLE_TIMEOUT = 120   # cap (seconds) per oracle, and per-ell for the oE
                        # construction certificate (steps 2-3 of the cascade)
+ENTRY_TIMEOUT = 1800   # outer per-entry fork cap (compute_oracles): a backstop
+                       # above ORACLE_TIMEOUT in case several per-oracle/per-ell
+                       # caps chain up past it on one curve; not exercised by the
+                       # current corpus (see the "entry_timeout" drop marker)
 FROB_SCREEN_PRIMES = 40   # good primes cached per curve for the Frobenius screen
 _ACTIVE_CAP = ORACLE_TIMEOUT   # set by compute_oracles(); read by capped()
 
@@ -274,7 +278,9 @@ def _frob_data(E, base, n_primes=FROB_SCREEN_PRIMES):
     smallest norm, reused by the Frobenius screen across every ell. E.reduction
     raises at bad primes, so try/except keeps only good ones -- no conductor
     computation needed. Over QQ the primes are p; over K they are prime ideals
-    taken norm-ascending."""
+    taken norm-ascending. Runs under the caller's capped() (up to n_primes
+    PARI-backed E.reduction(...).trace_of_frobenius() calls, otherwise
+    unbounded)."""
     data = []
     if base is QQ:
         for p in prime_range(2, 2000):
@@ -335,11 +341,17 @@ def oracle_oE(E, base, deg1, dropped, stats):
     screen, then the construction certificate). Full Mazur list (incl. 163) over
     degree-one fields; primes <= 100 over number fields. E is the curve to sweep
     with base ring `base` (a Q-model for degree-one entries; see
-    deg1_curve_over_Q). Each surviving ell's steps 2-3 run under the per-ell
+    deg1_curve_over_Q). _frob_data itself runs under the ORACLE_TIMEOUT fork cap;
+    a timeout records an "oE:frob" drop and degrades to an empty screen (never a
+    false certain-negative -- see DIRECTION DISCIPLINE above: an unavailable
+    screen just contributes nothing, falling through to modpoly/construction for
+    every ell). Each surviving ell's steps 2-3 run under their own per-ell
     ORACLE_TIMEOUT fork cap; a timeout records the (curve, ell) drop, never
     silently. `stats` is filled with the per-screen hit counts for logging."""
     sweep = [ZZ(p) for p in MAZUR] if deg1 else [ZZ(p) for p in prime_range(101)]
-    frob = _frob_data(E, base)
+    frob = capped("oE:frob", lambda: _frob_data(E, base), dropped)
+    if frob is None:   # timed out: no screen data, never a false negative
+        frob = []
     jE = E.j_invariant()
     j_special = jE in (base(0), base(1728))   # skip modpoly screen at 0/1728
     out = []
@@ -533,26 +545,51 @@ def _compute_expect_for_entry(e):
     expect["dropped"] = dropped
     return (eid, expect, oe_stats)
 
-def compute_oracles(entries, cap=ORACLE_TIMEOUT):
+def compute_oracles(entries, cap=ORACLE_TIMEOUT, entry_timeout=ENTRY_TIMEOUT):
     """Attach an `expect` block to every entry in place, computing entries in
-    parallel over NCPUS forks. Returns the aggregated [(id, oracle)] drop list
-    for the emitted header. Each entry's expect block is a pure function of the
-    entry, so results are reattached BY ID in the original entry order: the
-    written corpus and emitted .m files are byte-identical regardless of the
-    order the forks finish. `cap` is the per-oracle (and per-ell oE) timeout."""
+    parallel over NCPUS forks, each capped at `entry_timeout` wall-clock seconds
+    -- a backstop above the per-oracle `cap` (e.g. many per-ell oE drops chaining
+    up on one curve could in principle exceed the per-oracle cap's sum without
+    it). Returns the aggregated [(id, oracle)] drop list for the emitted header.
+    Each entry's expect block is a pure function of the entry, so results are
+    reattached BY ID in the original entry order: the written corpus and emitted
+    .m files are byte-identical regardless of the order the forks finish. A
+    whole-entry timeout (or crash) is recorded as an "entry_timeout" drop rather
+    than crashing compute_oracles or silently omitting the entry: the entry
+    keeps its id and gets a minimal expect block, so the emitters' existing
+    None-handling (oE/cm/etc. all absent) skips its asserts cleanly instead of
+    asserting something wrong."""
     global _ACTIVE_CAP
     _ACTIVE_CAP = cap
     n = len(entries)
-    worker = parallel(ncpus=NCPUS)(_compute_expect_for_entry)
+    worker = parallel(ncpus=NCPUS, timeout=entry_timeout)(_compute_expect_for_entry)
     results = {}
     tot = {}
     done = 0
     for (_args, out) in worker([(e,) for e in entries]):
-        eid, expect, oe_stats = out
+        if isinstance(out, str) and out.startswith("NO DATA"):
+            # Whole-entry fork timeout/crash: recover the entry from the
+            # parent-side input (never round-tripped through the dead child,
+            # so it's available even though nothing came back). deg1 is cheap
+            # and safe to recompute here -- pure NumberField-degree check on
+            # stored coefficients, no PARI reduction/isogeny calls -- so the
+            # emitters' branch1-vs-branch2 classification still matches the
+            # entry's real shape; every other field is left absent, which the
+            # emitters already treat as "oracle dropped" (see e.g. `oE is
+            # None` in _sec_branch1/_sec_branch2/_sec_cm).
+            e = _args[0][0]
+            eid = e["id"]
+            try:
+                deg1 = is_deg1(sage_field(e["field"]))
+            except Exception:
+                deg1 = None
+            expect = {"deg1": deg1, "dropped": ["entry_timeout"]}
+        else:
+            eid, expect, oe_stats = out
+            for k, v in oe_stats.items():
+                tot[k] = tot.get(k, 0) + v
         results[eid] = expect
         done += 1
-        for k, v in oe_stats.items():
-            tot[k] = tot.get(k, 0) + v
         drp = expect.get("dropped") or []
         print("oracle %d/%d %s%s" % (done, n, eid,
               ("  DROPPED:" + ",".join(drp)) if drp else ""), flush=True)
