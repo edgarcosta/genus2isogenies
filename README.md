@@ -61,3 +61,67 @@ It depends on [CHIMP](https://github.com/edgarcosta/CHIMP) and [smalljac](https:
 magma -b input:="704:704.a:2159575534599616393:[[-1856,129536,-44,-2948]]:[[[-1,-1,-2,1,1,-2],[1,1,1,1]]]:[2,3]:[[-1856,129536,-44,-2948],[771904,687149056,260876,-197548868]]:[[[0,4,4,-1,-2],[0,0,0,1]],[[-1140,-5166,-4646,2135,-236,4],[1]]]:[[0,9],[9,0]]" verify.m
 ```
 
+# Gluing package
+
+`magma/gluing/` glues two elliptic curves E1, E2/Q along their full n-torsion (n >= 2): an anti-symplectic isomorphism psi : E1[n] -> E2[n] (a determinant -1 matrix in symplectic period bases) has graph a maximal isotropic subgroup of (E1 x E2)[n], and the quotient (E1 x E2)/graph(psi) is a principally polarized abelian surface reached from E1 x E2 by a degree n^2 isogeny (Algorithm 3.4 of the paper, the "split, non-square" case). `Genus2Gluings` returns every genus-2 curve over Q whose Jacobian arises this way, with a certificate of how completely the search was verified.
+
+Attach the repository spec:
+```
+AttachSpec("spec");
+```
+or, in `~/.magmarc`, for every session:
+```
+AttachSpec("~/projects/genus2isogenies/spec");
+```
+
+## Genus2Gluings
+
+```
+intrinsic Genus2Gluings(E1::CrvEll, E2::CrvEll, n::RngIntElt
+    : Algorithm := "Auto", Precision := false, Proof := "Auto", TraceBound := 1000)
+    -> SeqEnum, Rec
+```
+- `Algorithm`: `"Auto"` (BHLS closed formulas, Broker-Howe-Lauter-Stevenhagen, when n is 2 or 3 and E1, E2 are non-isomorphic; analytic periods otherwise), `"Algebraic"` (BHLS only, n in {2, 3}), or `"Periods"` (always analytic). The paths agree byte-for-byte on curves with automorphism group of order 2; see Limitations for order > 2.
+- `Precision := false`: analytic precision in decimal digits; `false` uses a heuristic growing with n and the curves' height.
+- `Proof := "Auto"`: drives the exact completeness certificate. `"Auto"` attempts it for prime blocks with ell <= 13, but its Galois-group-size cutoff (DegreeBound 2400) means it typically only succeeds up to ell = 5 for a generic pair (ell = 7 for congruent mod-ell pairs), else falling back to `"traces-only"`; `true` requires it for every prime block and hard-errors if the exact layer declines; `false` skips it. Any boolean expression works, e.g. `Proof := n le 17` in a sweep to demand certification up to a chosen cutoff.
+- `TraceBound := 1000`: good primes checked when pinning the quadratic twist against E1 x E2's Euler factors.
+
+Also overloaded for `y^2 = f1`, `y^2 = f2` (univariate cubics/quartics) and for Cremona labels as strings, e.g. `Genus2Gluings("99a2", "99b3", 6)`; the string overload accepts Cremona labels only.
+
+## Example
+
+```
+> cs, info := Genus2Gluings(EllipticCurve("99a2"), EllipticCurve("99b3"), 6);
+> #cs, info`proof;
+2 certified
+> [[Coefficients(f), Coefficients(h)] where f, h := HyperellipticPolynomials(c) : c in cs];
+[
+    [ [ -27144, -68508, -129969, -136548, -113692, -52454, -18424 ], [ 0, 0, 1, 1 ] ],
+    [ [ 0, -48, 105, -126, 44, -17, 2 ], [ 0, 0, 1, 1 ] ]
+]
+```
+Both curves are certified: the 2-block and 3-block each carry an exact completeness certificate, and their CRT combination matches the analytic count at the composite level n = 6.
+
+`AllGenus2Gluings(E1, E2)` sweeps every pair of curves isogenous to E1, E2 and every level dividing `GluingModulus(E1, E2)`, since a gluing of the class representatives need not be a gluing of E1, E2 themselves. `AllGenus2Gluings(EllipticCurve("26a3"), EllipticCurve("78a4"))` sweeps 3 x 4 x 1 = 12 (pair, level) combinations and returns 7 curves, including the LMFDB genus-2 curve 2028.a.64896.1 as a (5,5)-gluing of 26a3 and 78a1 (a different member of 78a4's class) rather than of 78a4 directly, alongside the direct pair's own certified gluing.
+
+## Corpus and runner
+
+`data/gluing_corpus.txt` (28 curated entries, format in its header) and `check_gluing.m` regression-test the package:
+```
+magma -b check_gluing.m                            # full corpus, Algorithm "Auto"
+magma -b algorithm:=Periods check_gluing.m          # force the analytic path
+magma -b tags:=bhls2,lmfdb check_gluing.m           # only entries tagged bhls2 or lmfdb
+magma -b line:="<one corpus line>" check_gluing.m   # a single entry
+magma -b oracle:=1 tags:=bhls2,bhls3 check_gluing.m # bypass Genus2Gluings, call BHLS directly
+parallel -a data/gluing_corpus.txt magma -b line:={} check_gluing.m   # one process per line
+```
+`printf 'AttachSpec("spec"); print GluingSelfCheck();\nquit;\n' | magma -b` runs the package's own smoke test (about 2.5 minutes) and should print `true`. `make_gluing_corpus.m` regenerates candidate BHLS corpus entries by scanning Cremona curves for isomorphic-torsion pairs.
+
+## Limitations
+
+Bielliptic gluings (Jacobian automorphism group order > 2) are produced only by the Algebraic (BHLS) path at n in {2, 3}; the Periods path recognizes them analytically but cannot certify the right non-quadratic twist, so it drops them rather than emit a wrong curve. Over a number field K (experimental): recognition still targets Q, the completeness proof is `"traces-only"` except for congruence-certified-empty blocks, only the first real infinite place of K is used, and only prime-power n is supported; a genuinely productive K gluing currently ends in a loud "ambiguous twist" error, since the candidate curve and its disc(K)-twist are K-isomorphic and v1 has no way to choose between them. Ambiguous-twist and certificate-mismatch situations are always hard errors, never silent. There is no exact completeness layer for e >= 2 or composite blocks in v1; those levels are certified only via congruence or reduction to the prime level.
+
+## Future work
+
+Theta evaluation should move to FLINT acb/arb ball arithmetic as in HDME, making the numeric side certified; a candidate FLINT contribution alongside the acb_ppav work.
+
