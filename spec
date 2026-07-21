@@ -11,6 +11,7 @@
       recognize.m
       exact.m
       gluings.m
+      driver.m
       selfcheck.m
     }
   }

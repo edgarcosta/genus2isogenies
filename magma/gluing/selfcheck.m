@@ -162,5 +162,22 @@ intrinsic GluingSelfCheck() -> BoolElt
     assert #csp2 eq 2 and ip2`proof eq "certified"
         and forall{b : b in ip2`blocks | b[5]};
 
+    // driver.m (Task 12, Algorithm 3.4): AllGenus2Gluings sweeps the full isogeny classes of
+    // both curves and every divisor n >= 2 of GluingModulus. The lmfdb corpus pair 26a3 x 78a4
+    // (data/gluing_corpus.txt) has GluingModulus 5 (a single divisor n = 5), so this is a
+    // 3 x 4 x 1 = 12-call sweep. The LMFDB witness curve for 2028.a.64896.1 is a (5,5)-gluing
+    // of 26a3 x 78a1 (a different member of 78a4's class), NOT of 26a3 x 78a4 directly; the
+    // driver must recover it by sweeping the classes, alongside the direct pair's own
+    // certified (5,5)-gluing (the corpus's recorded Genus2Gluings(26a3, 78a4, 5) output).
+    t0 := Cputime();
+    csAllg, infoAllg := AllGenus2Gluings(EllipticCurve("26a3"), EllipticCurve("78a4"));
+    vprintf Gluing: "GluingSelfCheck: AllGenus2Gluings(26a3, 78a4) took %o s\n", Cputime(t0);
+    Qxd := PolynomialRing(Rationals());
+    witnessC := CanonicalGluingList([HyperellipticCurve(Qxd![5,9,6,6,4,1,1], Qxd![0,1,1])])[1];
+    directC := CanonicalGluingList([HyperellipticCurve(Qxd![0,-4,-57,-159,246,-105,14], Qxd![0,1,0,1])])[1];
+    assert infoAllg`N eq 5 and infoAllg`classsizes eq <3, 4> and infoAllg`proof eq "certified";
+    assert exists{c : c in csAllg | IsIsomorphic(c, witnessC)};
+    assert exists{c : c in csAllg | IsIsomorphic(c, directC)};
+
     return true;
 end intrinsic;
