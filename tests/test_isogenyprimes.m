@@ -83,6 +83,65 @@ procedure Test_gates()
     assert b1 ne 0;
     assert b1 eq b2;                       // isomorphism invariance
     assert b2 eq BillereyRq(Es, q13);      // R_q = B_l gate on the inert principal q, both models
+    // gate: bracket/Adams (PowerCharacteristicPolynomial) and star
+    // product (TensorCharacteristicPolynomial) identities, with the
+    // k = 0 term ComposePower(.,0) = P(1) pinned through BillereyBl/Rq;
+    // integers recorded from the engine on 2026-07-21.
+    Zx<xg> := PolynomialRing(Integers());
+    K29g<w29g> := BuildField([-29, 0, 1]);
+    OK29g := Integers(K29g);
+    assert PowerCharacteristicPolynomial((xg-2)*(xg-3), 5) eq (xg - 2^5)*(xg - 3^5);
+    // Inert principal q = (3): the R_q k = 0 factor is Evaluate(P, 1).
+    Egate29 := EllipticCurve([ K29g | 0, -1, 1, -10, -20 ]);
+    q3g := ideal< OK29g | 3 >;
+    assert IsPrime(q3g) and Norm(q3g) eq 9;
+    assert FrobeniusCharpoly(Egate29, q3g) eq xg^2 + 5*xg + 9;
+    P3g := PowerCharacteristicPolynomial(xg^2 + 5*xg + 9, 12);
+    assert P3g eq xg^2 - 781282*xg + 282429536481;
+    assert Evaluate(P3g, 1) eq 282428755200;          // k = 0 term is P(1)
+    assert Evaluate(P3g, 3^12) eq 149653785600;
+    assert BillereyRq(Egate29, q3g) eq 42266532377975685120000;
+    assert BillereyBl(Egate29, 3) eq 42266532377975685120000;   // inert q=(l): R_q = B_l
+    assert BillereyRq(Egate29, q3g) eq Evaluate(P3g, 1)*Evaluate(P3g, 3^12);
+    // Split prime 7: the star product of the two prime-above Adams factors.
+    Estar29 := EllipticCurve([ K29g | 0, 0, 0, w29g, 1 ]);
+    q7sg := [ z[1] : z in Factorization(ideal< OK29g | 7 >) ];
+    assert #q7sg eq 2;
+    assert { FrobeniusCharpoly(Estar29, q) : q in q7sg } eq { xg^2 - 3*xg + 7, xg^2 + 4*xg + 7 };
+    pcpAg := PowerCharacteristicPolynomial(xg^2 - 3*xg + 7, 12);
+    pcpBg := PowerCharacteristicPolynomial(xg^2 + 4*xg + 7, 12);
+    assert pcpAg eq xg^2 - 136802*xg + 13841287201;
+    assert pcpBg eq xg^2 + 153502*xg + 13841287201;
+    S7g := TensorCharacteristicPolynomial(pcpAg, pcpBg);   // the star product
+    assert S7g eq xg^4 + 20999380604*xg^3 + 202014649792499760006*xg^2
+        + 4023087194343502505106185678204*xg
+        + 36703368217294125441230211032033660188801;
+    assert BillereyBl(Estar29, 7) eq
+        8202408623999718705753864179205757894292526928349291149330886396051384418598649856;
+    // k = 0 factor Evaluate(.,1) included: dropping it changes B_l.
+    assert BillereyBl(Estar29, 7) eq Evaluate(S7g, 1)*Evaluate(S7g, 7^12);
+    // gate: pinned h = ord([q]) deviation; K = Q(sqrt -23), h_K = 3.
+    // R_q at the inert principal q = (5) uses h = ord([q]) = 1, not h_K;
+    // reverting to h_K = 3 changes this integer. Recorded 2026-07-21.
+    K23g := BuildField([23, 0, 1]);
+    OK23g := Integers(K23g);
+    E23g := EllipticCurve([ K23g | 1, 1, 0, 1, 0 ]);
+    Cl23g, mCl23g := ClassGroup(K23g);
+    assert #Cl23g eq 3;
+    q23g := ideal< OK23g | 5 >;
+    assert IsPrime(q23g) and Norm(q23g) eq 25 and IsPrincipal(q23g);
+    assert Order(q23g @@ mCl23g) eq 1;              // ord([q]) = 1 < h_K = 3
+    assert Order(q23g @@ mCl23g) lt #Cl23g;
+    q23npg := Factorization(ideal< OK23g | 2 >)[1][1];   // nonprincipal witness
+    assert IsPrime(q23npg) and not IsPrincipal(q23npg) and Order(q23npg @@ mCl23g) eq 3;
+    assert FrobeniusCharpoly(E23g, q23g) eq xg^2 + 6*xg + 25;
+    P23g := PowerCharacteristicPolynomial(xg^2 + 6*xg + 25, 12);
+    assert P23g eq xg^2 - 64250786*xg + 59604644775390625;
+    assert Evaluate(P23g, 1) eq 59604644711139840;
+    assert Evaluate(P23g, 5^12) eq 103523062500000000;
+    assert BillereyRq(E23g, q23g) eq 6170455359721624102560000000000000;
+    assert BillereyBl(E23g, 5) eq 6170455359721624102560000000000000;   // inert q=(5): R_q = B_l
+    assert BillereyRq(E23g, q23g) eq BillereyBl(E23g, 5);
     printf "SECTION gates: PASS\n";
 end procedure;
 
@@ -2355,6 +2414,20 @@ procedure Test_congruence()
     L, info := CongruencePrimes(E1, E2);        // fixture-cong-control
     assert info`Kind eq "Finite";
     assert Set(L) eq { Integers() | };
+    K := BuildField([-29, 0, 1]);
+    E1 := BuildCurve(K, [ [0, 0], [-1, 0], [1, 0], [-10, 0], [-20, 0] ]);
+    E2 := BuildCurve(K, [ [0, 0], [4, 0], [0, 0], [-160, 0], [1264, 0] ]);
+    Ltw, infoTw := CongruencePrimes(E1, E2 : KnownIsogenous := false,
+        NormBound := 6, MaxNormBound := 6,
+        CertificationPrimeBound := 5, CertificationDepth := 1);  // fixture-cong-twist-fldnum
+    assert infoTw`Kind eq "Undecided";     // BFS ran, same-j node rejected
+    assert infoTw`Kind ne "AllPrimes";     // twist guard: same j must not certify
+    assert infoTw`BoundsUsed eq [ 6, 5, 1 ];   // [MaxNormBound, CertPrimeBound, CertDepth]
+    assert infoTw`BoundsUsed[2] ne 0;      // BFS path, not the degree-1 short circuit
+    L, info := CongruencePrimes(E1, E2 : KnownIsogenous := false);   // default bounds
+    assert info`Kind eq "Finite";          // norm-7 place separates the pair
+    assert 2 in Set(L);                    // quadratic twist => 2-congruent
+    assert Set(L) eq { 2 };
     printf "SECTION congruence: PASS\n";
 end procedure;
 

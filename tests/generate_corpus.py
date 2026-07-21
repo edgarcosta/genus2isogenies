@@ -280,6 +280,36 @@ def assemble_inputs(data):
     assert c_ainvs == (0, 0, 343, -2401, 0)
     es.append(entry("fixture-h1-37a1", "fixture-h1", K6m,
                     EllipticCurve(K6m, list(c_ainvs))))
+    # fixture-cong-twist-fldnum: degree-two same-j twist BFS gate over
+    # Q(sqrt 29). E = 11a1 base-changed (E11 above); E' = its quadratic twist by
+    # -1 (all-rational model [0,4,0,-160,1264], same j, non-isomorphic). The
+    # first prime good for both curves whose Frobenius charpolies differ has
+    # norm 7, so CongruencePrimes at cap 6 (below 7, but above the two good
+    # norm-5 primes) reaches G = 0 and the degree-two certification BFS runs; it
+    # must REFUSE to certify the same-j-but-non-isomorphic node (Undecided,
+    # never AllPrimes), the case a degree-one short circuit ([_,0,0]) and a
+    # j-only matcher (AllPrimes) both get wrong. Placed last (like fixture-h1)
+    # so its conductor/factoring calls cannot perturb the shared PRNG the
+    # diff-* draws above depend on.
+    E11tw = E11.quadratic_twist(K29(-1))
+    assert list(E11tw.ainvs()) == [0, 4, 0, -160, 1264]
+    assert not K29(-1).is_square()
+    assert E11.j_invariant() == E11tw.j_invariant()
+    assert not E11.is_isomorphic(E11tw)
+    _Tw = PolynomialRing(ZZ, 'Tw').gen()
+    def _twist_fcp(E, P):
+        return _Tw**2 - ZZ(E.reduction(P).trace_of_frobenius()) * _Tw + ZZ(P.norm())
+    _tw_places = [P for p in prime_range(2, 50) for P in K29.primes_above(p)]
+    _tw_common_good = [P for P in _tw_places
+                       if E11.conductor().valuation(P) == 0
+                       and E11tw.conductor().valuation(P) == 0]
+    _tw_sep = [P for P in _tw_common_good
+               if _twist_fcp(E11, P) != _twist_fcp(E11tw, P)]
+    assert min(ZZ(P.norm()) for P in _tw_sep) == 7   # first separating norm
+    assert all(_twist_fcp(E11, P) == _twist_fcp(E11tw, P)
+               for P in _tw_common_good if P.norm() <= 6)   # cap 6 forces G = 0
+    es.append(entry("fixture-cong-twist-fldnum", "fixture-cong-twist-fldnum",
+                    K29, E11, E11tw))
     return data
 
 # ===========================================================================
@@ -805,9 +835,90 @@ def _sec_golden(gates):
     L.append("end procedure;\n")
     return "\n".join(L)
 
+def _gate_g1():
+    """G1 block: bracket/Adams (PowerCharacteristicPolynomial) and star-product
+    (TensorCharacteristicPolynomial) identities, plus the k = 0 term
+    ComposePower(.,0) = P(1), routed through the exposed CHIMP intrinsics and
+    BillereyBl/BillereyRq. The private StarProductPolys/ComposePower are hit
+    indirectly. Every integer recorded from the engine on 2026-07-21; t0b's S7
+    x^2 coefficient (and the B_l value derived from it) was an arithmetic slip,
+    so the star product is pinned here from TensorCharacteristicPolynomial."""
+    return [
+        "    // gate: bracket/Adams (PowerCharacteristicPolynomial) and star",
+        "    // product (TensorCharacteristicPolynomial) identities, with the",
+        "    // k = 0 term ComposePower(.,0) = P(1) pinned through BillereyBl/Rq;",
+        "    // integers recorded from the engine on 2026-07-21.",
+        "    Zx<xg> := PolynomialRing(Integers());",
+        "    K29g<w29g> := BuildField([-29, 0, 1]);",
+        "    OK29g := Integers(K29g);",
+        "    assert PowerCharacteristicPolynomial((xg-2)*(xg-3), 5) eq (xg - 2^5)*(xg - 3^5);",
+        "    // Inert principal q = (3): the R_q k = 0 factor is Evaluate(P, 1).",
+        "    Egate29 := EllipticCurve([ K29g | 0, -1, 1, -10, -20 ]);",
+        "    q3g := ideal< OK29g | 3 >;",
+        "    assert IsPrime(q3g) and Norm(q3g) eq 9;",
+        "    assert FrobeniusCharpoly(Egate29, q3g) eq xg^2 + 5*xg + 9;",
+        "    P3g := PowerCharacteristicPolynomial(xg^2 + 5*xg + 9, 12);",
+        "    assert P3g eq xg^2 - 781282*xg + 282429536481;",
+        "    assert Evaluate(P3g, 1) eq 282428755200;          // k = 0 term is P(1)",
+        "    assert Evaluate(P3g, 3^12) eq 149653785600;",
+        "    assert BillereyRq(Egate29, q3g) eq 42266532377975685120000;",
+        "    assert BillereyBl(Egate29, 3) eq 42266532377975685120000;   // inert q=(l): R_q = B_l",
+        "    assert BillereyRq(Egate29, q3g) eq Evaluate(P3g, 1)*Evaluate(P3g, 3^12);",
+        "    // Split prime 7: the star product of the two prime-above Adams factors.",
+        "    Estar29 := EllipticCurve([ K29g | 0, 0, 0, w29g, 1 ]);",
+        "    q7sg := [ z[1] : z in Factorization(ideal< OK29g | 7 >) ];",
+        "    assert #q7sg eq 2;",
+        "    assert { FrobeniusCharpoly(Estar29, q) : q in q7sg } eq { xg^2 - 3*xg + 7, xg^2 + 4*xg + 7 };",
+        "    pcpAg := PowerCharacteristicPolynomial(xg^2 - 3*xg + 7, 12);",
+        "    pcpBg := PowerCharacteristicPolynomial(xg^2 + 4*xg + 7, 12);",
+        "    assert pcpAg eq xg^2 - 136802*xg + 13841287201;",
+        "    assert pcpBg eq xg^2 + 153502*xg + 13841287201;",
+        "    S7g := TensorCharacteristicPolynomial(pcpAg, pcpBg);   // the star product",
+        "    assert S7g eq xg^4 + 20999380604*xg^3 + 202014649792499760006*xg^2",
+        "        + 4023087194343502505106185678204*xg",
+        "        + 36703368217294125441230211032033660188801;",
+        "    assert BillereyBl(Estar29, 7) eq",
+        "        8202408623999718705753864179205757894292526928349291149330886396051384418598649856;",
+        "    // k = 0 factor Evaluate(.,1) included: dropping it changes B_l.",
+        "    assert BillereyBl(Estar29, 7) eq Evaluate(S7g, 1)*Evaluate(S7g, 7^12);",
+    ]
+
+def _gate_g2():
+    """G2 block: the ord([q]) < h_K deviation. R_q at the inert principal
+    q = (5) of K = Q(sqrt -23) (h_K = 3) uses h = ord([q]) = 1, not h_K, so a
+    nonprincipal prime above 2 witnesses class order 3. The pinned integer
+    (recorded from the engine on 2026-07-21) agrees with the independent
+    computation; reverting to h_K = 3 changes it."""
+    return [
+        "    // gate: pinned h = ord([q]) deviation; K = Q(sqrt -23), h_K = 3.",
+        "    // R_q at the inert principal q = (5) uses h = ord([q]) = 1, not h_K;",
+        "    // reverting to h_K = 3 changes this integer. Recorded 2026-07-21.",
+        "    K23g := BuildField([23, 0, 1]);",
+        "    OK23g := Integers(K23g);",
+        "    E23g := EllipticCurve([ K23g | 1, 1, 0, 1, 0 ]);",
+        "    Cl23g, mCl23g := ClassGroup(K23g);",
+        "    assert #Cl23g eq 3;",
+        "    q23g := ideal< OK23g | 5 >;",
+        "    assert IsPrime(q23g) and Norm(q23g) eq 25 and IsPrincipal(q23g);",
+        "    assert Order(q23g @@ mCl23g) eq 1;              // ord([q]) = 1 < h_K = 3",
+        "    assert Order(q23g @@ mCl23g) lt #Cl23g;",
+        "    q23npg := Factorization(ideal< OK23g | 2 >)[1][1];   // nonprincipal witness",
+        "    assert IsPrime(q23npg) and not IsPrincipal(q23npg) and Order(q23npg @@ mCl23g) eq 3;",
+        "    assert FrobeniusCharpoly(E23g, q23g) eq xg^2 + 6*xg + 25;",
+        "    P23g := PowerCharacteristicPolynomial(xg^2 + 6*xg + 25, 12);",
+        "    assert P23g eq xg^2 - 64250786*xg + 59604644775390625;",
+        "    assert Evaluate(P23g, 1) eq 59604644711139840;",
+        "    assert Evaluate(P23g, 5^12) eq 103523062500000000;",
+        "    assert BillereyRq(E23g, q23g) eq 6170455359721624102560000000000000;",
+        "    assert BillereyBl(E23g, 5) eq 6170455359721624102560000000000000;   // inert q=(5): R_q = B_l",
+        "    assert BillereyRq(E23g, q23g) eq BillereyBl(E23g, 5);",
+    ]
+
 def _sec_gates():
     """Raw engine gates: pure Magma identities of the exposed intrinsics, no
-    Sage oracle. Each block is self-contained; later tasks append more blocks."""
+    Sage oracle. The model-invariance block, G1 (bracket/star/k=0 identities),
+    and G2 (ord([q]) < h_K deviation) are each self-contained; xg from G1's
+    PolynomialRing is reused by G2."""
     u = 13
     a1, a2, a3, a4, a6 = 0, -1, 1, -10, -20            # 11a1
     sc = [a1 * u, a2 * u**2, a3 * u**3, a4 * u**4, a6 * u**6]
@@ -823,9 +934,11 @@ def _sec_gates():
          "    b2 := BillereyBl(Es, 13);",
          "    assert b1 ne 0;",
          "    assert b1 eq b2;                       // isomorphism invariance",
-         "    assert b2 eq BillereyRq(Es, q13);      // R_q = B_l gate on the inert principal q, both models",
-         '    printf "SECTION gates: PASS\\n";',
-         "end procedure;\n"]
+         "    assert b2 eq BillereyRq(Es, q13);      // R_q = B_l gate on the inert principal q, both models"]
+    L += _gate_g1()
+    L += _gate_g2()
+    L += ['    printf "SECTION gates: PASS\\n";',
+          "end procedure;\n"]
     return "\n".join(L)
 
 def _sec_branch1(entries):
@@ -924,6 +1037,24 @@ def _sec_congruence(congs):
             L.append('    assert info`Kind eq "AllPrimes";            // absolute-degree dispatch, certified')
             L.append("    assert info`Exact;")
             L.append('    assert info`CertificationMethod eq "IsIsogenous";')
+        elif eid == "fixture-cong-twist-fldnum":
+            # gate: degree-two same-j twist. cap 6 < first separating norm 7, so
+            # G = 0 and the certification BFS runs; it must refuse to certify a
+            # same-j-but-non-isomorphic twist. Reduced bounds keep the BFS cheap;
+            # BoundsUsed[2] ne 0 distinguishes this from the degree-1 short
+            # circuit. Default bounds sample the norm-7 separator -> Finite {2}.
+            # Recorded from the engine on 2026-07-21.
+            L.append("    Ltw, infoTw := CongruencePrimes(E1, E2 : KnownIsogenous := false,")
+            L.append("        NormBound := 6, MaxNormBound := 6,")
+            L.append("        CertificationPrimeBound := 5, CertificationDepth := 1);  // %s" % eid)
+            L.append('    assert infoTw`Kind eq "Undecided";     // BFS ran, same-j node rejected')
+            L.append('    assert infoTw`Kind ne "AllPrimes";     // twist guard: same j must not certify')
+            L.append("    assert infoTw`BoundsUsed eq [ 6, 5, 1 ];   // [MaxNormBound, CertPrimeBound, CertDepth]")
+            L.append("    assert infoTw`BoundsUsed[2] ne 0;      // BFS path, not the degree-1 short circuit")
+            L.append("    L, info := CongruencePrimes(E1, E2 : KnownIsogenous := false);   // default bounds")
+            L.append('    assert info`Kind eq "Finite";          // norm-7 place separates the pair')
+            L.append("    assert 2 in Set(L);                    // quadratic twist => 2-congruent")
+            L.append("    assert Set(L) eq { 2 };")
         elif strat == "fixture-cong-isogenous":
             L.append("    L, info := CongruencePrimes(E1, E2);")
             L.append('    assert info`Source eq "CongruencePrimes";  // %s' % eid)

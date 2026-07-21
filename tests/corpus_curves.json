@@ -13080,6 +13080,77 @@
     "soft_reducible": [],
     "dropped": []
    }
+  },
+  {
+   "id": "fixture-cong-twist-fldnum",
+   "stratum": "fixture-cong-twist-fldnum",
+   "field": [
+    "-29",
+    "0",
+    "1"
+   ],
+   "curve": {
+    "model": "ainvs",
+    "ainvs": [
+     [
+      "0",
+      "0"
+     ],
+     [
+      "-1",
+      "0"
+     ],
+     [
+      "1",
+      "0"
+     ],
+     [
+      "-10",
+      "0"
+     ],
+     [
+      "-20",
+      "0"
+     ]
+    ]
+   },
+   "curve2": {
+    "model": "ainvs",
+    "ainvs": [
+     [
+      "0",
+      "0"
+     ],
+     [
+      "4",
+      "0"
+     ],
+     [
+      "0",
+      "0"
+     ],
+     [
+      "-160",
+      "0"
+     ],
+     [
+      "1264",
+      "0"
+     ]
+    ]
+   },
+   "expect": {
+    "deg1": false,
+    "cong": {
+     "primes": [
+      2
+     ],
+     "kind": "Finite",
+     "stabilized": true,
+     "bound": 2000
+    },
+    "dropped": []
+   }
   }
  ]
 }
