@@ -1,13 +1,15 @@
 /*
  * Genus2Gluings: the headline intrinsic. Given elliptic curves E1, E2 over Q
- * and a prime n, return every genus-2 curve C over Q whose Jacobian is the
+ * and any n >= 2, return every genus-2 curve C over Q whose Jacobian is the
  * (E1 x E2)/graph(psi) gluing along full n-torsion, together with a GluingInfo
- * record of provenance and certificates.
+ * record of provenance and certificates. A composite n is composed from its
+ * prime-power blocks by CRT (gluingCompositeCRT); a prime power n = ell^e runs
+ * the pipeline below directly.
  *
  * Pipeline:
- *   1. require prime n (general n is Tasks 10-11), base field Q, and the
- *      Algorithm parameter's applicability (e.g. "Algebraic" implies n in
- *      {2, 3} and non-isomorphic E1, E2), before anything else runs.
+ *   1. require n >= 2, base field Q, and the Algorithm parameter's applicability
+ *      (e.g. "Algebraic" implies n in {2, 3} and non-isomorphic E1, E2), before
+ *      anything else runs. Composite n dispatches to gluingCompositeCRT here.
  *   2. Congruence prefilter: if GluingModulus is conclusive and n does not
  *      divide it, no gluing exists; return empty with proof "certified".
  *   3. Dispatch:
@@ -363,37 +365,250 @@ function gluingRecognizeSurvivors(E1, E2, survivors, m, prec)
     return recIC, recPsi, products, usedPrec;
 end function;
 
+// Level-n recognition for the composite path (gluingCompositeCRT). Same shape as
+// gluingRecognizeSurvivors but the precision-doubling watches BOTH the jacobian and the
+// product recognition counts: a composite (n, n)-gluing is often product-type (a stable graph
+// whose quotient decomposes, e.g. 54a1 x 54b1 at n = 6), and its two near-real j-invariants can
+// need more digits than the level-n heuristic gives, so a jacobian-only retry (as in
+// gluingRecognizeSurvivors, which the e >= 2 prime-power path relies on unchanged) would break
+// out immediately with the products undercounted. Doubles while the total recognized count
+// (jacobian + product tuples, no {psi, -psi} dedup: this is the GRAPH count the certificate
+// compares) strictly grows and a near-real quotient stays unrecognized, at most 3 times.
+function gluingRecognizeComposite(E1, E2, survivors, m, prec)
+    doublings := 0; prevRec := -1;
+    recIC := []; recPsi := []; products := []; usedPrec := prec;
+    while true do
+        ws1 := EllipticPeriodBasis(E1, prec);
+        ws2 := EllipticPeriodBasis(E2, prec);
+        usedPrec := fieldPrecision(Universe(ws1));
+        gate := 10^(-(usedPrec div 2));
+        recIC := []; recPsi := []; products := []; nearFail := 0;
+        for psi in survivors do
+            typ, inv := NumericInvariants(SmallFromBig(GluedBigPeriodMatrix(ws1, ws2, psi, m)));
+            if typ eq "product" then
+                ok1, j1 := RecognizeRational(inv[1]);
+                ok2, j2 := RecognizeRational(inv[2]);
+                if ok1 and ok2 then
+                    Append(~products, <j1, j2>);
+                elif forall{j : j in inv | Abs(Im(j)) lt gate} then
+                    nearFail +:= 1;   // near-real product j's unrecognized: a precision shortfall
+                end if;
+                continue;
+            end if;
+            okIC, ICQ := RecognizeIgusaClebsch(inv);
+            if okIC then
+                Append(~recIC, ICQ); Append(~recPsi, psi);
+            elif IgusaClebschNearRational(inv) then
+                nearFail +:= 1;
+            end if;
+        end for;
+        totalRec := #recIC + #products;
+        if nearFail eq 0 or doublings ge 3 or totalRec le prevRec then
+            if nearFail gt 0 then
+                vprintf Gluing: "gluingCompositeCRT: %o near-real quotient(s) unrecognized, dropping\n", nearFail;
+            end if;
+            break;
+        end if;
+        prevRec := totalRec; prec := 2 * usedPrec; doublings +:= 1;
+    end while;
+    return recIC, recPsi, products, usedPrec;
+end function;
+
+// -------- Composite levels n = prod ell_i^e_i via CRT composition (Task 11) --------
+//
+// (Z/n)^2 = direct sum_i (Z/ell_i^e_i)^2 by CRT, so an anti-symplectic psi mod n is exactly
+// a CRT tuple of anti-symplectic psi_i mod ell_i^e_i (det psi = -1 mod n iff det psi_i = -1
+// mod ell_i^e_i for every i). E[n] = direct sum_i E[ell_i^e_i] as Galois modules, so
+// graph(psi) is Galois-stable iff every block graph(psi_i) is stable. Hence: sweep each
+// prime-power block for its rational-looking survivor psi_i (gluingLiftSweep, the same
+// per-block pipeline the prime-power path uses), CRT every combination of block survivors
+// (CRTAntiSymplectic) into a psi mod n, run the analytic quotient at level n on those
+// combinations only, and finish through the recognition/reconstruction/twist phase
+// (gluingRecognizeComposite + the shared gluingEmitCurves). The level-n recognition is the precise gate:
+// a CRT tuple that mixes any block's rational-LOOKING-but-not-stable look-alike is not
+// Galois-stable at n, so its level-n quotient is not Q-rational and drops out, leaving exactly
+// the genuine stable gluings (per-block sweeps are kept full both-sign so no combination is
+// missed).
+//
+// Certificate, at the GRAPH level. The exact layer (exact.m) runs at each block's PRIME
+// level. A composite graph is stable iff every block graph is, so the composite stable GRAPH
+// count is the PRODUCT of the per-block stable graph counts. Graph, not quotient: the
+// {psi, -psi} identification (-1 mod n negates every block at once) means orbit counts do NOT
+// multiply across several odd blocks (|tuples| = prod graphs_i, orbits = |tuples|/2 for n > 2,
+// so prod(orbits_i) undercounts by 2^(#oddblocks - 1)); multiplying at the graph level
+// sidesteps that. The analytic side counts graphs too: one recognized rational tuple = one
+// graph, no {psi, -psi} dedup (#recIC jacobian + #products product). certified iff every block
+// certified AND the analytic graph count equals the product of block graph counts; a
+// disagreement is the same hard error as the prime certificate, ell replaced by n. If any
+// block is certified empty (congruence obstruction on its ell^e-part, exact count 0, or the
+// e >= 2 certified-empty-by-reduction) the composite is certified empty and returns early.
+// Composite products are NOT rational-isogeny gated (unlike the prime path): the level-n
+// recognition already discards non-stable graphs, and a genuine product block-gluing need not
+// give either curve a rational ell-isogeny; a residual look-alike would surface as a loud
+// certificate mismatch, never a silent false certification.
+function gluingCompositeCRT(E1, E2, n, PrecParam, Proof, TraceBound)
+    fact := Factorization(n);
+    k := #fact;
+    ells := [f[1] : f in fact];
+    es := [f[2] : f in fact];
+    moduli := [ells[i]^es[i] : i in [1 .. k]];
+    strict := (Proof cmpeq true);
+    // The exact certificate assumes Aut(E1 x E2) = {+-1}^2. A Q-isogeny (Hom over Q) enlarges
+    // it, as the prime path already documents; so does a GEOMETRIC one, which for the block
+    // counts to compose must be excluded here too. A shared j-invariant is the common witness
+    // (E1, E2 isomorphic over Qbar, the twist-family degeneracy, e.g. 54a1 x 54b1, j = 9261/8):
+    // the CRT of stable BLOCK graphs stays valid, but such a graph's level-n quotient need not
+    // be a recognizable rational curve, so prod(block graph counts) over-predicts the analytic
+    // count. These pairs are left traces-only rather than risking a spurious mismatch abort.
+    degenerate := IsIsogenous(E1, E2) or (jInvariant(E1) eq jInvariant(E2));
+
+    // Congruence prefilter first: a rational n-gluing forces n | GluingModulus, and n | N iff
+    // every ell_i^e_i | N. When N is conclusive and n does not divide it, each block whose
+    // ell^e-part fails to divide N is congruence-certified empty, so the composite is.
+    N, inconclusive := GluingModulus(E1, E2);
+    if (not inconclusive) and (N mod n ne 0) then
+        blocks := [];
+        for i in [1 .. k] do
+            if N mod moduli[i] ne 0 then
+                Append(~blocks, <ells[i], es[i], 0, 0, true>);
+            else
+                Append(~blocks, <ells[i], es[i], -1, -1, false>);
+            end if;
+        end for;
+        info := rec< gluingInfoFmt() | n := n, proof := "certified",
+            blocks := blocks, psis := [], products := [],
+            precision := 0, tracebound := TraceBound >;
+        return emptyCurves(), info;
+    end if;
+
+    // Per-block: exact certified-empty short-circuit + rational-looking survivor sweep.
+    blockTuples := [];
+    blockGraphCounts := [];
+    blockSurvivorsFull := [* *];
+    allCertified := true;
+    for i in [1 .. k] do
+        ell := ells[i]; e := es[i];
+        // Mirror the prime path: exact certifies "Auto" blocks up to ell = 13, true every
+        // prime, and never runs for isogenous pairs (Aut(E1 x E2) then exceeds {+-1}^2).
+        runExactBlock := ((Proof cmpeq true) or (Proof cmpeq "Auto" and ell le 13)) and not degenerate;
+        stableOrbit := -1; graphCount := -1; certified := false;
+        if runExactBlock then
+            so, srec := GaloisStableGluings(E1, E2, ell);
+            if so lt 0 then
+                error if strict,
+                    Sprintf("gluing certificate unavailable at ell=%o: exact layer declined (Galois group order %o over the degree bound)", ell, srec`group_order);
+            elif so eq 0 then
+                // Certified empty (e = 1 directly; e >= 2 by reduction mod ell). The whole
+                // composite is certified empty: return with this block as the witness.
+                blocks := blockTuples cat [<ell, e, 0, 0, true>];
+                for j in [i + 1 .. k] do Append(~blocks, <ells[j], es[j], -1, -1, false>); end for;
+                info := rec< gluingInfoFmt() | n := n, proof := "certified",
+                    blocks := blocks, psis := [], products := [],
+                    precision := 0, tracebound := TraceBound >;
+                return emptyCurves(), info;
+            elif e eq 1 then
+                stableOrbit := so; graphCount := srec`graph_count; certified := true;
+            end if;   // e >= 2 with so > 0: no exact ell^e layer, block stays uncertified
+        end if;
+        if not certified then allCertified := false; end if;
+
+        sweepPrec := GluingPrecisionHeuristic(E1, E2, ell);
+        ws1s, cc1 := EllipticPeriodBasis(E1, sweepPrec);
+        ws2s, cc2 := EllipticPeriodBasis(E2, sweepPrec);
+        survivors := gluingLiftSweep(ws1s, cc1, ws2s, cc2, ell, e);
+        // Full both-sign survivor list (graph level). gluingLiftSweep returns one per
+        // {psi, -psi} orbit; adjoin negatives so every combination of block graphs is CRT'd
+        // (disjoint for a sign-nontrivial block, ell odd or e >= 2; identical mod 2 at e = 1).
+        full := [* *]; seen := {};
+        for psi in survivors do
+            for M in [psi, -psi] do
+                key := Eltseq(M);
+                if key notin seen then Include(~seen, key); Append(~full, M); end if;
+            end for;
+        end for;
+        Append(~blockSurvivorsFull, full);
+        Append(~blockGraphCounts, graphCount);
+        Append(~blockTuples, <ell, e, stableOrbit, #survivors, certified>);
+        vprintf Gluing: "gluingCompositeCRT: block %o^%o: %o survivor orbit(s) -> %o graph(s); exact graph %o, certified %o\n",
+            ell, e, #survivors, #full, graphCount, certified;
+    end for;
+
+    // CRT-combine every tuple of block survivors into a psi mod n.
+    curPsis := blockSurvivorsFull[1]; curMod := moduli[1];
+    for i in [2 .. k] do
+        newPsis := [* *];
+        for a in curPsis do
+            for b in blockSurvivorsFull[i] do
+                Append(~newPsis, CRTAntiSymplectic([* a, b *], [curMod, moduli[i]]));
+            end for;
+        end for;
+        curPsis := newPsis; curMod := curMod * moduli[i];
+    end for;
+    vprintf Gluing: "gluingCompositeCRT: %o CRT combination(s) at level %o\n", #curPsis, n;
+
+    // Level-n recognition (product-aware precision-doubling recognizer) + reconstruction.
+    prec := (PrecParam cmpeq false) select GluingPrecisionHeuristic(E1, E2, n) else PrecParam;
+    recIC, recPsi, products, usedPrec := gluingRecognizeComposite(E1, E2, curPsis, n, prec);
+    analyticGraph := #recIC + #products;
+    cs, psisOut, _ := gluingEmitCurves(recIC, recPsi, products, E1, E2, TraceBound);
+
+    proof := "traces-only";
+    if allCertified then
+        exactGraph := &*blockGraphCounts;   // all blocks certified => every graphCount >= 0
+        error if analyticGraph ne exactGraph,
+            Sprintf("gluing certificate mismatch at n=%o: exact %o vs analytic %o", n, exactGraph, analyticGraph);
+        proof := "certified";
+    end if;
+    info := rec< gluingInfoFmt() | n := n, proof := proof,
+        blocks := blockTuples, psis := psisOut, products := products,
+        precision := usedPrec, tracebound := TraceBound >;
+    return cs, info;
+end function;
+
 intrinsic Genus2Gluings(E1::CrvEll, E2::CrvEll, n::RngIntElt
     : Algorithm := "Auto", Precision := false, Proof := "Auto", TraceBound := 1000)
     -> SeqEnum, Rec
-{The genus-2 curves over Q gluing E1 and E2 along full n-torsion, for prime-power
-n = ell^e (composite n is Task 11), with a GluingInfo record. Algorithm is one of
-"Auto" (BHLS closed formulas when n is 2 or 3 and the curves are non-isomorphic,
-else analytic periods), "Algebraic" (BHLS, n = 2 or 3 only), or "Periods" (always
-analytic). For e >= 2 the analytic path lifts a level-ell survivor set up the tower
-(see the gluingLiftSweep header) rather than enumerating psi mod ell^e. Precision
-overrides the analytic precision heuristic; TraceBound bounds the Euler-factor twist
-certificate. Proof drives the exact completeness certificate (exact.m,
-GaloisStableGluings): "Auto" certifies prime blocks up to ell = 13, true certifies
-every prime and errors if the exact layer declines, false skips it. The exact layer
-runs at the PRIME level only; for e >= 2 blocks it is out of scope in v1 (division
-polynomials at ell^e are too large), so those blocks are "traces-only" EXCEPT that a
-prime level certified empty forces ell^e empty by reduction (certified). The
-GluingInfo fields are n, proof ("certified" when every block certified, else
-"traces-only"), blocks (one <ell, e, stable_count, analytic_count, certified> tuple;
-stable_count is the exact Galois-stable quotient count when certified, -1 otherwise
-(including every non-empty e >= 2 block); both counts are in the quotient unit (M/-M
-orbits) and a disagreement is a hard error), psis (a gluing matrix per returned
-curve), products (recognized <j1, j2> pairs of the product-type quotients), precision
-(digits of the successful analytic pass), and tracebound.}
+{The genus-2 curves over Q gluing E1 and E2 along full n-torsion, for any n >= 2, with
+a GluingInfo record. A composite n factors into prime-power blocks ell_i^e_i: each block
+is swept for its rational-looking survivor psi_i, every CRT combination psi = (psi_i) mod
+n is realized analytically at level n, and the shared recognition/twist phase reconstructs
+the curves (see the gluingCompositeCRT header). Algorithm is one of "Auto" (BHLS closed
+formulas when n is 2 or 3 and the curves are non-isomorphic, else analytic periods),
+"Algebraic" (BHLS, n = 2 or 3 only), or "Periods" (always analytic). For e >= 2 the
+analytic path lifts a level-ell survivor set up the tower (see the gluingLiftSweep header)
+rather than enumerating psi mod ell^e. Precision overrides the analytic precision
+heuristic; TraceBound bounds the Euler-factor twist certificate. Proof drives the exact
+completeness certificate (exact.m, GaloisStableGluings): "Auto" certifies prime blocks up
+to ell = 13, true certifies every prime and errors if the exact layer declines, false
+skips it. The exact layer runs at each block's PRIME level only; for e >= 2 blocks it is
+out of scope in v1 (division polynomials at ell^e are too large), so those blocks are
+"traces-only" EXCEPT that a prime level certified empty forces ell^e empty by reduction
+(certified). The GluingInfo fields are n, proof ("certified" when every block certified,
+else "traces-only"), blocks (one <ell, e, stable_count, analytic_count, certified> tuple
+per prime-power block; stable_count is the exact Galois-stable QUOTIENT count when
+certified, -1 otherwise (including every non-empty e >= 2 block), analytic_count the
+block's rational-looking survivor orbit count; the composite certificate compares the
+PRODUCT of block graph counts against the analytic graph count and a disagreement is a hard
+error), psis (a gluing matrix per returned curve), products (recognized <j1, j2> pairs of
+the product-type quotients), precision (digits of the successful analytic pass), and
+tracebound. Base field is Q; Task 13 lifts that restriction.}
     require n ge 2: "n must be at least 2";
-    require IsPrimePower(n): "Genus2Gluings currently supports prime-power n = ell^e only (composite n is Task 11)";
     require Algorithm in ["Auto", "Algebraic", "Periods"]:
         "Algorithm must be one of \"Auto\", \"Algebraic\", \"Periods\"";
     require Type(BaseRing(E1)) eq FldRat and Type(BaseRing(E2)) eq FldRat:
         "Genus2Gluings currently requires E1 and E2 over Q";
     require Proof cmpeq "Auto" or Proof cmpeq true or Proof cmpeq false:
         "Proof must be \"Auto\", true, or false";
+
+    // Composite n = prod ell_i^e_i: CRT composition of prime-power blocks (gluingCompositeCRT
+    // header). "Algebraic" is undefined off n in {2, 3}, so reject it here (matching the
+    // prime-power require below) before the analytic composition runs.
+    if not IsPrimePower(n) then
+        require Algorithm ne "Algebraic":
+            "the \"Algebraic\" algorithm is only defined for n in {2, 3}";
+        return gluingCompositeCRT(E1, E2, n, Precision, Proof, TraceBound);
+    end if;
+
     _, ell, e := IsPrimePower(n);
 
     // Exact completeness certificate (exact.m). "Auto" certifies prime blocks up

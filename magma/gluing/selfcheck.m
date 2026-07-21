@@ -136,5 +136,31 @@ intrinsic GluingSelfCheck() -> BoolElt
     blk := iq`blocks[1];
     assert blk[1] eq 2 and blk[2] eq 2 and not blk[5];
 
+    // gluings.m Task 11 (composite n = prod ell_i^e_i via CRT composition of prime-power
+    // blocks). Three cases:
+    //
+    // (a) Certified-empty by an exact block. The composite corpus pair 14a4 x 34a3 at n = 6
+    // has 2-block exact Galois-stable count 0, so no (2,2)-graph, hence no (6,6)-graph: the
+    // composite is certified empty on that block alone (blocks[1] = <2, 1, 0, 0, true>, the 3
+    // block left undetermined by the short-circuit). This is the firmed corpus count.
+    csc, ic := Genus2Gluings(EllipticCurve([1,0,1,-1,0]), EllipticCurve([1,0,0,-103,-411]), 6);
+    assert #csc eq 0 and ic`proof eq "certified" and ic`blocks[1] eq <2, 1, 0, 0, true>;
+
+    // (b) Certified-empty by the congruence fast path (kept first). 11a1 x 17a1 has
+    // GluingModulus 1 (conclusive), so no ell^e-part of 6 divides it and every block is
+    // congruence-certified empty: proof "certified", 0 curves, before any exact/analytic work.
+    cse, ie := Genus2Gluings(EllipticCurve("11a1"), EllipticCurve("17a1"), 6);
+    assert #cse eq 0 and ie`proof eq "certified"
+        and forall{b : b in ie`blocks | b[3] eq 0 and b[5]};
+
+    // (c) Productive composition + graph-level certificate. 99a2 x 99b3 glue at n = 6: the
+    // 2-block (exact graph 2) and 3-block (exact graph 2) CRT-combine, and the level-n
+    // recognition finds exactly the product 2 * 2 = 4 rational graphs (2 M/-M quotients), both
+    // reconstructing to Q-curves. proof "certified" (every block certified AND the analytic
+    // graph count equals the product of block graph counts, the composite certificate).
+    csp2, ip2 := Genus2Gluings(EllipticCurve([1,-1,1,-17,30]), EllipticCurve([1,-1,1,-1319,-18084]), 6);
+    assert #csp2 eq 2 and ip2`proof eq "certified"
+        and forall{b : b in ip2`blocks | b[5]};
+
     return true;
 end intrinsic;
