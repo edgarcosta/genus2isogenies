@@ -832,6 +832,7 @@ def _sec_branch1(entries):
     L = ["procedure Test_branch1()"]
     for e in entries:
         eid = e["id"]; oE = e["expect"].get("oE")
+        partial = any(d.startswith("oE:") for d in e["expect"].get("dropped", []))
         L += _build1(e)
         L.append("    L, info := IsogenyPrimes(E);")
         L.append('    assert info`Source eq "IsogenyPrimes";  // %s' % eid)
@@ -839,6 +840,9 @@ def _sec_branch1(entries):
         L.append("    assert info`Exact;")
         if oE is None:
             L.append('    printf "  SKIP %o: oE dropped\\n", "' + eid + '";')
+        elif partial:
+            # oracle incomplete for this entry: containment only, never equality
+            L.append("    for ell in %s do assert MayBeReducible(ell, L, info); end for;  // oE partial (dropped ells)" % _mlist(oE))
         else:
             L.append("    assert Set(L) eq %s;  // exact O(E), complete by Mazur" % _mset(oE))
             L.append("    for ell in %s do assert MayBeReducible(ell, L, info); end for;" % _mlist(oE))
@@ -951,13 +955,17 @@ def _sec_fixtures(byid):
     e = byid.get("fixture-deg1-fldnum")
     if e is not None:
         oE = e["expect"].get("oE")
+        partial = any(d.startswith("oE:") for d in e["expect"].get("dropped", []))
         L += _build1(e)
         L.append("    assert AbsoluteDegree(BaseRing(E)) eq 1;  // dispatch on absolute degree")
         L.append("    L, info := IsogenyPrimes(E);")
         L.append("    assert info`Exact;                        // branch-1 semantics")
         L.append('    assert info`Kind eq "Finite";')
         if oE is not None:
-            L.append("    assert Set(L) eq %s;" % _mset(oE))
+            if partial:
+                L.append("    for ell in %s do assert MayBeReducible(ell, L, info); end for;  // oE partial (dropped ells)" % _mlist(oE))
+            else:
+                L.append("    assert Set(L) eq %s;" % _mset(oE))
     L.append('    printf "SECTION fixtures: PASS\\n";')
     L.append("end procedure;\n")
     return "\n".join(L)
