@@ -94,5 +94,28 @@ intrinsic GluingSelfCheck() -> BoolElt
             (oks and ICQs eq ICQr where oks, ICQs := RecognizeIgusaClebsch(s`invariants))};
     end for;
 
+    // exact.m: the completeness certificate's exact side (GaloisStableGluings).
+    // 2-division fields are tiny, so it must not decline; the count is in the
+    // quotient unit (M/-M orbits).
+    cnt := GaloisStableGluings(EllipticCurve("14a1"), EllipticCurve("46a1"), 2);
+    assert cnt ge 0;
+    // y^2 = x^3 + 1 and y^2 = x^3 + 4 glue at 3 to a single quotient (graphs psi,
+    // -psi; one orbit).
+    assert GaloisStableGluings(EllipticCurve([0,0,0,0,1]), EllipticCurve([0,0,0,0,4]), 3) eq 1;
+    // The 5-torsion pair 66c3 x 11a3 (5 | GluingModulus, so the congruence fast
+    // path does not fire): the exact layer proves no rational (5,5)-gluing.
+    assert GaloisStableGluings(EllipticCurve([1,0,0,-10065,-389499]), EllipticCurve([0,-1,1,0,0]), 5) eq 0;
+
+    // A certificate count disagreement is a hard error (negative test): feed
+    // GluingCertificateBlock a doctored analytic count for a pair whose exact
+    // quotient count is 1 and confirm the mismatch error fires with its message.
+    caught := false;
+    try
+        _ := GluingCertificateBlock(EllipticCurve([0,0,0,0,1]), EllipticCurve([0,0,0,0,4]), 3, 999, false);
+    catch e
+        caught := Position(Sprint(e`Object), "gluing certificate mismatch") gt 0;
+    end try;
+    assert caught;
+
     return true;
 end intrinsic;

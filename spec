@@ -9,6 +9,7 @@
       bhls.m
       analytic.m
       recognize.m
+      exact.m
       gluings.m
       selfcheck.m
     }
