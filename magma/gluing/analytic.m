@@ -180,15 +180,18 @@ end intrinsic;
 
 intrinsic GluedPeriodMatrices(E1::CrvEll, E2::CrvEll, n::RngIntElt : Precision := false, Filter := true) -> SeqEnum
 {All quotients (E1 x E2)/graph(psi) over the anti-symplectic psi : E1[n] -> E2[n],
-for prime n. Each entry is a record <psi, P, taured, type, invariants>: psi the
-determinant -1 matrix, P the 2x4 big period matrix, taured the Siegel-reduced
+for prime-power n = ell^e. Each entry is a record <psi, P, taured, type, invariants>:
+psi the determinant -1 matrix, P the 2x4 big period matrix, taured the Siegel-reduced
 small period matrix, type one of "jacobian" or "product", invariants the numeric
 Igusa-Clebsch quadruple or pair of j-invariants. Precision defaults to
 GluingPrecisionHeuristic(E1, E2, n). Filter (default true) restricts psi to the
 conjugation-equivariance necessary condition below; Filter := false enumerates
-every anti-symplectic psi (the "all quotients over C" contract).}
+every anti-symplectic psi (the "all quotients over C" contract). This is the
+DIRECT enumeration (every det -1 matrix mod n); Genus2Gluings at n = ell^e with
+e >= 2 instead lifts a level-ell survivor set (gluings.m), which is the same
+rational-quotient set found far more cheaply.}
     require BaseRing(E1) cmpeq BaseRing(E2): "curves must share a base field";
-    require IsPrime(n): "GluedPeriodMatrices currently supports prime n only";
+    require IsPrimePower(n): "GluedPeriodMatrices currently supports prime-power n only";
     if Precision cmpeq false then
         prec := GluingPrecisionHeuristic(E1, E2, n);
     else
@@ -222,7 +225,10 @@ every anti-symplectic psi (the "all quotients over C" contract).}
     // forced since Im(w1/w2) > 0 rules out c_i = +-I), which makes the filter
     // provably tight for odd n: it cuts the n(n-1)(n+1)-size candidate pool to
     // exactly n - 1 survivors (solutions of s t = k, k a fixed nonzero
-    // constant, in Z/n), not just "roughly n^2".
+    // constant, in Z/n), not just "roughly n^2". At a prime power n = ell^e the
+    // relation is still a necessary condition for Galois-stability (the conjugation
+    // action is n-agnostic), so this direct enumeration stays correct; it is just no
+    // longer proven tight, which only affects how many candidates are computed.
     if Filter then
         R := Integers(n);
         c1T := Transpose(ChangeRing(c1, R));

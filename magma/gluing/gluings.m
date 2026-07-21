@@ -199,31 +199,202 @@ function isGenuineJacobianQuotient(ic, E1, E2, TraceBound)
     return #GeometricAutomorphismGroup(C0) gt 2;                 // bielliptic
 end function;
 
+// Phase 2, shared by the prime and prime-power analytic paths: from the recognized
+// rational jacobian invariants recIC (with source psi recPsi) and the recognized
+// rational product j-pairs, reconstruct and twist-pin Q-models, canonicalize, and
+// match a source psi to each returned curve. A twist-validated quotient is emitted; a
+// bielliptic / Mestre one is a genuine Galois-stable gluing counted but not emitted; a
+// look-alike (twist-rejected, order-2 automorphisms, over Q) is dropped. Returns the
+// canonical curve list cs, the per-curve source psi list, and the analytic quotient
+// count jacCount + #distinct products (the certificate unit).
+function gluingEmitCurves(recIC, recPsi, products, E1, E2, TraceBound)
+    curves := []; sourcePsis := []; jacCount := 0;
+    for ic in Setseq(Seqset(recIC)) do
+        okC, C := CurveFromInvariants(ic, E1, E2 : TraceBound := TraceBound);
+        if okC then
+            jacCount +:= 1;
+            Append(~curves, C);
+            for j in [1 .. #recIC] do
+                if recIC[j] eq ic then Append(~sourcePsis, recPsi[j]); break; end if;
+            end for;
+        else
+            genuine := false;
+            try
+                C0 := HyperellipticCurveFromIgusaClebsch(ic);
+                genuine := (Type(BaseRing(C0)) ne FldRat) or (#GeometricAutomorphismGroup(C0) gt 2);
+            catch e
+                genuine := false;
+            end try;
+            if genuine then
+                jacCount +:= 1;
+                vprintf Gluing: "Genus2Gluings: quotient recognized but not emitted (bielliptic / Mestre), counted only\n";
+            else
+                vprintf Gluing: "Genus2Gluings: recognized quotient is a non-stable look-alike, dropping\n";
+            end if;
+        end if;
+    end for;
+    analyticCount := jacCount + #Seqset(products);
+    cs := CanonicalGluingList(curves);
+    // A gluing matrix per returned curve. CanonicalGluingList reduces, dedups by
+    // isomorphism and sorts, so match each returned curve back to a source psi.
+    psisOut := [];
+    for c in cs do
+        for i in [1 .. #curves] do
+            if IsIsomorphic(c, curves[i]) then Append(~psisOut, sourcePsis[i]); break; end if;
+        end for;
+    end for;
+    return cs, psisOut, analyticCount;
+end function;
+
+// -------- Prime-power levels n = ell^e via lifting (Task 10) --------
+//
+// Genus2Gluings at n = ell^e with e >= 2 does NOT enumerate every anti-symplectic psi
+// mod ell^e (there are |SL2(Z/ell^e)| of them, growing like ell^(3e)). Instead it
+// LIFTS: run the prime level ell, keep the psi whose quotient looks Q-rational, and
+// lift to ell^2, ..., ell^e, at each step keeping only conjugation-filtered lifts whose
+// quotient still looks rational at a cheap sweep precision. Target-level recognition,
+// reconstruction and twist pinning then proceed exactly as at a prime.
+//
+// Why lifting the rational-LOOKING level-ell survivors (not just the ones that
+// reconstruct to a curve) reaches every genuine level-ell^e gluing: the graph of a
+// Galois-stable psi mod ell^e reduces mod ell to ell^(e-1) * graph(psi) =
+// graph(psi | E1[ell]), which is Galois-stable, so its quotient is a Q-rational ppas
+// and passes the near-real gate at level ell. Hence every stable level-ell^e graph sits
+// above a level-ell survivor and is produced by lifting it. The converse can fail (a
+// rational-looking level-ell graph need not lift to a stable one), which only costs
+// extra candidates that the target-level recognition and twist pinning discard.
+
+// The near-real gate for the lift sweep: does this numeric quotient look defined over
+// Q? Jacobian type reuses LooksRationalIC (the fixed 1e-10 I2-normalized gate of the
+// prime pass 1); product type asks the two j-invariants to be near-real.
+function quotientLooksRational(typ, inv)
+    if typ eq "jacobian" then return LooksRationalIC(inv); end if;
+    return forall{j : j in inv | Abs(Im(j)) lt 10^-10};
+end function;
+
+// One sweep level: compute the quotient of each candidate psi at modulus m against the
+// period bases ws1, ws2 and keep those looking Q-rational.
+function gluingSweepLevel(ws1, ws2, cand, m)
+    out := [];
+    for psi in cand do
+        typ, inv := NumericInvariants(SmallFromBig(GluedBigPeriodMatrix(ws1, ws2, psi, m)));
+        if quotientLooksRational(typ, inv) then Append(~out, psi); end if;
+    end for;
+    return out;
+end function;
+
+// Lift sweep from the prime level ell up to ell^e (e >= 1), at the cheap sweep precision
+// of ws1, ws2. c1, c2 are the integer conjugation matrices from EllipticPeriodBasis; the
+// conjugation-equivariance filter psi c1^T = c2^T psi (analytic.m) is a necessary
+// condition at EVERY modulus, applied here with c1, c2 reduced mod ell^k. Returns the
+// final-level survivor psi list (over Integers(ell^e)) and a flag that is false when an
+// intermediate level emptied (hence no gluing at ell^e).
+//
+// The base level uses AntiSymplecticIsomorphisms(ell) (ModMinus default): for odd ell
+// that is one representative per {psi, -psi} orbit, and since the ell^3 lifts of psi are
+// disjoint from those of -psi = -(lifts of psi), lifting stays one-per-orbit up the
+// tower. At ell = 2, -psi = psi mod 2 so the base carries all det -1 matrices and a
+// psi's lifts to mod 4 include -psi's; the resulting {psi, -psi} redundancy at ell^e is
+// harmless and collapsed later by the moduli-level Seqset dedup in gluingEmitCurves.
+function gluingLiftSweep(ws1, c1, ws2, c2, ell, e)
+    m := ell;
+    Rm := Integers(m);
+    c1T := Transpose(ChangeRing(c1, Rm)); c2T := Transpose(ChangeRing(c2, Rm));
+    cand := [psi : psi in AntiSymplecticIsomorphisms(ell)
+             | ChangeRing(psi, Rm) * c1T eq c2T * ChangeRing(psi, Rm)];
+    survivors := gluingSweepLevel(ws1, ws2, cand, m);
+    vprintf Gluing: "gluingLiftSweep: level %o^1: %o candidate(s) -> %o rational-looking survivor(s)\n",
+        ell, #cand, #survivors;
+    for k in [2 .. e] do
+        if #survivors eq 0 then return survivors, false; end if;
+        m := ell^k;
+        Rm := Integers(m);
+        c1T := Transpose(ChangeRing(c1, Rm)); c2T := Transpose(ChangeRing(c2, Rm));
+        lifts := [];
+        for psi in survivors do
+            for N in LiftAntiSymplectic(psi, ell, k - 1) do
+                if ChangeRing(N, Rm) * c1T eq c2T * ChangeRing(N, Rm) then Append(~lifts, N); end if;
+            end for;
+        end for;
+        survivors := gluingSweepLevel(ws1, ws2, lifts, m);
+        vprintf Gluing: "gluingLiftSweep: level %o^%o: %o conjugation-filtered lift(s) -> %o survivor(s)\n",
+            ell, k, #lifts, #survivors;
+    end for;
+    return survivors, #survivors gt 0;
+end function;
+
+// Full-precision recognition of the final-level lift survivors (the e >= 2 analog of
+// gluingAnalyticEnumerate's pass 2): recompute the period bases at the target
+// precision, classify each survivor psi (modulus m = ell^e), recognize rational
+// jacobian Igusa-Clebsch quadruples (recIC / recPsi) and rational product j-pairs
+// (products), doubling the precision while that strictly grows the jacobian count (at
+// most 3 times). Returns recIC, recPsi, products and the precision used.
+function gluingRecognizeSurvivors(E1, E2, survivors, m, prec)
+    doublings := 0; prevRecognized := -1;
+    recIC := []; recPsi := []; products := []; usedPrec := prec;
+    while true do
+        ws1 := EllipticPeriodBasis(E1, prec);
+        ws2 := EllipticPeriodBasis(E2, prec);
+        usedPrec := fieldPrecision(Universe(ws1));
+        recIC := []; recPsi := []; products := []; nearFail := 0;
+        for psi in survivors do
+            typ, inv := NumericInvariants(SmallFromBig(GluedBigPeriodMatrix(ws1, ws2, psi, m)));
+            if typ eq "product" then
+                ok1, j1 := RecognizeRational(inv[1]);
+                ok2, j2 := RecognizeRational(inv[2]);
+                if ok1 and ok2 then Append(~products, <j1, j2>); end if;
+                continue;
+            end if;
+            okIC, ICQ := RecognizeIgusaClebsch(inv);
+            if okIC then
+                Append(~recIC, ICQ); Append(~recPsi, psi);
+            elif IgusaClebschNearRational(inv) then
+                nearFail +:= 1;
+            end if;
+        end for;
+        if nearFail eq 0 or doublings ge 3 or #recIC le prevRecognized then
+            if nearFail gt 0 then
+                vprintf Gluing: "Genus2Gluings: %o near-rational lift quotient(s) unrecognized, dropping\n", nearFail;
+            end if;
+            break;
+        end if;
+        prevRecognized := #recIC; prec := 2 * usedPrec; doublings +:= 1;
+    end while;
+    return recIC, recPsi, products, usedPrec;
+end function;
+
 intrinsic Genus2Gluings(E1::CrvEll, E2::CrvEll, n::RngIntElt
     : Algorithm := "Auto", Precision := false, Proof := "Auto", TraceBound := 1000)
     -> SeqEnum, Rec
-{The genus-2 curves over Q gluing E1 and E2 along full n-torsion, for prime n
-(general n is lifted in Tasks 10-11), with a GluingInfo record. Algorithm is one
-of "Auto" (BHLS closed formulas when n is 2 or 3 and the curves are non-isomorphic,
+{The genus-2 curves over Q gluing E1 and E2 along full n-torsion, for prime-power
+n = ell^e (composite n is Task 11), with a GluingInfo record. Algorithm is one of
+"Auto" (BHLS closed formulas when n is 2 or 3 and the curves are non-isomorphic,
 else analytic periods), "Algebraic" (BHLS, n = 2 or 3 only), or "Periods" (always
-analytic). Precision overrides the analytic precision heuristic; TraceBound bounds
-the Euler-factor twist certificate. Proof drives the exact completeness certificate
-(exact.m, GaloisStableGluings): "Auto" certifies prime blocks up to ell = 13, true
-certifies every prime and errors if the exact layer declines, false skips it. The
+analytic). For e >= 2 the analytic path lifts a level-ell survivor set up the tower
+(see the gluingLiftSweep header) rather than enumerating psi mod ell^e. Precision
+overrides the analytic precision heuristic; TraceBound bounds the Euler-factor twist
+certificate. Proof drives the exact completeness certificate (exact.m,
+GaloisStableGluings): "Auto" certifies prime blocks up to ell = 13, true certifies
+every prime and errors if the exact layer declines, false skips it. The exact layer
+runs at the PRIME level only; for e >= 2 blocks it is out of scope in v1 (division
+polynomials at ell^e are too large), so those blocks are "traces-only" EXCEPT that a
+prime level certified empty forces ell^e empty by reduction (certified). The
 GluingInfo fields are n, proof ("certified" when every block certified, else
-"traces-only"), blocks (one <n, 1, stable_count, analytic_count, certified> tuple;
-stable_count is the exact Galois-stable quotient count when certified, -1 otherwise;
-both counts are in the quotient unit (M/-M orbits) and a disagreement is a hard
-error), psis (a gluing matrix per returned curve), products (recognized <j1, j2>
-pairs of the product-type quotients), precision (digits of the successful analytic
-pass), and tracebound.}
-    require IsPrime(n): "Genus2Gluings currently supports prime n only (general n is Tasks 10-11)";
+"traces-only"), blocks (one <ell, e, stable_count, analytic_count, certified> tuple;
+stable_count is the exact Galois-stable quotient count when certified, -1 otherwise
+(including every non-empty e >= 2 block); both counts are in the quotient unit (M/-M
+orbits) and a disagreement is a hard error), psis (a gluing matrix per returned
+curve), products (recognized <j1, j2> pairs of the product-type quotients), precision
+(digits of the successful analytic pass), and tracebound.}
+    require n ge 2: "n must be at least 2";
+    require IsPrimePower(n): "Genus2Gluings currently supports prime-power n = ell^e only (composite n is Task 11)";
     require Algorithm in ["Auto", "Algebraic", "Periods"]:
         "Algorithm must be one of \"Auto\", \"Algebraic\", \"Periods\"";
     require Type(BaseRing(E1)) eq FldRat and Type(BaseRing(E2)) eq FldRat:
         "Genus2Gluings currently requires E1 and E2 over Q";
     require Proof cmpeq "Auto" or Proof cmpeq true or Proof cmpeq false:
         "Proof must be \"Auto\", true, or false";
+    _, ell, e := IsPrimePower(n);
 
     // Exact completeness certificate (exact.m). "Auto" certifies prime blocks up
     // to ell = 13 (the exact layer's practical reach at DegreeBound 2400); true
@@ -235,7 +406,7 @@ pass), and tracebound.}
     // reconcile its rational-quotient count with the exact graph count by the
     // {psi, -psi}-fold and rational-isogeny gate this module uses, so isogenous
     // pairs (the degenerate iso/eq/cm inputs) stay "traces-only".
-    runExact := ((Proof cmpeq true) or (Proof cmpeq "Auto" and n le 13))
+    runExact := ((Proof cmpeq true) or (Proof cmpeq "Auto" and ell le 13))
         and not IsIsogenous(E1, E2);
     strict := (Proof cmpeq true);
 
@@ -262,11 +433,59 @@ pass), and tracebound.}
     if (not inconclusive) and (N mod n ne 0) then
         // Congruence obstruction: a rigorous, independent proof of emptiness (n
         // does not divide a good-prime trace difference), so 0 stable graphs and
-        // 0 rational quotients, block certified without the exact layer.
+        // 0 rational quotients, block certified without the exact layer. Necessary
+        // at prime powers too: a rational ell^e-gluing forces a_p(E1) = a_p(E2)
+        // mod ell^e, hence ell^e | GluingModulus.
         info := rec< gluingInfoFmt() | n := n, proof := "certified",
-            blocks := [<n, 1, 0, 0, true>], psis := [], products := [],
+            blocks := [<ell, e, 0, 0, true>], psis := [], products := [],
             precision := 0, tracebound := TraceBound >;
         return emptyCurves(), info;
+    end if;
+
+    // Prime-power levels n = ell^e with e >= 2: lift a level-ell survivor set rather
+    // than enumerate every psi mod ell^e (see the gluingLiftSweep header). No algebraic
+    // formulas apply (BHLS is n in {2, 3}, hence e = 1), so this is the only path, and
+    // the exact completeness layer is out of scope here (v1), so blocks are traces-only
+    // save the certified-empty upgrade below.
+    if e ge 2 then
+        // Certified-empty-by-reduction: a Galois-stable ell^e graph reduces mod ell to a
+        // Galois-stable ell graph, so if the exact layer certifies the prime level empty,
+        // ell^e is provably empty for every e. runExact already excludes isogenous pairs
+        // and respects Proof; GaloisStableGluings declines (returns -1, not 0) when the
+        // Galois group is too big, in which case we fall through to the sweep.
+        if runExact and GaloisStableGluings(E1, E2, ell) eq 0 then
+            info := rec< gluingInfoFmt() | n := n, proof := "certified",
+                blocks := [<ell, e, 0, 0, true>], psis := [], products := [],
+                precision := 0, tracebound := TraceBound >;
+            return emptyCurves(), info;
+        end if;
+
+        // Lift sweep at the cheap prime-level sweep precision; recognition then reruns on
+        // the survivors at full target precision.
+        sweepPrec := GluingPrecisionHeuristic(E1, E2, ell);
+        ws1s, cc1 := EllipticPeriodBasis(E1, sweepPrec);
+        ws2s, cc2 := EllipticPeriodBasis(E2, sweepPrec);
+        survivors, nonempty := gluingLiftSweep(ws1s, cc1, ws2s, cc2, ell, e);
+        if not nonempty then
+            // An intermediate level had no rational-looking survivor, so no ell^e gluing.
+            // Not certified (the sweep is numeric; the prime level was not certified empty
+            // above), so traces-only.
+            info := rec< gluingInfoFmt() | n := n, proof := "traces-only",
+                blocks := [<ell, e, -1, 0, false>], psis := [], products := [],
+                precision := sweepPrec, tracebound := TraceBound >;
+            return emptyCurves(), info;
+        end if;
+        prec := (Precision cmpeq false) select GluingPrecisionHeuristic(E1, E2, n) else Precision;
+        recIC, recPsi, products, usedPrec := gluingRecognizeSurvivors(E1, E2, survivors, n, prec);
+        if not (admitsRationalIsogeny(E1, ell) and admitsRationalIsogeny(E2, ell)) then products := []; end if;
+        cs, psisOut, analyticCount := gluingEmitCurves(recIC, recPsi, products, E1, E2, TraceBound);
+        // No exact ell^e layer in v1, so stable_count is -1 and the block is traces-only
+        // even when curves are emitted (each still passes the Euler-factor twist
+        // certificate to TraceBound in CurveFromInvariants).
+        info := rec< gluingInfoFmt() | n := n, proof := "traces-only",
+            blocks := [<ell, e, -1, analyticCount, false>], psis := psisOut, products := products,
+            precision := usedPrec, tracebound := TraceBound >;
+        return cs, info;
     end if;
 
     usedAlgebraic := false;
@@ -319,49 +538,14 @@ pass), and tracebound.}
     recIC, recPsi, products, usedPrec := gluingAnalyticEnumerate(E1, E2, n, prec);
     if not (admitsRationalIsogeny(E1, n) and admitsRationalIsogeny(E2, n)) then products := []; end if;
 
-    // Phase 2 (reconstruction + count): one pass over the distinct recognized
-    // jacobian moduli. A twist-validated quotient is emitted as a curve; a
-    // bielliptic / Mestre one is a genuine Galois-stable gluing counted but not
-    // emitted; a look-alike (twist-rejected, order-2 automorphisms, over Q) has no
-    // rational isogeny to E1 x E2 and is dropped from both. analyticCount is the
-    // genuine jacobian quotients plus the rational-isogeny-gated products, the same
-    // unit as the exact layer.
-    curves := []; sourcePsis := []; jacCount := 0;
-    for ic in Setseq(Seqset(recIC)) do
-        okC, C := CurveFromInvariants(ic, E1, E2 : TraceBound := TraceBound);
-        if okC then
-            jacCount +:= 1;
-            Append(~curves, C);
-            for j in [1 .. #recIC] do
-                if recIC[j] eq ic then Append(~sourcePsis, recPsi[j]); break; end if;
-            end for;
-        else
-            genuine := false;
-            try
-                C0 := HyperellipticCurveFromIgusaClebsch(ic);
-                genuine := (Type(BaseRing(C0)) ne FldRat) or (#GeometricAutomorphismGroup(C0) gt 2);
-            catch e
-                genuine := false;
-            end try;
-            if genuine then
-                jacCount +:= 1;
-                vprintf Gluing: "Genus2Gluings: quotient recognized but not emitted (bielliptic / Mestre), counted only\n";
-            else
-                vprintf Gluing: "Genus2Gluings: recognized quotient is a non-stable look-alike, dropping\n";
-            end if;
-        end if;
-    end for;
-    analyticCount := jacCount + #Seqset(products);
-
-    cs := CanonicalGluingList(curves);
-    // A gluing matrix per returned curve. CanonicalGluingList reduces, dedups by
-    // isomorphism and sorts, so match each returned curve back to a source psi.
-    psisOut := [];
-    for c in cs do
-        for i in [1 .. #curves] do
-            if IsIsomorphic(c, curves[i]) then Append(~psisOut, sourcePsis[i]); break; end if;
-        end for;
-    end for;
+    // Phase 2 (reconstruction + count), shared with the prime-power path via
+    // gluingEmitCurves: one pass over the distinct recognized jacobian moduli. A
+    // twist-validated quotient is emitted as a curve; a bielliptic / Mestre one is a
+    // genuine Galois-stable gluing counted but not emitted; a look-alike (twist-rejected,
+    // order-2 automorphisms, over Q) has no rational isogeny to E1 x E2 and is dropped
+    // from both. analyticCount is the genuine jacobian quotients plus the
+    // rational-isogeny-gated products, the same unit as the exact layer.
+    cs, psisOut, analyticCount := gluingEmitCurves(recIC, recPsi, products, E1, E2, TraceBound);
 
     // The analytic recognition is a reliable rational-quotient count only at odd n,
     // where the conjugation filter is tight; at n = 2 it barely cuts the candidate

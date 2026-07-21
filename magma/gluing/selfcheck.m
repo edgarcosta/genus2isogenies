@@ -117,5 +117,24 @@ intrinsic GluingSelfCheck() -> BoolElt
     end try;
     assert caught;
 
+    // gluings.m Task 10 (prime-power levels via lifting). The pp corpus pair 15a7 x 30a8
+    // at n = 4 = 2^2 is certified EMPTY by reduction: its prime level ell = 2 has 0
+    // Galois-stable gluings, and a stable (4,4)-graph reduces mod 2 to a stable (2,2)-graph,
+    // so no (4,4)-gluing exists. Block <2, 2, 0, 0, true>, proof "certified" (the firmed
+    // corpus count and the certified-empty-by-reduction upgrade).
+    csp, ip := Genus2Gluings(EllipticCurve([1,1,1,-80,242]), EllipticCurve([1,0,1,-454,-544]), 4);
+    assert #csp eq 0 and ip`proof eq "certified" and ip`blocks eq [<2, 2, 0, 0, true>];
+
+    // The lift SWEEP itself (not the empty short-circuit): the isogenous self-gluing
+    // 20a2 x 20a2 at n = 4 skips the certificate, so gluingLiftSweep runs (level-2
+    // survivors lifted to mod 4, conjugation-filtered, recognized at full precision). Its
+    // single rational quotient is bielliptic and dropped, so 0 curves emit under an e = 2
+    // traces-only block.
+    Esq := EllipticCurve([0,1,0,-1,0]);
+    csq, iq := Genus2Gluings(Esq, Esq, 4);
+    assert #csq eq 0 and iq`proof eq "traces-only";
+    blk := iq`blocks[1];
+    assert blk[1] eq 2 and blk[2] eq 2 and not blk[5];
+
     return true;
 end intrinsic;
