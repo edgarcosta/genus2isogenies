@@ -1,7 +1,7 @@
 // IsogenyPrimes.m
 //
 // Isogeny primes / congruence primes engine for elliptic curves over Q and
-// number fields. See docs/superpowers/specs/2026-07-20-billerey-engine-design.md
+// number fields. See docs/specs/billerey-engine-design.md
 // for the denotational semantics this file implements.
 
 declare verbose IsogenyPrimes, 2;
