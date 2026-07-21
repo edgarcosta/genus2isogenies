@@ -684,6 +684,15 @@ end if;
 // useSpec eq "" is the red-state syntactic check: no engine spec, CHIMP not needed.
 if not assigned section then section := "all"; end if;
 if not assigned cmscope then cmscope := "1"; end if;
+// Engine-presence guard: without the engine intrinsics the section procedures
+// fail at BIND time, which try/catch cannot intercept, so quit with an honest
+// verdict before any of that noise.
+okEngine, _ := IsIntrinsic("IsogenyPrimes");
+okEngine2, _ := IsIntrinsic("CongruencePrimes");
+if not (okEngine and okEngine2) then
+    printf "SUITE FAILED: engine intrinsics not attached (red state)\n";
+    quit;
+end if;
 
 R<x> := PolynomialRing(Rationals());
 
@@ -857,16 +866,51 @@ def _sec_fixtures(byid):
     L.append("end procedure;\n")
     return "\n".join(L)
 
+_DISPATCH_SECTIONS = [
+    ("golden", 'section eq "all" or section eq "golden"', "Test_golden"),
+    ("branch1", 'section eq "all" or section eq "branch1"', "Test_branch1"),
+    ("branch2", 'section eq "all" or section eq "branch2"', "Test_branch2"),
+    ("cm", '(section eq "all" or section eq "cm") and cmscope ne "0"', "Test_cm"),
+    ("congruence", 'section eq "all" or section eq "congruence"', "Test_congruence"),
+    ("fixtures", 'section eq "all" or section eq "fixtures"', "Test_fixtures"),
+]
+
 def _dispatch():
-    return "\n".join([
-        'if section eq "all" or section eq "golden" then Test_golden(); end if;',
-        'if section eq "all" or section eq "branch1" then Test_branch1(); end if;',
-        'if section eq "all" or section eq "branch2" then Test_branch2(); end if;',
-        'if (section eq "all" or section eq "cm") and cmscope ne "0" then Test_cm(); end if;',
-        'if section eq "all" or section eq "congruence" then Test_congruence(); end if;',
-        'if section eq "all" or section eq "fixtures" then Test_fixtures(); end if;',
-        'printf "ALL SELECTED SECTIONS PASS\\n";',
-    ])
+    # Magma -b continues past an uncaught top-level runtime error onto the
+    # next top-level statement, so an unconditional footer would still print
+    # "PASS" after a section blew up. Wrap each call so a caught error flips
+    # ok to false and the footer reports the true outcome.
+    #
+    # A Test_x body that references an intrinsic the attached spec doesn't
+    # supply (e.g. no engine spec at all) fails to *compile*, so Test_x is
+    # never bound; calling an unbound name then raises an "Identifier ... has
+    # not been declared or assigned" error that try/catch does NOT intercept
+    # -- confirmed empirically against this Magma build: catch only fires for
+    # errors raised during execution of an already-compiled procedure (e.g.
+    # assert failures), not for a call to a name with no binding at all. Guard
+    # each call with `assigned` first so that never-compiled case is reported
+    # honestly too, instead of silently reaching the unconditional footer.
+    L = ["ok := true;"]
+    for name, guard, proc in _DISPATCH_SECTIONS:
+        L.append("if %s then" % guard)
+        L.append("    if assigned %s then" % proc)
+        L.append("        try")
+        L.append("            %s();" % proc)
+        L.append("        catch e")
+        L.append("            ok := false;")
+        L.append('            printf "SECTION %s: FAIL: %%o\\n", e`Object;' % name)
+        L.append("        end try;")
+        L.append("    else")
+        L.append("        ok := false;")
+        L.append('        printf "SECTION %s: FAIL: procedure not declared (spec/engine not attached?)\\n";' % name)
+        L.append("    end if;")
+        L.append("end if;")
+    L.append("if ok then")
+    L.append('    printf "ALL SELECTED SECTIONS PASS\\n";')
+    L.append("else")
+    L.append('    printf "SUITE FAILED\\n";')
+    L.append("end if;")
+    return "\n".join(L)
 
 def emit_test_file(entries, header, path):
     byid = {e["id"]: e for e in entries}

@@ -3,7 +3,7 @@
 // mode: full (per-oracle cap 120s)
 // sage 10.8 | magma 2.29-8 | date 2026-07-21 | seed 20260720
 // LMFDB SQL: SELECT c.label, e.spl_fod_label, e.spl_fod_coeffs, e.spl_facs_coeffs, e.spl_facs_labels FROM g2c_curves c JOIN g2c_endomorphisms e ON c.label = e.label WHERE c.geom_end_alg = 'Q x Q' AND e.spl_fod_label != '1.1.1.1' ORDER BY c.label
-// dropped oracles (entry:oracle): fixture-cm-1728-Qi:oE:ell=97; fixture-cm-nonmax:oE:ell=73
+// dropped oracles (entry:oracle): fixture-cm-1728-Qi:oE:ell=97; fixture-cm-nonmax:oE:ell=73; fixture-cm-nonmax:oE:ell=97
 // ==========================================================================
 if assigned spec then useSpec := spec; else useSpec := "magma/spec"; end if;
 if useSpec ne "" then
@@ -15,6 +15,15 @@ end if;
 // useSpec eq "" is the red-state syntactic check: no engine spec, CHIMP not needed.
 if not assigned section then section := "all"; end if;
 if not assigned cmscope then cmscope := "1"; end if;
+// Engine-presence guard: without the engine intrinsics the section procedures
+// fail at BIND time, which try/catch cannot intercept, so quit with an honest
+// verdict before any of that noise.
+okEngine, _ := IsIntrinsic("IsogenyPrimes");
+okEngine2, _ := IsIntrinsic("CongruencePrimes");
+if not (okEngine and okEngine2) then
+    printf "SUITE FAILED: engine intrinsics not attached (red state)\n";
+    quit;
+end if;
 
 R<x> := PolynomialRing(Rationals());
 

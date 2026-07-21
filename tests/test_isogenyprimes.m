@@ -3,7 +3,7 @@
 // mode: full (per-oracle cap 120s)
 // sage 10.8 | magma 2.29-8 | date 2026-07-21 | seed 20260720
 // LMFDB SQL: SELECT c.label, e.spl_fod_label, e.spl_fod_coeffs, e.spl_facs_coeffs, e.spl_facs_labels FROM g2c_curves c JOIN g2c_endomorphisms e ON c.label = e.label WHERE c.geom_end_alg = 'Q x Q' AND e.spl_fod_label != '1.1.1.1' ORDER BY c.label
-// dropped oracles (entry:oracle): fixture-cm-1728-Qi:oE:ell=97; fixture-cm-nonmax:oE:ell=73
+// dropped oracles (entry:oracle): fixture-cm-1728-Qi:oE:ell=97; fixture-cm-nonmax:oE:ell=73; fixture-cm-nonmax:oE:ell=97
 // ==========================================================================
 if assigned spec then useSpec := spec; else useSpec := "magma/spec"; end if;
 if useSpec ne "" then
@@ -15,6 +15,15 @@ end if;
 // useSpec eq "" is the red-state syntactic check: no engine spec, CHIMP not needed.
 if not assigned section then section := "all"; end if;
 if not assigned cmscope then cmscope := "1"; end if;
+// Engine-presence guard: without the engine intrinsics the section procedures
+// fail at BIND time, which try/catch cannot intercept, so quit with an honest
+// verdict before any of that noise.
+okEngine, _ := IsIntrinsic("IsogenyPrimes");
+okEngine2, _ := IsIntrinsic("CongruencePrimes");
+if not (okEngine and okEngine2) then
+    printf "SUITE FAILED: engine intrinsics not attached (red state)\n";
+    quit;
+end if;
 
 R<x> := PolynomialRing(Rationals());
 
@@ -2307,10 +2316,87 @@ procedure Test_fixtures()
     printf "SECTION fixtures: PASS\n";
 end procedure;
 
-if section eq "all" or section eq "golden" then Test_golden(); end if;
-if section eq "all" or section eq "branch1" then Test_branch1(); end if;
-if section eq "all" or section eq "branch2" then Test_branch2(); end if;
-if (section eq "all" or section eq "cm") and cmscope ne "0" then Test_cm(); end if;
-if section eq "all" or section eq "congruence" then Test_congruence(); end if;
-if section eq "all" or section eq "fixtures" then Test_fixtures(); end if;
-printf "ALL SELECTED SECTIONS PASS\n";
+ok := true;
+if section eq "all" or section eq "golden" then
+    if assigned Test_golden then
+        try
+            Test_golden();
+        catch e
+            ok := false;
+            printf "SECTION golden: FAIL: %o\n", e`Object;
+        end try;
+    else
+        ok := false;
+        printf "SECTION golden: FAIL: procedure not declared (spec/engine not attached?)\n";
+    end if;
+end if;
+if section eq "all" or section eq "branch1" then
+    if assigned Test_branch1 then
+        try
+            Test_branch1();
+        catch e
+            ok := false;
+            printf "SECTION branch1: FAIL: %o\n", e`Object;
+        end try;
+    else
+        ok := false;
+        printf "SECTION branch1: FAIL: procedure not declared (spec/engine not attached?)\n";
+    end if;
+end if;
+if section eq "all" or section eq "branch2" then
+    if assigned Test_branch2 then
+        try
+            Test_branch2();
+        catch e
+            ok := false;
+            printf "SECTION branch2: FAIL: %o\n", e`Object;
+        end try;
+    else
+        ok := false;
+        printf "SECTION branch2: FAIL: procedure not declared (spec/engine not attached?)\n";
+    end if;
+end if;
+if (section eq "all" or section eq "cm") and cmscope ne "0" then
+    if assigned Test_cm then
+        try
+            Test_cm();
+        catch e
+            ok := false;
+            printf "SECTION cm: FAIL: %o\n", e`Object;
+        end try;
+    else
+        ok := false;
+        printf "SECTION cm: FAIL: procedure not declared (spec/engine not attached?)\n";
+    end if;
+end if;
+if section eq "all" or section eq "congruence" then
+    if assigned Test_congruence then
+        try
+            Test_congruence();
+        catch e
+            ok := false;
+            printf "SECTION congruence: FAIL: %o\n", e`Object;
+        end try;
+    else
+        ok := false;
+        printf "SECTION congruence: FAIL: procedure not declared (spec/engine not attached?)\n";
+    end if;
+end if;
+if section eq "all" or section eq "fixtures" then
+    if assigned Test_fixtures then
+        try
+            Test_fixtures();
+        catch e
+            ok := false;
+            printf "SECTION fixtures: FAIL: %o\n", e`Object;
+        end try;
+    else
+        ok := false;
+        printf "SECTION fixtures: FAIL: procedure not declared (spec/engine not attached?)\n";
+    end if;
+end if;
+if ok then
+    printf "ALL SELECTED SECTIONS PASS\n";
+else
+    printf "SUITE FAILED\n";
+end if;
