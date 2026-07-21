@@ -71,6 +71,21 @@ procedure Test_golden()
     printf "SECTION golden: PASS\n";
 end procedure;
 
+procedure Test_gates()
+    // gate: BillereyBl is a model invariant (review repro: 11a1 / Q(sqrt -5), u = 13)
+    K := BuildField([5, 0, 1]);
+    E := BuildCurve(K, [ [0], [-1], [1], [-10], [-20] ]);
+    Es := BuildCurve(K, [ [0], [-169], [2197], [-285610], [-96536180] ]);
+    assert IsIsomorphic(E, Es);            // u = 13 rescale is a Weierstrass isomorphism
+    q13 := Decomposition(Integers(K), 13)[1][1];
+    b1 := BillereyBl(E, 13);
+    b2 := BillereyBl(Es, 13);
+    assert b1 ne 0;
+    assert b1 eq b2;                       // isomorphism invariance
+    assert b2 eq BillereyRq(Es, q13);      // R_q = B_l gate on the inert principal q, both models
+    printf "SECTION gates: PASS\n";
+end procedure;
+
 procedure Test_branch1()
     K := BuildField([-1, 1]);
     E := BuildCurve(K, [ [0], [-1], [1], [-10], [-20] ]);
@@ -4539,6 +4554,19 @@ if section eq "all" or section eq "golden" then
     else
         ok := false;
         printf "SECTION golden: FAIL: procedure not declared (spec/engine not attached?)\n";
+    end if;
+end if;
+if section eq "all" or section eq "gates" then
+    if assigned Test_gates then
+        try
+            Test_gates();
+        catch e
+            ok := false;
+            printf "SECTION gates: FAIL: %o\n", e`Object;
+        end try;
+    else
+        ok := false;
+        printf "SECTION gates: FAIL: procedure not declared (spec/engine not attached?)\n";
     end if;
 end if;
 if section eq "all" or section eq "branch1" then

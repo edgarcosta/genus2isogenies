@@ -796,6 +796,29 @@ def _sec_golden(gates):
     L.append("end procedure;\n")
     return "\n".join(L)
 
+def _sec_gates():
+    """Raw engine gates: pure Magma identities of the exposed intrinsics, no
+    Sage oracle. Each block is self-contained; later tasks append more blocks."""
+    u = 13
+    a1, a2, a3, a4, a6 = 0, -1, 1, -10, -20            # 11a1
+    sc = [a1 * u, a2 * u**2, a3 * u**3, a4 * u**4, a6 * u**6]
+    assert sc == [0, -169, 2197, -285610, -96536180]
+    L = ["procedure Test_gates()",
+         "    // gate: BillereyBl is a model invariant (review repro: 11a1 / Q(sqrt -5), u = 13)",
+         "    K := BuildField([5, 0, 1]);",
+         "    E := BuildCurve(K, [ [0], [-1], [1], [-10], [-20] ]);",
+         "    Es := BuildCurve(K, [ %s ]);" % ", ".join("[%d]" % c for c in sc),
+         "    assert IsIsomorphic(E, Es);            // u = 13 rescale is a Weierstrass isomorphism",
+         "    q13 := Decomposition(Integers(K), 13)[1][1];",
+         "    b1 := BillereyBl(E, 13);",
+         "    b2 := BillereyBl(Es, 13);",
+         "    assert b1 ne 0;",
+         "    assert b1 eq b2;                       // isomorphism invariance",
+         "    assert b2 eq BillereyRq(Es, q13);      // R_q = B_l gate on the inert principal q, both models",
+         '    printf "SECTION gates: PASS\\n";',
+         "end procedure;\n"]
+    return "\n".join(L)
+
 def _sec_branch1(entries):
     L = ["procedure Test_branch1()"]
     for e in entries:
@@ -959,6 +982,7 @@ def _sec_regression(entries):
 
 _DISPATCH_SECTIONS = [
     ("golden", 'section eq "all" or section eq "golden"', "Test_golden"),
+    ("gates", 'section eq "all" or section eq "gates"', "Test_gates"),
     ("branch1", 'section eq "all" or section eq "branch1"', "Test_branch1"),
     ("branch2", 'section eq "all" or section eq "branch2"', "Test_branch2"),
     ("cm", '(section eq "all" or section eq "cm") and cmscope ne "0"', "Test_cm"),
@@ -1026,7 +1050,7 @@ def emit_test_file(entries, header, path):
         else:
             b2.append(e)
     parts = [PREAMBLE % {"header": header}, "",
-             _sec_golden(gates), _sec_branch1(b1), _sec_branch2(b2),
+             _sec_golden(gates), _sec_gates(), _sec_branch1(b1), _sec_branch2(b2),
              _sec_cm(cml), _sec_congruence(congs), _sec_fixtures(byid),
              _sec_regression(entries),
              _dispatch(), ""]

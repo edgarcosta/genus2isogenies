@@ -331,17 +331,19 @@ end function;
 
 // Billerey P_l^* (eq (9)): star over primes q | l of
 // PowerCharacteristicPolynomial(FrobeniusCharpoly(E, q), 12 e_q). Returns
-// <false, _> when the model (globally integral, minimal where possible) is
-// non-minimal at some q | l so FrobeniusCharpoly would reject it; the phase
-// then skips l (safe: fewer auxiliary primes still give a superset). On a model
-// minimal at good primes -- which admissibility guarantees -- this never fires.
-function BilPlStar(E, l, DiscE)
+// <false, _> when some q | l divides the conductor (bad reduction), so the
+// phase skips l; safe, fewer auxiliary primes still give a superset. Good/bad
+// is decided on conductor support, never on a model discriminant, so the
+// answer is model-invariant. In-engine callers cannot trigger the skip: the
+// B-phase passes admissible l (coprime to Norm(cond E)) and BillereyBl
+// requires good reduction above l.
+function BilPlStar(E, l, bad)
     pcp := ChimpIntrinsic("PowerCharacteristicPolynomial");
     OK := Integers(BaseRing(E));
     factors := [];
     for pr in Decomposition(OK, l) do
         q := pr[1];
-        if Valuation(DiscE, q) ne 0 then
+        if q in bad then
             return false, _;
         end if;
         cp := FrobeniusCharpoly(E, q);
@@ -354,9 +356,9 @@ end function;
 // k = 0 .. d/2 of GCD(P_l^*(l^{12k}), B), or 0 as soon as a factor vanishes.
 // GCD(x, 0) = |x|, so values are nonnegative (matching Sage's ZZ.gcd) and the
 // inert gate compares like-signed quantities. Second return is false when l was
-// skipped (non-minimal model at some q | l).
-function BilBlValue(E, l, d, B, DiscE)
-    ok, P := BilPlStar(E, l, DiscE);
+// skipped (bad reduction at some q | l).
+function BilBlValue(E, l, d, B, bad)
+    ok, P := BilPlStar(E, l, bad);
     if not ok then
         return 0, false;
     end if;
@@ -395,7 +397,9 @@ end function;
 intrinsic BillereyBl(E::CrvEll, l::RngIntElt) -> RngIntElt
 {Billerey's B_l (Theorem 2.4 of arXiv:0908.1084) for E over a number field at
 the rational prime l: the product over k = 0 .. d/2 of P_l^* evaluated at
-l^(12k), where P_l^* is equation (9). Exposed for the inert-principal gate.}
+l^(12k), where P_l^* is equation (9). E must have good reduction at every
+prime above l; the value is a model invariant. Exposed for the
+inert-principal gate.}
     require IsIntrinsic("PowerCharacteristicPolynomial") :
         "BillereyBl: CHIMP is not attached (PowerCharacteristicPolynomial absent); AttachSpec CHIMP first";
     require Type(BaseRing(E)) eq FldNum :
@@ -403,7 +407,13 @@ l^(12k), where P_l^* is equation (9). Exposed for the inert-principal gate.}
     d := AbsoluteDegree(BaseRing(E));
     require d ge 2 : "BillereyBl: Billerey's theorem requires absolute degree >= 2";
     require IsPrime(l) : "BillereyBl: l must be a rational prime";
-    b := BilBlValue(E, l, d, 0, Discriminant(E));
+    // Good reduction is required up front, so a returned 0 is always a genuine
+    // B_l = 0, never a silently skipped l.
+    Enorm := NormalizedModel(E);
+    bad := Seqset(ConductorSupport(Enorm));
+    require forall{ pr : pr in Decomposition(Integers(BaseRing(E)), l) | pr[1] notin bad } :
+        "BillereyBl: E must have good reduction at every prime above l";
+    b, _ := BilBlValue(Enorm, l, d, 0, bad);
     return b;
 end intrinsic;
 
@@ -423,7 +433,10 @@ for the inert-principal gate (R_q = B_l for l inert, q = (l)).}
     ClK, mClK := ClassGroup(K);
     h := Order(q @@ mClK);
     _, gamma := IsPrincipal(q^h);
-    return BilRqValue(E, q, d, h, gamma, 0);
+    // Contract symmetry with BillereyBl, not a mathematical need: BilRqValue's
+    // FrobeniusCharpoly minimizes locally, so any model gives the same value.
+    Enorm := NormalizedModel(E);
+    return BilRqValue(Enorm, q, d, h, gamma, 0);
 end intrinsic;
 
 // Candidate-set prime factors of a running gcd, or the formal TOP sentinel
@@ -440,7 +453,7 @@ end function;
 // up to a doubling bound (AuxBound .. MaxAuxBound). Returns
 // <B, finalBound, stabilized, succeeded>; succeeded is false exactly when B is
 // still 0 at the cap (the caller then runs the R-phase).
-function RunBPhase(E, d, DiscE, DiscK, badRat, AuxBound, MaxAuxBound)
+function RunBPhase(E, d, bad, DiscK, badRat, AuxBound, MaxAuxBound)
     B := 0;
     bound := AuxBound;
     prevSet := {Integers()|};
@@ -450,7 +463,7 @@ function RunBPhase(E, d, DiscE, DiscK, badRat, AuxBound, MaxAuxBound)
         r := NextPrime(lastR);
         while r le bound do
             if IsAdmissiblePrime(r, DiscK, badRat) then
-                bl, used := BilBlValue(E, r, d, B, DiscE);
+                bl, used := BilBlValue(E, r, d, B, bad);
                 if used then
                     B := GCD(B, bl);
                     if B eq 1 then
@@ -486,7 +499,7 @@ end function;
 // h = ord([q]); gamma a generator of q^h. Each norm band (prevBound, bound] is
 // visited once. Returns <R, finalBound, stabilized>; R = 0 at the cap means the
 // R-phase also failed (the caller errors).
-function RunRPhase(E, d, DiscE, DiscK, badRat, ClK, mClK, AuxBound, MaxAuxBound)
+function RunRPhase(E, d, bad, DiscK, badRat, ClK, mClK, AuxBound, MaxAuxBound)
     OK := Integers(BaseRing(E));
     R := 0;
     bound := AuxBound;
@@ -504,7 +517,9 @@ function RunRPhase(E, d, DiscE, DiscK, badRat, ClK, mClK, AuxBound, MaxAuxBound)
                 if nq gt bound or nq le prevBound then
                     continue;
                 end if;
-                if Valuation(DiscE, q) ne 0 then
+                // q in bad cannot fire for admissible r (r is coprime to
+                // Norm(cond E)); kept as a cheap guard.
+                if q in bad then
                     continue;
                 end if;
                 h := Order(q @@ mClK);
@@ -545,7 +560,7 @@ end function;
 // nonzero mod ell. For odd ell that is KroneckerSymbol(a^2 - 4N, ell) = -1
 // (which already forces ell not dividing N); ell = 2 is the a,N both-odd case.
 // Genuine reducible primes never get a witness, so containment is preserved.
-function FrobeniusFilterPrimes(E, cand, DiscE, FilterBound)
+function FrobeniusFilterPrimes(E, cand, bad, FilterBound)
     OK := Integers(BaseRing(E));
     survivors := cand;
     if IsEmpty(survivors) then
@@ -554,7 +569,9 @@ function FrobeniusFilterPrimes(E, cand, DiscE, FilterBound)
     for r in PrimesUpTo(FilterBound) do
         for pr in Decomposition(OK, r) do
             q := pr[1];
-            if Norm(q) gt FilterBound or Valuation(DiscE, q) ne 0 then
+            // The bad check is load-bearing here: r ranges over ALL rational
+            // primes up to FilterBound, admissible or not.
+            if Norm(q) gt FilterBound or q in bad then
                 continue;
             end if;
             cp := FrobeniusCharpoly(E, q);
@@ -775,7 +792,7 @@ guarantee.}
     require FilterBound gt 0 : "IsogenyPrimes: require FilterBound > 0";
 
     Enorm := NormalizedModel(E);
-    bad := ConductorSupport(Enorm);
+    bad := Seqset(ConductorSupport(Enorm));
     vprint IsogenyPrimes, 1: "IsogenyPrimes: normalized model", Enorm, "; bad primes", bad;
 
     K := BaseRing(Enorm);
@@ -856,14 +873,13 @@ guarantee.}
         "IsogenyPrimes: CHIMP is not attached (PowerCharacteristicPolynomial absent); AttachSpec CHIMP first";
 
     OK := Integers(K);
-    DiscE := Discriminant(Enorm);
     DiscK := Discriminant(OK);
     d := AbsoluteDegree(K);
     badRat := { ResidueCharacteristic(P) : P in bad };
     vprint IsogenyPrimes, 1:
         "IsogenyPrimes: branch 2 (abs degree", d, "non-CM); bad rational primes", badRat;
 
-    B, bBound, stabilized, bOK := RunBPhase(Enorm, d, DiscE, DiscK, badRat, AuxBound, MaxAuxBound);
+    B, bBound, stabilized, bOK := RunBPhase(Enorm, d, bad, DiscK, badRat, AuxBound, MaxAuxBound);
     if bOK then
         G := B;
         finalRBound := 0;
@@ -871,7 +887,7 @@ guarantee.}
     else
         vprint IsogenyPrimes, 1: "IsogenyPrimes: B-phase vanished; running R-phase";
         ClK, mClK := ClassGroup(K);
-        R, rBound, stabilized := RunRPhase(Enorm, d, DiscE, DiscK, badRat, ClK, mClK, AuxBound, MaxAuxBound);
+        R, rBound, stabilized := RunRPhase(Enorm, d, bad, DiscK, badRat, ClK, mClK, AuxBound, MaxAuxBound);
         error if R eq 0,
             "IsogenyPrimes: both Billerey phases vanished at MaxAuxBound; geometric CM was likely missed or MaxAuxBound is too small";
         G := R;
@@ -883,7 +899,7 @@ guarantee.}
     // Conservative candidate enlargement, then the Frobenius filter.
     cand := Seqset(PrimeDivisors(G)) join {2, 3}
             join Seqset(PrimeDivisors(Abs(DiscK))) join badRat;
-    L := FrobeniusFilterPrimes(Enorm, cand, DiscE, FilterBound);
+    L := FrobeniusFilterPrimes(Enorm, cand, bad, FilterBound);
     Lsorted := Sort(SetToSequence(L));
 
     info`Stabilized := stabilized;
