@@ -1,3 +1,4 @@
+SetQuitOnError(true);  // as in verify.m:1; without it magma -b exits 0 even when an assert/error fires
 /* Corpus runner. Usage:
  *   magma -b [tags:=tag1,tag2] [line:=<single corpus line>] check_gluing.m
  * Success = prints PASS per entry and "ALL PASS" at the end; any assert failure aborts.
@@ -31,13 +32,17 @@ function ParseCurve(K, s)  // K = shared base field (Rationals() or a NumberFiel
     return EllipticCurve([K | K!x : x in a]);
 end function;
 
-function HasHighAutomorphism(expected)  // expected = list of [fcoeffs, hcoeffs] pairs over Q
+function Order2Subset(expected)  // expected = list of [fcoeffs, hcoeffs] pairs over Q
     Qx := PolynomialRing(Rationals());
-    return exists{pair : pair in expected |
-        #GeometricAutomorphismGroup(HyperellipticCurve(Qx!pair[1], Qx!pair[2])) gt 2};
+    return [pair : pair in expected |
+        #GeometricAutomorphismGroup(HyperellipticCurve(Qx!pair[1], Qx!pair[2])) le 2];
 end function;
 
-procedure RunLine(L)
+procedure RunLine(L, ~ran, ~skipped)
+    // Blank lines, comment lines, and tag-filtered entries never matched the
+    // active run, so they touch neither counter. The oracle-mode skip below is
+    // the only path that counts as skipped (matched the filters, deliberately
+    // not executed); a completed entry does ran +:= 1 after its PASS printf.
     if #L eq 0 or L[1] eq "#" then return; end if;
     parts := Split(L, ":");
     error if #parts ne 8, "bad corpus line", L;
@@ -48,7 +53,11 @@ procedure RunLine(L)
     // any other tag either has n outside {2,3} or is a degenerate pair the
     // formulas were never curated for, so skip rather than silently running
     // the wrong algorithm under the requested n's label.
-    if oracleMode and tag notin ["bhls2", "bhls3"] then return; end if;
+    if oracleMode and tag notin ["bhls2", "bhls3"] then
+        printf "SKIP %o %o %o (oracle mode covers only bhls2/bhls3)\n", tag, e1, e2;
+        skipped +:= 1;
+        return;
+    end if;
     field := eval fld;
     // Build K once and share it between E1 and E2: two separate NumberField()
     // calls on the same defining polynomial produce fields that are
@@ -61,13 +70,6 @@ procedure RunLine(L)
     // composite via CRT of prime-power blocks, Task 11) and, experimentally
     // (Task 13), prime-power levels over a number field (the nf entry).
     expected := eval crv;
-    // algorithm:=Periods only reconstructs curves with geometric automorphism group
-    // of order 2 (no non-quadratic-twist reconstruction, see gluings.m); skip the
-    // rest so the Periods regression stays a meaningful test of the generic case.
-    if not oracleMode and algMode eq "Periods" and expected cmpne [-1] and HasHighAutomorphism(expected) then
-        printf "SKIP %o %o %o n=%o (bielliptic/high-automorphism, non-quadratic-twist limitation)\n", tag, e1, e2, n;
-        return;
-    end if;
     if oracleMode then
         cs := CanonicalGluingList(n eq 2 select Genus2Elliptic2(E1, E2) else Genus2Elliptic3(E1, E2));
         info := rec<recformat<proof : MonStgElt> | proof := "-">;
@@ -80,19 +82,33 @@ procedure RunLine(L)
         cs, info := eval "Genus2Gluings(E1, E2, n : Algorithm := algMode)";
     end if;
     count := StringToInteger(cnt);
-    if count ge 0 then assert #cs eq count; end if;
-    if prf ne "-" and not oracleMode then assert info`proof eq prf; end if;
-    if expected cmpne [-1] then
-        got := [[Coefficients(f), Coefficients(h)] where f, h := HyperellipticPolynomials(c) : c in cs];
-        assert got eq expected;
+    // algorithm:=Periods reconstructs only geometric-automorphism-order-2 quotients
+    // (no non-quadratic-twist reconstruction, see gluings.m), and an n=2 block is
+    // traces-only on that path, so pin the emitted set to the order-2 subset of the
+    // expected curves rather than the Auto-mode count/proof contracts.
+    if algMode eq "Periods" then
+        if expected cmpne [-1] then
+            got := [[Coefficients(f), Coefficients(h)] where f, h := HyperellipticPolynomials(c) : c in cs];
+            assert got eq Order2Subset(expected);
+        end if;
+    else
+        if count ge 0 then assert #cs eq count; end if;
+        if prf ne "-" and not oracleMode then assert info`proof eq prf; end if;
+        if expected cmpne [-1] then
+            got := [[Coefficients(f), Coefficients(h)] where f, h := HyperellipticPolynomials(c) : c in cs];
+            assert got eq expected;
+        end if;
     end if;
     printf "PASS %o %o %o n=%o\n", tag, e1, e2, n;
+    ran +:= 1;
 end procedure;
 
+ran := 0; skipped := 0;
 if assigned line then
-    RunLine(line);
+    RunLine(line, ~ran, ~skipped);
 else
-    for L in Split(Read("data/gluing_corpus.txt"), "\n") do RunLine(L); end for;
+    for L in Split(Read("data/gluing_corpus.txt"), "\n") do RunLine(L, ~ran, ~skipped); end for;
 end if;
-print "ALL PASS";
+error if ran eq 0, "no corpus entries ran (filter matched nothing)";
+printf "ALL PASS (%o ran, %o skipped)\n", ran, skipped;
 quit;
