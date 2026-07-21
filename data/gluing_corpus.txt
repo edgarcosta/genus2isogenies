@@ -4,8 +4,8 @@
 # Run with check_gluing.m from the repo root:
 #   magma -b [tags:=tag1,tag2] [line:=<entry>] [oracle:=1] check_gluing.m
 # Batch: parallel -a data/gluing_corpus.txt magma -b line:={} check_gluing.m
-# oracle:=1 is a temporary flag (until Genus2Gluings exists) that calls
-# Genus2Elliptic2/3 + CanonicalGluingList directly instead.
+# oracle:=1 is a BHLS-only replay flag that calls Genus2Elliptic2/3 +
+# CanonicalGluingList directly instead of Genus2Gluings.
 #
 # Line format:
 #   tag:field:E1:E2:n:count:proof:curves
@@ -118,7 +118,7 @@ composite:0:[0,1,0,-36,-140]:[1,0,1,-334,-2368]:6:0:certified:[]
 # the complex torus is the archimedean piece of Res_{K/Q}(E1)). Firmed to EMPTY: no
 # anti-symplectic psi gives a Q-rational quotient. Checked by brute force -- all 384
 # psi mod 8 enumerated directly (no lift), min Im of the I2-normalized Igusa-Clebsch
-# invariants 7.8e-6 (>> the 1e-10 gate); at level 2 the min is a stable 0.00158822...
+# invariants 7.8e-6 (>> the 1e-10 gate); at level 2 the min is a stable 0.00158882...
 # across 80/150/250 digits and identical from the other embedding, so genuinely
 # non-real, not a precision or embedding artifact. The lift sweep runs over K and
 # finds 0 rational-looking survivors already at level 2, so no (8,8)-gluing. proof is

@@ -3,9 +3,13 @@
  * Success = prints PASS per entry and "ALL PASS" at the end; any assert failure aborts.
  * Batch: parallel -a data/gluing_corpus.txt magma -b line:={} check_gluing.m
  *
- * Temporary oracle:=1 flag (until Genus2Gluings exists): calls
- * Genus2Elliptic2/3 + CanonicalGluingList directly instead of Genus2Gluings,
- * and skips the proof-field assertion (the oracle path has no certificate).
+ * oracle:=1 flag: BHLS-only replay mode, calling Genus2Elliptic2/3 +
+ * CanonicalGluingList directly instead of Genus2Gluings, and skipping the
+ * proof-field assertion (the oracle path has no certificate).
+ *
+ * data/gluing_corpus.txt's fields are eval'd below (ParseCurve, field, expected)
+ * as trusted, repo-controlled input; this runner is not safe to point at an
+ * untrusted corpus file.
  */
 AttachSpec("spec");
 if not assigned tags then tags := ""; end if;
@@ -15,9 +19,10 @@ wanted := tags eq "" select false else Split(tags, ",");
 // of an outer global, as opposed to "assigned" checks, do cross into
 // procedure scope, the same way "wanted" is read inside RunLine below).
 oracleMode := assigned oracle;
-// algorithm:=Periods (or Algebraic) forces Genus2Gluings' Algorithm parameter;
-// default "Auto". Captured as a plain global for the same cross-scope reason as
-// oracleMode above.
+// algorithm:=Periods (or Algebraic, only meaningful with tags:=bhls2,bhls3 since
+// BHLS covers just n in {2, 3}) forces Genus2Gluings' Algorithm parameter; default
+// "Auto". Captured as a plain global for the same cross-scope reason as oracleMode
+// above.
 algMode := assigned algorithm select algorithm else "Auto";
 
 function ParseCurve(K, s)  // K = shared base field (Rationals() or a NumberField); s = eval'able a-invariant list

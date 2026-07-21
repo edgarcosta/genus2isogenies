@@ -91,6 +91,13 @@ gluing data". Returns the CanonicalGluingList merge over every pair and level,
 and a metadata record with fields N, sources (one <F1 ainvs, F2 ainvs, n, count,
 proof> record per (pair, level) call), proof ("certified" iff every source
 certified, else "traces-only"), and classsizes <#cls1, #cls2>.}
+    // GluingModulus first, ahead of resolving Classes: an isogenous-input rejection
+    // must fire even over a number field with no Classes supplied, without paying for
+    // IsogenousCurves (which the FldRat-only require just below would reject anyway).
+    N, incon := GluingModulus(E1, E2 : Bound := Bound);
+    require not incon:
+        "curves appear isogenous; the square case needs the 2-power loop, not this driver";
+
     if Classes cmpeq false then
         require Type(BaseRing(E1)) eq FldRat and Type(BaseRing(E2)) eq FldRat:
             "AllGenus2Gluings needs Classes := [cls1, cls2] over a number field; there is no isogeny-class-over-K engine yet";
@@ -100,10 +107,6 @@ certified, else "traces-only"), and classsizes <#cls1, #cls2>.}
         require #Classes eq 2: "Classes must be [cls1, cls2], the isogeny classes of E1 and E2";
         cls1 := Classes[1]; cls2 := Classes[2];
     end if;
-
-    N, incon := GluingModulus(E1, E2 : Bound := Bound);
-    require not incon:
-        "curves appear isogenous; the square case needs the 2-power loop, not this driver";
 
     fmt := allgInfoFmt();
     if N le 1 then

@@ -28,6 +28,7 @@ end intrinsic;
 intrinsic LiftAntiSymplectic(M::Mtrx, ell::RngIntElt, e::RngIntElt) -> SeqEnum
 {All lifts of a determinant -1 matrix over Integers(ell^e) to Integers(ell^(e+1))
 with determinant -1. There are exactly ell^3.}
+    require IsPrime(ell): "ell must be prime";
     R1 := Integers(ell^(e + 1));
     Mz := Matrix(Integers(), 2, 2, [Integers()!a : a in Eltseq(M)]);
     out := [];
@@ -42,6 +43,8 @@ intrinsic CRTAntiSymplectic(mats::List, moduli::SeqEnum) -> Mtrx
 {Entrywise CRT of matrices over Integers(m_i) for pairwise coprime moduli.
 mats is a List (not a SeqEnum) because its entries live over different rings
 Integers(m_i), which have no common SeqEnum universe.}
+    require forall{i : i in [1 .. #moduli], j in [1 .. #moduli] | i ge j or GCD(moduli[i], moduli[j]) eq 1}:
+        "moduli must be pairwise coprime";
     n := &*moduli;
     ent := [CRT([Integers()!Eltseq(mats[j])[i] : j in [1..#mats]], moduli) : i in [1..4]];
     return Matrix(Integers(n), 2, 2, ent);

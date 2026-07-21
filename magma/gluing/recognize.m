@@ -214,6 +214,7 @@ uniqueness/ambiguity contract is unchanged.}
         if forall{D : D in reps | not IsIsomorphic(C, D)} then Append(~reps, C); end if;
     end for;
     require #reps eq 1:
-        "ambiguous twist: distinct curves match L(E1) L(E2) up to TraceBound";
+        Sprintf("ambiguous twist: distinct curves match L(E1) L(E2) up to TraceBound (E1 = %o, E2 = %o)",
+            aInvariants(E1), aInvariants(E2));
     return true, reps[1];
 end intrinsic;

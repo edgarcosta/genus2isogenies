@@ -174,31 +174,15 @@ function admitsRationalIsogeny(E, ell)
     return #Roots(UnivariatePolynomial(Evaluate(Phi, 1, jInvariant(E)))) gt 0;
 end function;
 
-// Is a recognized rational Igusa-Clebsch quadruple a GENUINE Galois-stable jacobian
-// gluing of the pair (as opposed to a look-alike: a non-Galois-stable graph whose
-// jacobian quotient happens to share rational moduli with a stable one)? A genuine
-// stable jacobian quotient has its Jacobian Q-isogenous to E1 x E2, so it either
-//  - pins a quadratic twist reproducing L(E1) L(E2) (CurveFromInvariants emits it), or
-//  - carries extra automorphisms (bielliptic: the twist is real but not certifiable
-//    by quadratic pinning), or
-//  - lands off Q under HyperellipticCurveFromIgusaClebsch (Mestre field-of-moduli
-//    obstruction: still a Q-rational ppas, just not a Q curve model).
-// A quadruple that does NONE of these has no rational isogeny to E1 x E2 and is a
-// look-alike; it is not counted. (Recognition alone over-counts at small mod-ell
-// image, where the conjugation filter barely cuts the candidate pool.)
-function isGenuineJacobianQuotient(ic, E1, E2, TraceBound)
-    if CurveFromInvariants(ic, E1, E2 : TraceBound := TraceBound) then
-        return true;
-    end if;
-    ok := true; C0 := 0;
+// admitsRationalIsogeny, but for a level past ClassicalModularPolynomial's database
+// (ell > 59): that lookup errors rather than returning false, so treat "unavailable"
+// as "cannot rule out" (gate passes, product kept) instead of crashing.
+function admitsRationalIsogenyOrUnknown(E, ell)
     try
-        C0 := HyperellipticCurveFromIgusaClebsch(ic);
-    catch e
-        ok := false;
+        return admitsRationalIsogeny(E, ell);
+    catch err
+        return true;
     end try;
-    if not ok then return false; end if;
-    if Type(BaseRing(C0)) ne FldRat then return true; end if;   // Mestre obstruction
-    return #GeometricAutomorphismGroup(C0) gt 2;                 // bielliptic
 end function;
 
 // Phase 2, shared by the prime and prime-power analytic paths: from the recognized
@@ -265,6 +249,9 @@ end function;
 // above a level-ell survivor and is produced by lifting it. The converse can fail (a
 // rational-looking level-ell graph need not lift to a stable one), which only costs
 // extra candidates that the target-level recognition and twist pinning discard.
+// Gap: quotients whose invariants are projectively I2 = 0 are not recognized by the
+// I2-pivot (recognize.m's normalizeIC) and so would be missed at these uncertified
+// levels (documented limitation).
 
 // The near-real gate for the lift sweep: does this numeric quotient look defined over
 // Q? Jacobian type reuses LooksRationalIC (the fixed 1e-10 I2-normalized gate of the
@@ -576,14 +563,20 @@ the curves (see the gluingCompositeCRT header). Algorithm is one of "Auto" (BHLS
 formulas when n is 2 or 3 and the curves are non-isomorphic, else analytic periods),
 "Algebraic" (BHLS, n = 2 or 3 only), or "Periods" (always analytic). For e >= 2 the
 analytic path lifts a level-ell survivor set up the tower (see the gluingLiftSweep header)
-rather than enumerating psi mod ell^e. Precision overrides the analytic precision
-heuristic; TraceBound bounds the Euler-factor twist certificate. Proof drives the exact
+rather than enumerating psi mod ell^e. Precision sets the STARTING analytic precision
+(default the analytic precision heuristic); a near-rational recognition failure retries
+at double the precision (see the Pipeline note above). TraceBound bounds the Euler-factor
+twist certificate. Proof drives the exact
 completeness certificate (exact.m, GaloisStableGluings): "Auto" certifies prime blocks up
 to ell = 13, true certifies every prime and errors if the exact layer declines, false
 skips it. The exact layer runs at each block's PRIME level only; for e >= 2 blocks it is
 out of scope in v1 (division polynomials at ell^e are too large), so those blocks are
 "traces-only" EXCEPT that a prime level certified empty forces ell^e empty by reduction
-(certified). The GluingInfo fields are n, proof ("certified" when every block certified,
+(certified). The same shortcut applies to a composite n (gluingCompositeCRT): one
+certified-empty block (congruence-obstructed or exact-certified-empty) proves the whole
+composite empty, and the composite returns "certified" immediately with the remaining
+blocks in the tuple reported as unexamined sentinels, not independently certified. The
+GluingInfo fields are n, proof ("certified" when every block certified,
 else "traces-only"), blocks (one <ell, e, stable_count, analytic_count, certified> tuple
 per prime-power block; stable_count is the exact Galois-stable QUOTIENT count when
 certified, -1 otherwise (including every non-empty e >= 2 block), analytic_count the
@@ -606,6 +599,8 @@ blocks; prime-power levels only.}
     isNF := Type(K) ne FldRat;
     require Proof cmpeq "Auto" or Proof cmpeq true or Proof cmpeq false:
         "Proof must be \"Auto\", true, or false";
+    require not (isNF and Proof cmpeq true):
+        "Proof := true is unavailable over number fields; the exact layer is Q-only in v1";
 
     // Composite n = prod ell_i^e_i: CRT composition of prime-power blocks (gluingCompositeCRT
     // header). "Algebraic" is undefined off n in {2, 3}, so reject it here (matching the
@@ -710,7 +705,9 @@ blocks; prime-power levels only.}
         end if;
         prec := (Precision cmpeq false) select GluingPrecisionHeuristic(E1, E2, n) else Precision;
         recIC, recPsi, products, usedPrec := gluingRecognizeSurvivors(E1, E2, survivors, n, prec);
-        if not (admitsRationalIsogeny(E1, ell) and admitsRationalIsogeny(E2, ell)) then products := []; end if;
+        // ell can exceed 59 here (e >= 2 lift path), past ClassicalModularPolynomial's
+        // database: admitsRationalIsogenyOrUnknown treats that as "cannot rule out".
+        if not (admitsRationalIsogenyOrUnknown(E1, ell) and admitsRationalIsogenyOrUnknown(E2, ell)) then products := []; end if;
         cs, psisOut, analyticCount := gluingEmitCurves(recIC, recPsi, products, E1, E2, TraceBound);
         // No exact ell^e layer in v1, so stable_count is -1 and the block is traces-only
         // even when curves are emitted (each still passes the Euler-factor twist
@@ -750,7 +747,10 @@ blocks; prime-power levels only.}
             // product look-alikes; see admitsRationalIsogeny).
             prec := (Precision cmpeq false) select GluingPrecisionHeuristic(E1, E2, n) else Precision;
             _, _, products, usedPrec := gluingAnalyticEnumerate(E1, E2, n, prec);
-            if not (admitsRationalIsogeny(E1, n) and admitsRationalIsogeny(E2, n)) then products := []; end if;
+            // n in {2, 3} here (usedAlgebraic implies BHLS domain), well inside
+            // ClassicalModularPolynomial's range; only worth the gate when there is a
+            // product quotient to gate.
+            if #products gt 0 and not (admitsRationalIsogeny(E1, n) and admitsRationalIsogeny(E2, n)) then products := []; end if;
             analyticCount := #cs + #Seqset(products);
             block, blockProof := GluingCertificateBlock(E1, E2, n, analyticCount, strict);
         else
@@ -769,7 +769,10 @@ blocks; prime-power levels only.}
     // the completeness certificate.
     prec := (Precision cmpeq false) select GluingPrecisionHeuristic(E1, E2, n) else Precision;
     recIC, recPsi, products, usedPrec := gluingAnalyticEnumerate(E1, E2, n, prec);
-    if not (admitsRationalIsogeny(E1, n) and admitsRationalIsogeny(E2, n)) then products := []; end if;
+    // n is an arbitrary prime here (the general periods path) and can exceed 59, past
+    // ClassicalModularPolynomial's database: admitsRationalIsogenyOrUnknown treats that
+    // as "cannot rule out".
+    if not (admitsRationalIsogenyOrUnknown(E1, n) and admitsRationalIsogenyOrUnknown(E2, n)) then products := []; end if;
 
     // Phase 2 (reconstruction + count), shared with the prime-power path via
     // gluingEmitCurves: one pass over the distinct recognized jacobian moduli. A
@@ -799,8 +802,8 @@ end intrinsic;
 intrinsic Genus2Gluings(f1::RngUPolElt, f2::RngUPolElt, n::RngIntElt
     : Algorithm := "Auto", Precision := false, Proof := "Auto", TraceBound := 1000)
     -> SeqEnum, Rec
-{Genus2Gluings for the elliptic curves y^2 = f1, y^2 = f2 (f1, f2 univariate
-cubics or quartics over Q).}
+{Genus2Gluings for the elliptic curves y^2 = f1, y^2 = f2 (f1, f2 monic univariate
+cubics over Q).}
     return Genus2Gluings(EllipticCurve(f1), EllipticCurve(f2), n
         : Algorithm := Algorithm, Precision := Precision, Proof := Proof, TraceBound := TraceBound);
 end intrinsic;
