@@ -5,28 +5,51 @@ tests/test_isogenyprimes.m and tests/run_differential.m.
 Usage:
     sage -python tests/generate_corpus.py            # full run: writes the
         corpus with `expect` blocks and tests/test_isogenyprimes.m +
-        tests/run_differential.m (multi-hour; the orchestrator runs this).
+        tests/run_differential.m (minutes: the oE oracle screens each (curve,
+        ell) to a certain-negative before any construction, and compute_oracles
+        forks across entries; the orchestrator runs this).
     sage -python tests/generate_corpus.py --smoke    # deterministic subset,
         emits /tmp/smoke_*.m only, never touches the committed corpus or
         tests/*.m (fast; used to verify the emitters before the full run).
     sage -python tests/generate_corpus.py --inputs-only   # re-runs assembly
         only and writes tests/corpus_curves.json; no oracle computation, no
         `expect` blocks, no tests/*.m (fast; use after editing assemble_inputs
-        to refresh the corpus ahead of the multi-hour full run)."""
+        to refresh the corpus ahead of the full run)."""
 import datetime
 import json
+import os
 import sys
 from sage.all import (QQ, ZZ, PolynomialRing, NumberField, EllipticCurve,
                       kronecker_symbol, set_random_seed, prime_range, gcd)
 from sage.arith.misc import fundamental_discriminant
-from sage.parallel.decorate import fork
+from sage.parallel.decorate import fork, parallel
+from sage.parallel.ncpus import ncpus as _sage_ncpus
+try:
+    from sage.schemes.elliptic_curves.mod_poly import classical_modular_polynomial
+except Exception:      # optional; the modular-polynomial screen degrades to skip
+    classical_modular_polynomial = None
 
 SEED = 20260720
 MAZUR = [2, 3, 5, 7, 11, 13, 17, 19, 37, 43, 67, 163]
-ORACLE_TIMEOUT = 120   # per-curve per-oracle cap (seconds) for the full run
-SMOKE_TIMEOUT = 20     # shorter cap for --smoke: the machinery check stays fast
-                       # (the number-field per-ell sweep is inherently ~50-120s)
+ORACLE_TIMEOUT = 120   # cap (seconds) per oracle, and per-ell for the oE
+                       # construction certificate (steps 2-3 of the cascade)
+FROB_SCREEN_PRIMES = 40   # good primes cached per curve for the Frobenius screen
 _ACTIVE_CAP = ORACLE_TIMEOUT   # set by compute_oracles(); read by capped()
+
+def _worker_count():
+    """Entry-level fork width for compute_oracles: min(cores - 2, 16) floored at
+    4. sage.parallel.ncpus.ncpus() is the spec-named source, but it honors
+    SAGE_NUM_THREADS, which this sandbox pins to 1 (a per-process BLAS thread cap,
+    set alongside OPENBLAS_NUM_THREADS=1) -- that collapses ncpus() to 1, which is
+    a library-thread budget, not a fork budget. Fall back to the CPU affinity when
+    ncpus() is degenerate so the entry parallelism actually spreads across cores."""
+    n = _sage_ncpus()
+    if n <= 1:
+        aff = os.sched_getaffinity(0) if hasattr(os, "sched_getaffinity") else None
+        n = len(aff) if aff else (os.cpu_count() or 1)
+    return max(4, min(n - 2, 16))
+
+NCPUS = _worker_count()
 
 def K_from(coeffs):
     R = PolynomialRing(QQ, 'x')
@@ -226,37 +249,148 @@ def deg1_curve_over_Q(e):
         return EllipticCurve(QQ, [0, 0, 0, QQ(m["A"][0]), QQ(m["B"][0])])
     return EllipticCurve(QQ, [QQ(a[0]) for a in m["ainvs"]])
 
-def oracle_oE(E, deg1, dropped):
-    """O(E) = { ell : isogenies_prime_degree(ell) nonempty }, DIRECT per-ell
-    construction only. Full Mazur list (incl. 163) over degree-one fields; primes
-    <= 100 over number fields. E is the curve to sweep (a Q-model for degree-one
-    entries; see deg1_curve_over_Q). ell must be a Sage Integer: a Python int
-    trips isogenies_prime_degree's internal l.is_prime() call."""
-    sweep = [ZZ(p) for p in MAZUR] if deg1 else list(prime_range(101))
-    def go():
-        out = []
-        for ell in sweep:
+# --- oE screens (cheapest-certain-first cascade) ----------------------------
+#
+# DIRECTION DISCIPLINE: the two screens below only ever produce CERTAIN
+# NEGATIVES (ell provably NOT in O(E)); membership in O(E) is established ONLY by
+# the construction certificate (step 3). So the screened O(E) equals the
+# brute-force isogenies_prime_degree sweep exactly -- a screen can only remove an
+# ell that construction would also have found absent -- while running orders of
+# magnitude fewer of the expensive constructor calls.
+
+def _quad_irreducible_mod_ell(a, n, ell):
+    """Is x^2 - a x + n irreducible over GF(ell)? (a = trace, n = norm of a good
+    Frobenius.) ell = 2: only x^2+x+1 is irreducible, i.e. a and n both odd.
+    ell odd: irreducible iff the discriminant a^2 - 4n is a nonzero non-square."""
+    if ell == 2:
+        return (n % 2 == 1) and (a % 2 == 1)
+    D = (a * a - 4 * n) % ell
+    if D == 0:
+        return False
+    return kronecker_symbol(D, ell) == -1
+
+def _frob_data(E, base, n_primes=FROB_SCREEN_PRIMES):
+    """Cache (residue_char, a_q, Norm(q)) for the n_primes good primes of E of
+    smallest norm, reused by the Frobenius screen across every ell. E.reduction
+    raises at bad primes, so try/except keeps only good ones -- no conductor
+    computation needed. Over QQ the primes are p; over K they are prime ideals
+    taken norm-ascending."""
+    data = []
+    if base is QQ:
+        for p in prime_range(2, 2000):
             try:
-                # Degree-one entries sweep a Q-model (fast, and QQ's
-                # isogenies_prime_degree has no minimal_models kwarg). Over
-                # number fields pass minimal_models=False: we only need
-                # nonemptiness, and building codomain minimal models is wasted
-                # work that also trips a Sage round() bug on some inputs.
-                if deg1:
-                    phis = E.isogenies_prime_degree(ZZ(ell))
-                else:
-                    phis = E.isogenies_prime_degree(ZZ(ell), minimal_models=False)
-                if phis:
-                    out.append(int(ell))
+                a = ZZ(E.reduction(p).trace_of_frobenius())
             except Exception:
-                # No constructible isogeny (ValueError/NotImplementedError) or a
-                # Sage arithmetic failure for this ell: skip it. Safe for the
-                # containment asserts (a missed ell only weakens, never breaks);
-                # the equality asserts run only over Q, which never raises here.
-                # AlarmInterrupt is a BaseException, so the 120s cap still fires.
-                pass
-        return out
-    return capped("oE", go, dropped)
+                continue
+            data.append((int(p), int(a), int(p)))
+            if len(data) >= n_primes:
+                break
+    else:
+        cand = [(int(P.norm()), int(P.smallest_integer()), P)
+                for P in base.primes_of_bounded_norm(500)]
+        cand.sort(key=lambda t: t[0])
+        for nrm, p, P in cand:
+            try:
+                a = ZZ(E.reduction(P).trace_of_frobenius())
+            except Exception:
+                continue
+            data.append((int(p), int(a), int(nrm)))
+            if len(data) >= n_primes:
+                break
+    return data
+
+def _frob_screen_kills(frob, ell):
+    """CERTAIN NEGATIVE: True if some cached good prime q (residue char != ell)
+    has Frobenius charpoly irreducible mod ell, proving E[ell] is irreducible
+    over K (a K-rational ell-subgroup would give Frobenius an eigenvalue mod ell,
+    hence a charpoly root, at every good q coprime to ell)."""
+    for (res_char, aq, nq) in frob:
+        if res_char == ell:
+            continue
+        if _quad_irreducible_mod_ell(aq, nq, ell):
+            return True
+    return False
+
+def _modpoly_no_root(base, jE, ell):
+    """CERTAIN NEGATIVE: True if Phi_ell(j(E), Y) has no root in the base field,
+    so E has no ell-isogeny over K (a K-rational ell-subgroup C gives the
+    K-rational root j(E/C)). Caller guards j not in {0, 1728} and swallows errors
+    (the screen then just skips, never a false drop)."""
+    Phi = classical_modular_polynomial(int(ell))
+    d = Phi.dict()
+    max_ex = max(ex for (ex, ey) in d)
+    jb = base(jE)
+    jpow = [base(1)] * (max_ex + 1)
+    for k in range(1, max_ex + 1):
+        jpow[k] = jpow[k - 1] * jb
+    coeffs = {}
+    for (ex, ey), c in d.items():
+        coeffs[ey] = coeffs.get(ey, base(0)) + base(c) * jpow[ex]
+    f = PolynomialRing(base, 'Y')(coeffs)
+    return not f.roots(base, multiplicities=False)
+
+def oracle_oE(E, base, deg1, dropped, stats):
+    """O(E) = { ell : isogenies_prime_degree(ell) nonempty }, decided by the
+    cheapest-certain-first cascade (Frobenius screen, then modular-polynomial
+    screen, then the construction certificate). Full Mazur list (incl. 163) over
+    degree-one fields; primes <= 100 over number fields. E is the curve to sweep
+    with base ring `base` (a Q-model for degree-one entries; see
+    deg1_curve_over_Q). Each surviving ell's steps 2-3 run under the per-ell
+    ORACLE_TIMEOUT fork cap; a timeout records the (curve, ell) drop, never
+    silently. `stats` is filled with the per-screen hit counts for logging."""
+    sweep = [ZZ(p) for p in MAZUR] if deg1 else [ZZ(p) for p in prime_range(101)]
+    frob = _frob_data(E, base)
+    jE = E.j_invariant()
+    j_special = jE in (base(0), base(1728))   # skip modpoly screen at 0/1728
+    out = []
+    n_frob = n_modpoly = n_in = n_out = n_drop = 0
+    for ell in sweep:
+        elli = int(ell)
+        # Step 1: Frobenius screen -- fast, inline, certain negative.
+        if _frob_screen_kills(frob, elli):
+            n_frob += 1
+            continue
+        do_modpoly = (not j_special) and (classical_modular_polynomial is not None)
+        def per_ell(ell=ell, do_modpoly=do_modpoly):
+            # ell must stay a Sage Integer: a Python int trips
+            # isogenies_prime_degree's internal l.is_prime() call.
+            try:
+                # Step 2: modular-polynomial screen -- certain negative.
+                if do_modpoly:
+                    try:
+                        if _modpoly_no_root(base, jE, ell):
+                            return "modpoly_drop"
+                    except Exception:
+                        pass   # screen inconclusive; fall through to construction
+                # Step 3: construction certificate -- the only positive path.
+                # Over number fields pass minimal_models=False (we need only
+                # nonemptiness; building codomain minimal models is wasted work
+                # and trips a Sage round() bug on some inputs). Over QQ that kwarg
+                # does not exist.
+                if deg1:
+                    phis = E.isogenies_prime_degree(ell)
+                else:
+                    phis = E.isogenies_prime_degree(ell, minimal_models=False)
+                return "in" if phis else "out"
+            except Exception:
+                # No constructible isogeny or a Sage arithmetic failure for this
+                # ell: certainly not certified in. Returning here (rather than
+                # raising) keeps the fork's 'NO DATA' sentinel meaning ONLY a
+                # hard timeout/crash, i.e. the drop case.
+                return "out"
+        r = capped("oE:ell=%d" % elli, per_ell, dropped)
+        if r is None:                 # timeout: capped() already recorded the drop
+            n_drop += 1
+        elif r == "in":
+            n_in += 1
+            out.append(elli)
+        elif r == "modpoly_drop":
+            n_modpoly += 1
+        else:
+            n_out += 1
+    stats.update(sweep=len(sweep), frob=n_frob, modpoly=n_modpoly,
+                 construct_in=n_in, construct_out=n_out, dropped=n_drop)
+    return out
 
 def oracle_cm(E, K, dropped):
     """Geometric CM (E.has_cm() over Qbar). cm_discriminant() is the ORDER
@@ -363,45 +497,77 @@ def oracle_cong(E1, E2, K, dropped, norm_bound=1000, max_norm_bound=8000,
 
 GATE_IDS = {"fixture-gate-inert", "fixture-gate-split"}
 
+def _compute_expect_for_entry(e):
+    """Pure function of one entry: rebuild K/E and return (id, expect, oE_stats).
+    Runs inside an entry-level fork; the per-oracle capped() calls fork again
+    (nested), and every returned value is a plain JSON type so the parent can
+    pickle it back and reattach by id. `expect["dropped"]` lists this entry's
+    capped drops (oracle name, or "oE:ell=<ell>" for a per-ell construction)."""
+    eid = e["id"]
+    dropped = []
+    oe_stats = {}
+    K, E, E2 = rebuild(e)
+    expect = {"deg1": is_deg1(K)}
+    if E2 is not None:
+        # Only the fixture-cong-* pairs are asserted (congruence section);
+        # diff-congpair pairs are differential-only (the driver calls the
+        # engine and prints; no oracle) and are isogenous, so the engine
+        # returns AllPrimes, not the gcd's Finite.
+        if e["stratum"].startswith("fixture-cong"):
+            expect["cong"] = oracle_cong(E, E2, K, dropped)
+            if e["stratum"] == "fixture-cong-twist":
+                expect["cong_lowbound"] = oracle_cong(
+                    E, E2, K, dropped, norm_bound=2, max_norm_bound=2,
+                    name="cong_lowbound")
+    else:
+        cm = oracle_cm(E, K, dropped)
+        expect["cm"] = cm
+        is_cm = bool(cm and cm.get("is_cm"))
+        Eo = deg1_curve_over_Q(e) if (expect["deg1"] and K is not QQ) else E
+        expect["oE"] = oracle_oE(Eo, Eo.base_ring(), expect["deg1"], dropped,
+                                 oe_stats)
+        if (not expect["deg1"]) and (not is_cm):
+            expect["soft_reducible"] = oracle_soft(E, dropped)
+        if eid in GATE_IDS:
+            expect["golden"] = oracle_golden(E, K, dropped)
+    expect["dropped"] = dropped
+    return (eid, expect, oe_stats)
+
 def compute_oracles(entries, cap=ORACLE_TIMEOUT):
-    """Attach an `expect` block to every entry in place. Returns the aggregated
-    [(id, oracle)] drop list for the emitted header. `cap` is the per-oracle
-    timeout (seconds)."""
+    """Attach an `expect` block to every entry in place, computing entries in
+    parallel over NCPUS forks. Returns the aggregated [(id, oracle)] drop list
+    for the emitted header. Each entry's expect block is a pure function of the
+    entry, so results are reattached BY ID in the original entry order: the
+    written corpus and emitted .m files are byte-identical regardless of the
+    order the forks finish. `cap` is the per-oracle (and per-ell oE) timeout."""
     global _ACTIVE_CAP
     _ACTIVE_CAP = cap
-    agg = []
     n = len(entries)
-    for i, e in enumerate(entries):
-        eid = e["id"]
-        dropped = []
-        K, E, E2 = rebuild(e)
-        expect = {"deg1": is_deg1(K)}
-        if E2 is not None:
-            # Only the fixture-cong-* pairs are asserted (congruence section);
-            # diff-congpair pairs are differential-only (the driver calls the
-            # engine and prints; no oracle) and are isogenous, so the engine
-            # returns AllPrimes, not the gcd's Finite.
-            if e["stratum"].startswith("fixture-cong"):
-                expect["cong"] = oracle_cong(E, E2, K, dropped)
-                if e["stratum"] == "fixture-cong-twist":
-                    expect["cong_lowbound"] = oracle_cong(
-                        E, E2, K, dropped, norm_bound=2, max_norm_bound=2,
-                        name="cong_lowbound")
-        else:
-            cm = oracle_cm(E, K, dropped)
-            expect["cm"] = cm
-            is_cm = bool(cm and cm.get("is_cm"))
-            Eo = deg1_curve_over_Q(e) if (expect["deg1"] and K is not QQ) else E
-            expect["oE"] = oracle_oE(Eo, expect["deg1"], dropped)
-            if (not expect["deg1"]) and (not is_cm):
-                expect["soft_reducible"] = oracle_soft(E, dropped)
-            if eid in GATE_IDS:
-                expect["golden"] = oracle_golden(E, K, dropped)
-        expect["dropped"] = dropped
+    worker = parallel(ncpus=NCPUS)(_compute_expect_for_entry)
+    results = {}
+    tot = {}
+    done = 0
+    for (_args, out) in worker([(e,) for e in entries]):
+        eid, expect, oe_stats = out
+        results[eid] = expect
+        done += 1
+        for k, v in oe_stats.items():
+            tot[k] = tot.get(k, 0) + v
+        drp = expect.get("dropped") or []
+        print("oracle %d/%d %s%s" % (done, n, eid,
+              ("  DROPPED:" + ",".join(drp)) if drp else ""), flush=True)
+    # Reattach in the original entry order so the output is deterministic.
+    agg = []
+    for e in entries:
+        expect = results[e["id"]]
         e["expect"] = expect
-        agg.extend((eid, nm) for nm in dropped)
-        print("oracle %d/%d %s%s" % (i + 1, n, eid,
-              ("  DROPPED:" + ",".join(dropped)) if dropped else ""))
+        agg.extend((e["id"], nm) for nm in (expect.get("dropped") or []))
+    if tot:
+        print("oE screens (totals over swept entries): sweep=%d frob_killed=%d "
+              "modpoly_killed=%d construct_in=%d construct_out=%d dropped=%d"
+              % (tot.get("sweep", 0), tot.get("frob", 0), tot.get("modpoly", 0),
+                 tot.get("construct_in", 0), tot.get("construct_out", 0),
+                 tot.get("dropped", 0)), flush=True)
     return agg
 
 # --- Magma literal helpers ---------------------------------------------------
@@ -756,14 +922,16 @@ def main():
     prov = d.get("_provenance", {})
     if smoke:
         entries = smoke_subset(d["entries"])
-        print("smoke subset: %d / %d entries" % (len(entries), len(d["entries"])))
-        agg = compute_oracles(entries, cap=SMOKE_TIMEOUT)
-        header = build_header("smoke", prov, agg, SMOKE_TIMEOUT)
+        print("smoke subset: %d / %d entries (NCPUS=%d)"
+              % (len(entries), len(d["entries"]), NCPUS))
+        agg = compute_oracles(entries, cap=ORACLE_TIMEOUT)
+        header = build_header("smoke", prov, agg, ORACLE_TIMEOUT)
         emit_test_file(entries, header, "/tmp/smoke_test_isogenyprimes.m")
         emit_differential_driver(entries, header, "/tmp/smoke_run_differential.m")
         print("smoke DONE: %d entries, %d dropped" % (len(entries), len(agg)))
     else:
         entries = d["entries"]
+        print("full run: %d entries (NCPUS=%d)" % (len(entries), NCPUS))
         agg = compute_oracles(entries, cap=ORACLE_TIMEOUT)
         header = build_header("full", prov, agg, ORACLE_TIMEOUT)
         json.dump(d, open("tests/corpus_curves.json", "w"), indent=1, default=str)
