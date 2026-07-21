@@ -474,13 +474,15 @@ def oracle_oE(E, base, deg1, dropped, stats):
                     phis = E.isogenies_prime_degree(ell, minimal_models=False)
                 return "in" if phis else "out"
             except Exception:
-                # No constructible isogeny or a Sage arithmetic failure for this
-                # ell: certainly not certified in. Returning here (rather than
-                # raising) keeps the fork's 'NO DATA' sentinel meaning ONLY a
-                # hard timeout/crash, i.e. the drop case.
-                return "out"
+                # A Sage arithmetic failure is NO DATA for this ell, not
+                # negative evidence (spec: drops are never silent). Recorded by
+                # the caller exactly like a timeout drop, never a silent "out".
+                return "error_drop"
         r = capped("oE:ell=%d" % elli, per_ell, dropped)
         if r is None:                 # timeout: capped() already recorded the drop
+            n_drop += 1
+        elif r == "error_drop":       # exception inside the oracle: same drop bookkeeping
+            dropped.append("oE:ell=%d" % elli)
             n_drop += 1
         elif r == "in":
             n_in += 1
