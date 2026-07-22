@@ -65,6 +65,18 @@ function emptyCurves()
     return [Parent(HyperellipticCurve(PolynomialRing(Rationals()).1^5 + 1)) | ];
 end function;
 
+// Strict Proof := true (option (a)) belt-and-braces: no successful return may carry a
+// traces-only certificate. The site-specific errors at each decision point are the primary
+// gate (they give an actionable message and fire before the return); this is the safety net
+// that catches any traces-only return left unguarded by a future edit. It checks info`proof,
+// NOT the per-block certified flags: a certified-empty return legitimately carries uncertified
+// sentinel blocks (the composite short-circuit records later blocks as <ell, e, -1, -1, false>)
+// under an overall proof of "certified", which a block-level check would wrongly reject.
+procedure strictGuard(strict, info)
+    error if strict and info`proof eq "traces-only",
+        "Proof := true requires a non-traces-only certificate for every block, but this result is traces-only; use Proof := \"Auto\"";
+end procedure;
+
 // Working precision of a complex field. A file-local helper so it reaches the
 // builtin Precision, which the Genus2Gluings "Precision" parameter shadows
 // inside that intrinsic's body.
@@ -467,6 +479,17 @@ function gluingCompositeCRT(E1, E2, n, PrecParam, Proof, TraceBound)
             ell, e, #survivors, #full, graphCount, certified;
     end for;
 
+    // Strict Proof := true (option (a)): a block left uncertified cannot enter a
+    // non-traces-only composite certificate. The check is deferred to here, AFTER the loop,
+    // on purpose: any block that is certified empty (congruence or exact) returns the whole
+    // composite "certified" from inside the loop above, and that short-circuit must win even
+    // when an EARLIER block was uncertifiable (e.g. an e >= 2 block ordered before a
+    // certified-empty prime block). Reaching this point means no block was certified empty,
+    // so an uncertified block (a Q-/geometrically isogenous pair, or an e >= 2 block with
+    // stable gluings and no v1 exact layer) is fatal under strict.
+    error if strict and not allCertified,
+        Sprintf("Proof := true cannot certify n=%o: a prime-power block is uncertifiable (E1 and E2 are Q-isogenous or geometrically isogenous, or an e >= 2 block has stable gluings but no v1 exact layer above the prime level); use Proof := \"Auto\"", n);
+
     // CRT-combine every tuple of block survivors into a psi mod n.
     curPsis := blockSurvivorsFull[1]; curMod := moduli[1];
     for i in [2 .. k] do
@@ -490,6 +513,8 @@ function gluingCompositeCRT(E1, E2, n, PrecParam, Proof, TraceBound)
         // the analytic side did not fully account for its survivors, so certification is
         // unavailable regardless of how the counts compare.
         vprintf Gluing: "gluingCompositeCRT: unclassified or rejected quotient(s) at level %o, certificate withheld\n", n;
+        error if strict,
+            Sprintf("Proof := true cannot certify n=%o: the level-n recognition left a quotient unclassified or reconstruction-rejected; use Proof := \"Auto\" or raise Precision", n);
         allCertified := false;
     end if;
 
@@ -503,6 +528,7 @@ function gluingCompositeCRT(E1, E2, n, PrecParam, Proof, TraceBound)
     info := rec< gluingInfoFmt() | n := n, proof := proof,
         blocks := blockTuples, psis := psisOut, products := products,
         precision := usedPrec, tracebound := TraceBound >;
+    strictGuard(strict, info);
     return cs, info;
 end function;
 
@@ -521,17 +547,22 @@ rather than enumerating psi mod ell^e. Precision sets the STARTING analytic prec
 (default the analytic precision heuristic); a near-rational recognition failure retries
 at double the precision (see the Pipeline note above). TraceBound bounds the Euler-factor
 twist certificate. Proof drives the exact
-completeness certificate (exact.m, GaloisStableGluings): "Auto" certifies prime blocks up
-to ell = 13, true certifies every prime and errors if the exact layer declines, false
-skips it. The certificate's scope is the paper's Algorithm 3.4 input contract:
-geometrically NONisogenous pairs. A pair with IsIsogenous or GeometricallyIsogenous true
-(the "isogenous to a square" case) is never certified: its proof stays "traces-only" and,
-at prime blocks where the certificate would have run, the exact Galois-stable count is
-still recorded in the block tuple as diagnostic data (certified false, never compared,
-never an error). The exact layer runs at each block's PRIME level only; for e >= 2 blocks it is
-out of scope in v1 (division polynomials at ell^e are too large), so those blocks are
-"traces-only" EXCEPT that a prime level certified empty forces ell^e empty by reduction
-(certified). The same shortcut applies to a composite n (gluingCompositeCRT): one
+completeness certificate (exact.m, GaloisStableGluings). "Auto" attempts the supported
+exact-count comparisons (prime blocks up to ell = 13) and otherwise returns "traces-only";
+false skips them. true is STRICT: it requires non-traces-only evidence for every requested
+block (congruence-proved emptiness, reduction to a proved-empty prime block, or an exact
+stable-quotient count matched by the analytic count) and raises rather than returning a
+traces-only result, hence it errors when the exact layer declines, when the algorithm skips
+the comparison (n = 2 under "Periods"), on a Q- or geometrically isogenous pair, or for a
+productive e >= 2 or composite block with no v1 proof. The certificate's scope is the paper's
+Algorithm 3.4 input contract: geometrically NONisogenous pairs. A pair with IsIsogenous or
+GeometricallyIsogenous true (the "isogenous to a square" case) is never certified. Under
+"Auto" its proof stays "traces-only" and, at prime blocks where the certificate would have
+run, the exact Galois-stable count is still recorded in the block tuple as diagnostic data
+(certified false, never compared); under strict true it raises instead. The exact layer runs
+at each block's PRIME level only; for e >= 2 blocks it is out of scope in v1 (division
+polynomials at ell^e are too large), so those blocks are "traces-only" (raising under strict
+true) EXCEPT that a prime level certified empty forces ell^e empty by reduction (certified). The same shortcut applies to a composite n (gluingCompositeCRT): one
 certified-empty block (congruence-obstructed or exact-certified-empty) proves the whole
 composite empty, and the composite returns "certified" immediately with the remaining
 blocks in the tuple reported as unexamined sentinels, not independently certified. The
@@ -659,6 +690,16 @@ blocks; prime-power levels only.}
             return emptyCurves(), info;
         end if;
 
+        // Strict Proof := true (option (a)): only the certified-empty-by-reduction above can
+        // satisfy strict at e >= 2. A productive prime power n = ell^e with e >= 2 has no exact
+        // layer over the prime level in v1, so everything past this point finishes traces-only
+        // (the empty-lift-sweep return and the final e >= 2 return below). Raise here, before
+        // the sweep, rather than compute a result strict will not accept.
+        error if strict and excluded,
+            Sprintf("Proof := true cannot certify n=%o=%o^%o: E1 and E2 are Q-isogenous or geometrically isogenous (outside the certificate's scope); use Proof := \"Auto\"", n, ell, e);
+        error if strict,
+            Sprintf("Proof := true cannot certify a prime power n=%o=%o^%o with e >= 2: v1 has no exact layer above the prime level (only a prime-level certified-empty reduces to certified); use Proof := \"Auto\"", n, ell, e);
+
         // The sweep evaluates quotients up to the top level n = ell^e, so its precision is
         // keyed to the top level (honoring a user Precision), not the base prime ell;
         // recognition then reruns on the survivors at that same target precision.
@@ -673,6 +714,7 @@ blocks; prime-power levels only.}
             info := rec< gluingInfoFmt() | n := n, proof := "traces-only",
                 blocks := [<ell, e, -1, 0, false>], psis := [], products := [],
                 precision := sweepPrec, tracebound := TraceBound >;
+            strictGuard(strict, info);   // unreachable under strict (early guard above), belt-and-braces
             return emptyCurves(), info;
         end if;
         prec := (Precision cmpeq false) select GluingPrecisionHeuristic(E1, E2, n) else Precision;
@@ -685,6 +727,7 @@ blocks; prime-power levels only.}
         info := rec< gluingInfoFmt() | n := n, proof := "traces-only",
             blocks := [<ell, e, -1, analyticCount, false>], psis := psisOut, products := products,
             precision := usedPrec, tracebound := TraceBound >;
+        strictGuard(strict, info);   // unreachable under strict (early guard above), belt-and-braces
         return cs, info;
     end if;
 
@@ -726,9 +769,15 @@ blocks; prime-power levels only.}
         if runExact and unsplit eq 0 then
             block, blockProof := GluingCertificateBlock(E1, E2, n, analyticCount, strict);
         else
-            // Excluded pair (diagnostic exact count, never compared), or a residual
-            // unsplit product left a quotient unclassified (certificate withheld), or
-            // the Proof gates are off: traces-only in every case.
+            // Cannot certify. Under strict Proof := true (option (a)) that is a hard error
+            // with a site-specific message; otherwise record the diagnostic exact count
+            // (excluded pair, never compared) or withhold on a residual unsplit product, and
+            // finish traces-only. (n = 2 is fine here: the BHLS list #cs IS the certifiable
+            // count, so this branch is reached only when excluded or a product is unsplit.)
+            error if strict and excluded,
+                Sprintf("Proof := true cannot certify n=%o: E1 and E2 are Q-isogenous or geometrically isogenous (the paper's isogenous-to-a-square case, outside the certificate's scope); use Proof := \"Auto\"", n);
+            error if strict,
+                Sprintf("Proof := true cannot certify n=%o: the analytic enumeration left a product-type quotient unclassified; use Proof := \"Auto\" or raise Precision", n);
             stable := -1;
             if excluded then stable := GaloisStableGluings(E1, E2, n); end if;
             block := <n, 1, stable, analyticCount, false>; blockProof := "traces-only";
@@ -736,6 +785,7 @@ blocks; prime-power levels only.}
         info := rec< gluingInfoFmt() | n := n, proof := blockProof,
             blocks := [block], psis := [], products := products,
             precision := usedPrec, tracebound := TraceBound >;
+        strictGuard(strict, info);
         return cs, info;
     end if;
 
@@ -765,8 +815,19 @@ blocks; prime-power levels only.}
     if runExact and n ge 3 and unsplit eq 0 and not dropped then
         block, blockProof := GluingCertificateBlock(E1, E2, n, analyticCount, strict);
     else
-        // Excluded pair at a level where the certificate would have run: record the
-        // exact stable count as diagnostics (certified false, never compared).
+        // Cannot certify this block on the analytic path. Under strict Proof := true
+        // (option (a)) that is a hard error with a site-specific message; otherwise record
+        // the exact stable count as diagnostics (excluded pair, never compared) and finish
+        // traces-only. The three strict cases: an excluded (Q-/geometrically isogenous) pair;
+        // n = 2, where the analytic recognition is not a reliable count and the certificate
+        // is deliberately left to the BHLS path (so "Periods" declines it); or a residual
+        // unsplit/reconstruction-rejected quotient at n >= 3.
+        error if strict and excluded,
+            Sprintf("Proof := true cannot certify n=%o: E1 and E2 are Q-isogenous or geometrically isogenous (the paper's isogenous-to-a-square case, outside the certificate's scope); use Proof := \"Auto\"", n);
+        error if strict and n eq 2,
+            "Proof := true cannot certify n = 2 on the analytic (Periods) path, which deliberately skips the exact comparison; use Algorithm := \"Auto\" or \"Algebraic\", or Proof := \"Auto\"";
+        error if strict,
+            Sprintf("Proof := true cannot certify n=%o: the analytic recognition left a quotient unclassified or reconstruction-rejected; use Proof := \"Auto\" or raise Precision", n);
         stable := -1;
         if excluded and n ge 3 then stable := GaloisStableGluings(E1, E2, n); end if;
         block := <n, 1, stable, analyticCount, false>; blockProof := "traces-only";
@@ -774,6 +835,7 @@ blocks; prime-power levels only.}
     info := rec< gluingInfoFmt() | n := n, proof := blockProof,
         blocks := [block], psis := psisOut, products := products,
         precision := usedPrec, tracebound := TraceBound >;
+    strictGuard(strict, info);
     return cs, info;
 end intrinsic;
 

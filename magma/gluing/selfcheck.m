@@ -142,6 +142,78 @@ intrinsic GluingSelfCheck() -> BoolElt
     end try;
     assert caught;
 
+    // gluings.m Task 8 (strict Proof := true, option (a)): Proof := true must RAISE on every
+    // block it cannot certify, never return "traces-only". Every error case below returned
+    // "traces-only" without error at 727caa2 (the bug this fixes); every message names Proof.
+    //
+    // (a) Corpus entry 1's pair [0,0,1,0,-7] x [0,0,0,0,4] is an equal-j (j = 0) pair, hence
+    // geometrically isogenous: outside the certificate's scope, so strict raises on the
+    // analytic ("Periods") path. (b) The same call under Proof := "Auto" returns normally in
+    // the best-effort (traces-only) mode.
+    S1 := EllipticCurve([0,0,1,0,-7]); S2 := EllipticCurve([0,0,0,0,4]);
+    caught := false;
+    try
+        _ := Genus2Gluings(S1, S2, 2 : Algorithm := "Periods", Proof := true);
+    catch e
+        caught := Position(Sprint(e`Object), "Proof") gt 0;
+    end try;
+    assert caught;
+    _, iAuto := Genus2Gluings(S1, S2, 2 : Algorithm := "Periods", Proof := "Auto");
+    assert iAuto`proof eq "traces-only";
+
+    // (c) The geometrically isogenous pair 54a1 x 54b1 (equal j = 9261/8) raises under strict
+    // on the BHLS (default "Auto") path, the other route into the exclusion guard.
+    caught := false;
+    try
+        _ := Genus2Gluings(EllipticCurve("54a1"), EllipticCurve("54b1"), 2 : Proof := true);
+    catch e
+        caught := Position(Sprint(e`Object), "Proof") gt 0;
+    end try;
+    assert caught;
+
+    // (d) A geometrically NON-isogenous pair (14a1 x 46a1, 2 | GluingModulus so no congruence
+    // short-circuit) is certifiable at n = 2 via BHLS, but the analytic ("Periods") path
+    // deliberately skips the n = 2 exact comparison, so strict raises there specifically.
+    caught := false;
+    try
+        _ := Genus2Gluings(EllipticCurve("14a1"), EllipticCurve("46a1"), 2 : Algorithm := "Periods", Proof := true);
+    catch e
+        caught := Position(Sprint(e`Object), "Proof") gt 0;
+    end try;
+    assert caught;
+
+    // (e) A productive prime power e >= 2 has no exact layer over the prime level in v1: the
+    // isogenous self-gluing 20a2 x 20a2 at n = 4 raises under strict (excluded, but the same
+    // early guard covers a clean productive e >= 2 block with no v1 proof).
+    caught := false;
+    try
+        _ := Genus2Gluings(EllipticCurve([0,1,0,-1,0]), EllipticCurve([0,1,0,-1,0]), 4 : Proof := true);
+    catch e
+        caught := Position(Sprint(e`Object), "Proof") gt 0;
+    end try;
+    assert caught;
+
+    // (f) A composite level with an uncertifiable block raises: 54a1 x 54b1 (geometrically
+    // isogenous, GluingModulus 6) at n = 6 has both blocks uncertifiable, so the strict guard
+    // fires after the block loop.
+    caught := false;
+    try
+        _ := Genus2Gluings(EllipticCurve("54a1"), EllipticCurve("54b1"), 6 : Proof := true);
+    catch e
+        caught := Position(Sprint(e`Object), "Proof") gt 0;
+    end try;
+    assert caught;
+
+    // Strict must NOT over-fire: (g) a fully certifiable composite still returns "certified"
+    // under strict (99a2 x 99b3 at n = 6, both blocks certified and the CRT count matches);
+    // (h) a composite that is certified EMPTY by an exact block (14a4 x 34a3 at n = 6, 2-block
+    // exact count 0) still returns "certified" under strict, confirming the in-loop empty
+    // short-circuit preempts the after-loop strict guard.
+    _, ig := Genus2Gluings(EllipticCurve("99a2"), EllipticCurve("99b3"), 6 : Proof := true);
+    assert ig`proof eq "certified";
+    _, ih := Genus2Gluings(EllipticCurve([1,0,1,-1,0]), EllipticCurve([1,0,0,-103,-411]), 6 : Proof := true);
+    assert ih`proof eq "certified" and ih`blocks[1] eq <2, 1, 0, 0, true>;
+
     // gluings.m Task 10 (prime-power levels via lifting). The pp corpus pair 15a7 x 30a8
     // at n = 4 = 2^2 is certified EMPTY by reduction: its prime level ell = 2 has 0
     // Galois-stable gluings, and a stable (4,4)-graph reduces mod 2 to a stable (2,2)-graph,
