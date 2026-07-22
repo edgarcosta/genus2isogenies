@@ -6,11 +6,16 @@
  *
  *   1. RecognizeIgusaClebsch: read the quadruple as a point of the weighted
  *      projective space P(2, 4, 6, 10) and recognize a rational representative.
- *      We pivot on I2 (weight 2 divides 4, 6 and 10, so the normalization uses
- *      only even powers of a single well-defined scalar 1/I2 and carries no
- *      sign/root ambiguity). The other coordinates are the unique clean pivot;
- *      a quotient with I2 projectively zero (|I2^5/I10| below the gate) is not
- *      handled here and is reported unrecognized.
+ *      A dimensionless projective scale S = max_w |I_w|^(1/w) turns each
+ *      coordinate into a scale-free ratio rho_w = |I_w|/S^w whose largest
+ *      surviving weight picks a weight-zero chart: the generic I2 pivot
+ *      (I4/I2^2, I6/I2^3, I10/I2^5) when I2 is projectively nonzero, else the
+ *      ratio chart t1 = I4 I6/I10, t2 = I4^5/I10^2 on the I2 = 0 locus (two
+ *      twist-equivalent signs [0, t2, +-t1 t2, +-t2^2]), its I4 = 0 stratum
+ *      [0, 0, u^2, u^3] (u = I6^5/I10^3), and its all-zero point [0, 0, 0, 1].
+ *      A descent into a lower stratum is gated on the relevant weight-zero ratio
+ *      recognizing as EXACT zero, never a magnitude alone. See
+ *      docs/superpowers/ws-b-gpt-verdict.md Part C.
  *
  *   2. CurveFromInvariants: reconstruct one Q-model with
  *      HyperellipticCurveFromIgusaClebsch (correct up to a quadratic twist),
@@ -19,52 +24,139 @@
  *      every good prime up to TraceBound.
  */
 
-// I2 pivot in P(2,4,6,10). Returns false when I10 vanishes (not a Jacobian) or
-// I2 is projectively zero (|I2^5/I10| below the recognition gate), else the
-// numeric normalized quadruple [1, I4/I2^2, I6/I2^3, I10/I2^5].
-function normalizeIC(IC)
+// RecognizeRational at an explicit precision P (the working decimal precision).
+// The weight-zero chart ratios below are built from high powers (e.g. I4^5/I10^2),
+// so pin the digit budget to P rather than trust an arithmetic-tracked precision.
+function recQ(z, P)
+    return RecognizeRational(z : Digits := P);
+end function;
+
+// The dimensionless multichart dispatcher shared by RecognizeIgusaClebsch and
+// IgusaClebschNearRational. The projective scale S = max_w |I_w|^(1/w) sends
+// S |-> |lambda| S under weighted scaling, so rho_w = |I_w|/S^w is scale-free and
+// the gate 10^(-P/2) is projectively meaningful. Returns false for a non-Jacobian
+// (I10 projectively zero); otherwise the chart name and the complex weight-zero
+// chart coordinates a near-real test inspects and recognition reads:
+//   "I2"   -> [I4/I2^2, I6/I2^3, I10/I2^5]   (I2 projectively nonzero: generic)
+//   "I4"   -> [t1, t2] = [I4 I6/I10, I4^5/I10^2]        (I2 projectively zero)
+//   "I6"   -> [u] = [I6^5/I10^3]                     (I2, I4 projectively zero)
+//   "zero" -> [] (the single point [0, 0, 0, 1])  (I2, I4, I6 projectively zero)
+function icChart(IC)
     I2 := IC[1]; I4 := IC[2]; I6 := IC[3]; I10 := IC[4];
     CC := Parent(I2);
     P := Floor(Precision(CC));
     gate := 10^(-(P div 2));
-    if Abs(I10) le gate or Abs(I2^5 / I10) lt gate then
-        return false, [CC | ];
+    S := Max([Abs(I2)^(1/2), Abs(I4)^(1/4), Abs(I6)^(1/6), Abs(I10)^(1/10)]);
+    if S eq 0 then return false, "", [CC | ]; end if;
+    if Abs(I10) / S^10 le gate then return false, "", [CC | ]; end if;
+    if Abs(I2) / S^2 gt gate then
+        return true, "I2", [CC | I4 / I2^2, I6 / I2^3, I10 / I2^5];
     end if;
-    return true, [CC | 1, I4 / I2^2, I6 / I2^3, I10 / I2^5];
+    if Abs(I4) / S^4 gt gate then
+        return true, "I4", [CC | I4 * I6 / I10, I4^5 / I10^2];
+    end if;
+    if Abs(I6) / S^6 gt gate then
+        return true, "I6", [CC | I6^5 / I10^3];
+    end if;
+    return true, "zero", [CC | ];
+end function;
+
+// Recognize IC as rational representative(s) of its weighted-projective point.
+// The generic I2 chart yields a single candidate [1, I4/I2^2, I6/I2^3, I10/I2^5];
+// the I2 = 0 ratio chart yields the two signs [0, t2, +-t1 t2, +-t2^2] (equivalent
+// under the weighted scaling lambda = i). Each descent into a lower stratum first
+// requires the relevant weight-zero ratio to recognize as EXACT zero, so I2 = 0 is
+// never inferred from a magnitude gate alone (verdict Part C).
+function recognizeICCandidates(IC)
+    P := Floor(Precision(Parent(IC[1])));
+    ok, chart, coords := icChart(IC);
+    if not ok then return false, []; end if;
+
+    if chart eq "I2" then
+        out := [Rationals() | 1];
+        for z in coords do
+            okz, q := recQ(z, P);
+            if not okz then return false, []; end if;
+            Append(~out, q);
+        end for;
+        if out[4] eq 0 then return false, []; end if;
+        return true, [out];
+    end if;
+
+    // I2 projectively zero: confirm it is exactly zero before leaving the pivot.
+    okz2, z2 := recQ(IC[1]^5 / IC[4], P);
+    if not okz2 or z2 ne 0 then return false, []; end if;
+
+    if chart eq "I4" then
+        ok1, t1 := recQ(coords[1], P);
+        ok2, t2 := recQ(coords[2], P);
+        if not ok1 or not ok2 or t2 eq 0 then return false, []; end if;
+        return true, [ [Rationals() | 0, t2,  t1 * t2,  t2^2],
+                       [Rationals() | 0, t2, -t1 * t2, -t2^2] ];
+    end if;
+
+    // I4 projectively zero: confirm exact zero before the I6 stratum.
+    okz4, z4 := recQ(IC[2]^5 / IC[4]^2, P);
+    if not okz4 or z4 ne 0 then return false, []; end if;
+
+    if chart eq "I6" then
+        oku, u := recQ(coords[1], P);
+        if not oku or u eq 0 then return false, []; end if;
+        return true, [ [Rationals() | 0, 0, u^2, u^3] ];
+    end if;
+
+    // I6 projectively zero: confirm exact zero, leaving the single point [0,0,0,1].
+    okz6, z6 := recQ(IC[3]^5 / IC[4]^3, P);
+    if not okz6 or z6 ne 0 then return false, []; end if;
+    return true, [ [Rationals() | 0, 0, 0, 1] ];
 end function;
 
 intrinsic RecognizeIgusaClebsch(IC::SeqEnum) -> BoolElt, SeqEnum
 {Recognize the numeric Igusa-Clebsch quadruple IC = [I2, I4, I6, I10] as a
-rational point of the weighted projective space P(2, 4, 6, 10). Normalizes by
-the I2 pivot (the only weight dividing all of 4, 6, 10) and RecognizeRational's
-each coordinate, all-or-nothing. On success returns true and a rational quadruple
-[1, I4/I2^2, I6/I2^3, I10/I2^5] with nonzero last coordinate (a bona fide
-Igusa-Clebsch quadruple for HyperellipticCurveFromIgusaClebsch); otherwise false.}
+rational point of the weighted projective space P(2, 4, 6, 10). A dimensionless
+projective scale picks a weight-zero chart (the generic I2 pivot when I2 is
+projectively nonzero, else the t1 = I4 I6/I10, t2 = I4^5/I10^2 ratio chart on the
+I2 = 0 locus and its I4 = 0 / all-zero sub-strata) and RecognizeRational's its
+coordinates. On success returns true and a rational Igusa-Clebsch quadruple with
+nonzero last coordinate; otherwise false. On the I2 = 0 ratio chart the two sign
+candidates [0, t2, +-t1 t2, +-t2^2] are weighted-projectively equivalent
+(lambda = i), so the first that reconstructs via HyperellipticCurveFromIgusaClebsch
+is returned and the twist is pinned downstream by CurveFromInvariants.}
     require #IC eq 4: "IC must be a length-4 Igusa-Clebsch quadruple";
-    ok, Q := normalizeIC(IC);
+    ok, cands := recognizeICCandidates(IC);
     if not ok then return false, [Rationals() | ]; end if;
-    out := [Rationals() | ];
-    for q in Q do
-        okq, r := RecognizeRational(q);
-        if not okq then return false, [Rationals() | ]; end if;
-        Append(~out, r);
+    if #cands eq 1 then return true, cands[1]; end if;
+    // Two I2 = 0 signs: return the first that builds a curve. Both build in
+    // practice (same geometric point, lambda = i apart), so this only tolerates a
+    // reconstruction convention; the correct twist is pinned later by CurveFromInvariants.
+    for c in cands do
+        built := false;
+        try
+            _ := HyperellipticCurveFromIgusaClebsch(c);
+            built := true;
+        catch e
+            built := false;
+        end try;
+        if built then return true, c; end if;
     end for;
-    if out[4] eq 0 then return false, [Rationals() | ]; end if;
-    return true, out;
+    return false, [Rationals() | ];
 end intrinsic;
 
 intrinsic IgusaClebschNearRational(IC::SeqEnum) -> BoolElt
-{True when the I2-normalized coordinates of the numeric quadruple IC all have
-imaginary part below the recognition gate 10^(-P/2) (P the working precision):
-the quotient looks defined over Q, so a RecognizeIgusaClebsch failure is a
+{True when the numeric quadruple IC looks defined over Q: the weight-zero chart
+coordinates chosen by the same multichart dispatcher as RecognizeIgusaClebsch (the
+generic I2 pivot when available, else the I2 = 0 ratio chart t1, t2 or the I4 = 0
+chart u; the all-zero point is rational) all have imaginary part below the gate
+10^(-P/2) (P the working precision). So a RecognizeIgusaClebsch failure here is a
 precision shortfall worth a retry rather than a genuinely complex (conjugate)
-quotient. False when I2 is projectively zero or a coordinate is visibly complex.}
+quotient. False for a non-Jacobian (I10 projectively zero) or a visibly complex
+chart coordinate.}
     require #IC eq 4: "IC must be a length-4 Igusa-Clebsch quadruple";
-    ok, Q := normalizeIC(IC);
+    ok, _, coords := icChart(IC);
     if not ok then return false; end if;
-    P := Floor(Precision(Universe(Q)));
+    P := Floor(Precision(Parent(IC[1])));
     gate := 10^(-(P div 2));
-    return forall{q : q in Q | Abs(Im(q)) le gate};
+    return forall{z : z in coords | Abs(Im(z)) le gate};
 end intrinsic;
 
 // Rational prime p usable for the quadratic-twist certificate, and the target

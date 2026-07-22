@@ -9,6 +9,25 @@ intrinsic GluingSelfCheck() -> BoolElt
     ok, _ := RecognizeRational(CC!Pi(CC));
     assert not ok;
 
+    // recognize.m: RecognizeIgusaClebsch on the projectively-I2 = 0 locus (the
+    // weight-0 ratio charts). The regression curve y^2 = x^5 + x^4 + 2x^3 + 4x^2 + x
+    // has Magma Igusa-Clebsch quadruple [0, -67584, -15925248, -2595225600] (I2 = 0).
+    // Embed it at 60 digits, scale coordinate w by a nonreal lambda^w and add a
+    // sub-gate residual on the zeroed I2 (the analytic pipeline's roundoff), and
+    // require recognition of a weighted-projectively equivalent rational point: the
+    // convention-invariant ratios t1 = I4 I6/I10 = -10368/25 and t2 = I4^5/I10^2 =
+    // -130842624/625 must come back exactly. (Coordinatewise recovery is ill-posed:
+    // weight-0 ratios cannot restore the arbitrary scaling representative.) This
+    // fails at aa8251e, where RecognizeIgusaClebsch's I2 pivot rejects the locus.
+    ic2 := [CC | 0, -67584, -15925248, -2595225600];
+    lam := 1 + CC.1;                                     // nonreal weighted scaling
+    ic2s := [CC | ic2[1]*lam^2 + CC!10^(-50), ic2[2]*lam^4, ic2[3]*lam^6, ic2[4]*lam^10];
+    okI2, icqI2 := RecognizeIgusaClebsch(ic2s);
+    assert okI2;
+    assert icqI2[2]*icqI2[3]/icqI2[4] eq -10368/25;
+    assert icqI2[2]^5/icqI2[4]^2 eq -130842624/625;
+    assert IgusaClebschNearRational(ic2s);
+
     // antisymplectic.m checks
     sl2 := func<m | m^3 * &*[Rationals() | 1 - 1/p^2 : p in PrimeDivisors(m)]>;
     for m in [2, 3, 4, 5, 6, 8, 9, 12] do

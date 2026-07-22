@@ -75,18 +75,30 @@ end function;
 // Pass 1 of the two-pass sweep (Genus2Gluings below): a coarse, fixed-
 // threshold look at whether a Jacobian-type quotient is plausibly Q-rational,
 // cheap enough to run on every conjugation-filtered candidate at the fixed
-// low pass-1 precision (40 digits). Mirrors recognize.m's I2-pivot
-// normalization (I2 is the only weight dividing 4, 6 and 10) but with a fixed
-// gate (1e-10) rather than RecognizeIgusaClebsch/IgusaClebschNearRational's
-// precision-scaled one (1e-20 at 40 digits): pass 1's job is to not miss a
-// genuine rational quotient to roundoff in a deliberately cheap computation,
-// not to make the final call, so it uses the looser threshold.
+// low pass-1 precision (40 digits). Mirrors recognize.m's multichart dispatcher
+// (the generic I2 pivot when I2 is projectively nonzero, else the I2 = 0
+// weight-0 ratio charts) but with a fixed gate (1e-10) rather than
+// RecognizeIgusaClebsch/IgusaClebschNearRational's precision-scaled one (1e-20 at
+// 40 digits): pass 1's job is to not miss a genuine rational quotient to roundoff
+// in a deliberately cheap computation, not to make the final call, so it uses the
+// looser threshold. The chart selectors here (I2^5/I10, I4^5/I10^2, I6^5/I10^3)
+// are themselves weight-0, hence already scale-free without the projective scale S.
 function LooksRationalIC(IC)
     I2 := IC[1]; I4 := IC[2]; I6 := IC[3]; I10 := IC[4];
     gate := 10^-10;
     if Abs(I10) le gate then return false; end if;
-    if Abs(I2^5 / I10) lt gate then return false; end if;
-    return Abs(Im(I4 / I2^2)) lt gate and Abs(Im(I6 / I2^3)) lt gate and Abs(Im(I10 / I2^5)) lt gate;
+    if Abs(I2^5 / I10) ge gate then
+        return Abs(Im(I4 / I2^2)) lt gate and Abs(Im(I6 / I2^3)) lt gate and Abs(Im(I10 / I2^5)) lt gate;
+    end if;
+    // I2 projectively zero: the weight-0 ratio charts (I4 chart t1, t2; then the
+    // I4 = 0 chart u; then the all-zero point [0,0,0,1], trivially rational).
+    if Abs(I4^5 / I10^2) ge gate then
+        return Abs(Im(I4 * I6 / I10)) lt gate and Abs(Im(I4^5 / I10^2)) lt gate;
+    end if;
+    if Abs(I6^5 / I10^3) ge gate then
+        return Abs(Im(I6^5 / I10^3)) lt gate;
+    end if;
+    return true;
 end function;
 
 // The shared near-real gate for a numeric quotient looking defined over Q, used by the
@@ -265,9 +277,11 @@ end function;
 // above a level-ell survivor and is produced by lifting it. The converse can fail (a
 // rational-looking level-ell graph need not lift to a stable one), which only costs
 // extra candidates that the target-level recognition and twist pinning discard.
-// Gap: quotients whose invariants are projectively I2 = 0 are not recognized by the
-// I2-pivot (recognize.m's normalizeIC) and so would be missed at these uncertified
-// levels (documented limitation).
+// The projectively-I2 = 0 locus is now recognized by recognize.m's weight-0 ratio
+// charts (icChart / recognizeICCandidates), so these lift-swept levels no longer
+// drop it. As everywhere, an I2 = 0 quotient with extra automorphisms is still
+// subject to the non-quadratic-twist limitation (CurveFromInvariants drops
+// aut order > 2), not to a recognition gap.
 
 // One sweep level: compute the quotient of each candidate psi at modulus m against the
 // period bases ws1, ws2 and keep those looking Q-rational.
