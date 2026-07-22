@@ -134,6 +134,7 @@ procedure Test_gates()
     assert Order(q23g @@ mCl23g) lt #Cl23g;
     q23npg := Factorization(ideal< OK23g | 2 >)[1][1];   // nonprincipal witness
     assert IsPrime(q23npg) and not IsPrincipal(q23npg) and Order(q23npg @@ mCl23g) eq 3;
+    assert BillereyRq(E23g, q23npg) eq 75557342874062106394624000000;  // nonprincipal ord([q]) = 3: kills an h := 1 hardcode
     assert FrobeniusCharpoly(E23g, q23g) eq xg^2 + 6*xg + 25;
     P23g := PowerCharacteristicPolynomial(xg^2 + 6*xg + 25, 12);
     assert P23g eq xg^2 - 64250786*xg + 59604644775390625;

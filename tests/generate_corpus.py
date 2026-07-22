@@ -17,7 +17,7 @@ Usage:
         to refresh the corpus ahead of the full run).
     sage -python tests/generate_corpus.py --add-regressions [out_file]
         # bakes a `regression` key onto each corpus entry named in out_file
-        (default .superpowers/sdd/P.out; the P==C differential format: a
+        (default .superpowers/sdd/P.out; the differential .out format: a
         curve2 entry is id:kind:exact:stabilized:primes:certmethod, else
         id:kind:exact:primes:cmdisc), then re-emits tests/test_isogenyprimes.m
         so its `regression` section asserts straight from the json. Must run
@@ -466,7 +466,9 @@ def oracle_oE(E, base, deg1, dropped, stats):
     screen just contributes nothing, falling through to modpoly/construction for
     every ell). Each surviving ell's steps 2-3 run under their own per-ell
     ORACLE_TIMEOUT fork cap; a timeout records the (curve, ell) drop, never
-    silently. `stats` is filled with the per-screen hit counts for logging."""
+    silently. A Sage exception in the construction arm records the same
+    (curve, ell) drop, never a silent negative. `stats` is filled with the
+    per-screen hit counts for logging."""
     sweep = [ZZ(p) for p in MAZUR] if deg1 else [ZZ(p) for p in prime_range(101)]
     frob = capped("oE:frob", lambda: _frob_data(E, base), dropped)
     if frob is None:   # timed out: no screen data, never a false negative
@@ -905,6 +907,7 @@ def _gate_g2():
         "    assert Order(q23g @@ mCl23g) lt #Cl23g;",
         "    q23npg := Factorization(ideal< OK23g | 2 >)[1][1];   // nonprincipal witness",
         "    assert IsPrime(q23npg) and not IsPrincipal(q23npg) and Order(q23npg @@ mCl23g) eq 3;",
+        "    assert BillereyRq(E23g, q23npg) eq 75557342874062106394624000000;  // nonprincipal ord([q]) = 3: kills an h := 1 hardcode",
         "    assert FrobeniusCharpoly(E23g, q23g) eq xg^2 + 6*xg + 25;",
         "    P23g := PowerCharacteristicPolynomial(xg^2 + 6*xg + 25, 12);",
         "    assert P23g eq xg^2 - 64250786*xg + 59604644775390625;",
@@ -1296,7 +1299,7 @@ def build_header(mode, prov, agg, cap):
     return "".join(l + "\n" for l in lines)
 
 def _parse_out_line(line, byid):
-    """Parse one P==C differential line against the corpus (by id, to decide
+    """Parse one differential .out line against the corpus (by id, to decide
     which of the two field layouts applies): a congruence entry (its corpus
     entry has a curve2) is id:kind:exact:stabilized:primes:certmethod (6
     fields); an isogeny entry is id:kind:exact:primes:cmdisc (5 fields). Either

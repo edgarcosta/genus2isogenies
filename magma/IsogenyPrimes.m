@@ -388,8 +388,8 @@ end function;
 // Sage Billerey_R_q with accumulator B and the pinned deviation h = ord([q]):
 // P = Power(charpoly_q, 12 h); Q = Power(minpoly(gamma), 12) with gamma a
 // generator of the principal q^h; product over k = 0 .. d/2 of
-// GCD(Res(P, compose_power(Q, k)), B), the k = 0 factor included (the term the
-// PQM file drops), or 0 as soon as a resultant vanishes.
+// GCD(Res(P, compose_power(Q, k)), B), the k = 0 factor included (easy to
+// drop by mistake), or 0 as soon as a resultant vanishes.
 function BilRqValue(E, q, d, h, gamma, B)
     pcp := ChimpIntrinsic("PowerCharacteristicPolynomial");
     Zx := PolynomialRing(Integers());
