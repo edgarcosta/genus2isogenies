@@ -32,8 +32,10 @@
  * twist pinning cannot certify the right twist there.
  *
  * The exact completeness certificate (exact.m) closes the loop, on the paper's
- * Algorithm 3.4 scope only: geometrically NONisogenous pairs, Hom_Qbar(E1, E2) = 0
- * (the clean locus). There GaloisStableGluings counts the Galois-stable
+ * Algorithm 3.4 scope only: geometrically NONisogenous pairs, Hom_Qbar(E1, E2) = 0,
+ * with NEITHER factor carrying extra geometric automorphisms (j not in {0, 1728}, so
+ * Aut_Qbar(E_i) = {+-1}); this is the clean locus. There GaloisStableGluings counts
+ * the Galois-stable
  * anti-symplectic gluings exactly (as M/-M-orbit quotients) and
  * GluingCertificateBlock compares that against the analytic count of distinct
  * emitted rational jacobian quotients (#Seqset over recIC, each reconstructed AND
@@ -51,12 +53,13 @@
  * claim in the bundle: such blocks report count-matched, meaning the exact Galois-
  * stable count EQUALS the analytic count, NOT that the emitted set is proved to be
  * exactly the stable set (README.md and exact.m give the precise semantics). A
- * geometrically isogenous pair
- * (GeometricallyIsogenous, modulus.m; the paper's still-in-development "isogenous
- * to a square" case) is NEVER certified: proof stays "traces-only" and, at prime
- * blocks where the certificate would have run, the exact stable count is still
- * computed and recorded in the block tuple as diagnostic data (certified false,
- * never compared, never an error).
+ * geometrically isogenous pair (GeometricallyIsogenous, modulus.m; the paper's
+ * still-in-development "isogenous to a square" case), or a pair with a factor of
+ * j in {0, 1728} (extraAutFactor; its extra automorphism can break the M/-M unit),
+ * is NEVER certified: proof stays "traces-only" and, at prime blocks where the
+ * certificate would have run, the exact stable count is still computed and recorded
+ * in the block tuple as diagnostic data (certified false, never compared, never an
+ * error).
  */
 
 function gluingInfoFmt()
@@ -88,6 +91,17 @@ function fieldPrecision(C)
     return Precision(C);
 end function;
 
+// A factor with extra geometric automorphisms. j in {0, 1728} means Aut over Qbar
+// exceeds {+-1}; such an automorphism can act Galois-equivariantly on the n-torsion
+// (e.g. full rational 2-torsion at n = 2), pairing up stable graphs so distinct M/-M
+// orbits collide in moduli and the exact/analytic certificate units disagree. The
+// certificate abstains on such a pair exactly as on a geometrically isogenous one
+// (traces-only, diagnostics still recorded); folding the exact side by the factor
+// automorphism action to restore those certifications is future work.
+function extraAutFactor(E)
+    return jInvariant(E) in {Rationals() | 0, 1728};
+end function;
+
 // Pass 1 of the two-pass sweep (Genus2Gluings below): a coarse, fixed-
 // threshold look at whether a Jacobian-type quotient is plausibly Q-rational,
 // cheap enough to run on every conjugation-filtered candidate at the fixed
@@ -97,12 +111,24 @@ end function;
 // RecognizeIgusaClebsch/IgusaClebschNearRational's precision-scaled one (1e-20 at
 // 40 digits): pass 1's job is to not miss a genuine rational quotient to roundoff
 // in a deliberately cheap computation, not to make the final call, so it uses the
-// looser threshold. The chart selectors here (I2^5/I10, I4^5/I10^2, I6^5/I10^3)
-// are themselves weight-0, hence already scale-free without the projective scale S.
+// looser threshold for those Im-part rationality checks. The initial I10 = 0
+// rejection is instead made projective and precision-scaled exactly like recognize.m's
+// icChart (rho10 = |I10|/S^10 against S = max_w |I_w|^(1/w), rejected below 10^(-P/2)),
+// so weighted scaling cannot change acceptance and a genuine jacobian with a small
+// projective I10 is not dropped; the chart selectors that follow (I2^5/I10, I4^5/I10^2,
+// I6^5/I10^3) are themselves weight-0, hence already scale-free.
 function LooksRationalIC(IC)
     I2 := IC[1]; I4 := IC[2]; I6 := IC[3]; I10 := IC[4];
     gate := 10^-10;
-    if Abs(I10) le gate then return false; end if;
+    // Projective, precision-scaled I10 = 0 rejection (as icChart): rho10 = |I10|/S^10 is
+    // scale-free (weighted scaling sends S -> |lambda| S), so unlike the raw |I10| it
+    // cannot be defeated by rescaling; the threshold is icChart's 10^(-P/2), NOT the looser
+    // 1e-10 the Im checks use, since a genuine jacobian can have a small projective I10
+    // (rho10 ~ 1e-19) that a 1e-10 rho10 gate would wrongly discard before pass 2.
+    Prec := Floor(Precision(Parent(I2)));
+    S := Max([Abs(I2)^(1/2), Abs(I4)^(1/4), Abs(I6)^(1/6), Abs(I10)^(1/10)]);
+    if S eq 0 then return false; end if;
+    if Abs(I10) / S^10 le 10^(-(Prec div 2)) then return false; end if;
     if Abs(I2^5 / I10) ge gate then
         return Abs(Im(I4 / I2^2)) lt gate and Abs(Im(I6 / I2^3)) lt gate and Abs(Im(I10 / I2^5)) lt gate;
     end if;
@@ -392,15 +418,18 @@ function gluingCompositeCRT(E1, E2, n, PrecParam, Proof, TraceBound)
     moduli := [ells[i]^es[i] : i in [1 .. k]];
     strict := (Proof cmpeq true);
     // Certificate scope (paper Algorithm 3.4; see the prime path's runExact comment): the
-    // exact layer only certifies geometrically NONisogenous pairs, and IsIsogenous or
-    // GeometricallyIsogenous excludes a pair outright. GeometricallyIsogenous subsumes the
-    // old shared-j test (equal j is its first case) and adds the exact CM-field and
-    // isogeny-class j-match cases. Computed once per call, and only when some block's
-    // Proof gate could fire at all (Proof := false never needs it); excluded pairs still
-    // get per-block diagnostics below.
+    // exact layer only certifies geometrically NONisogenous pairs with no factor carrying
+    // extra geometric automorphisms, and IsIsogenous, GeometricallyIsogenous, or
+    // extraAutFactor excludes a pair outright. GeometricallyIsogenous subsumes the old
+    // shared-j test (equal j is its first case) and adds the exact CM-field and
+    // isogeny-class j-match cases; extraAutFactor excludes a j in {0, 1728} factor (its
+    // automorphism can break the M/-M unit). Computed once per call, and only when some
+    // block's Proof gate could fire at all (Proof := false never needs it); excluded pairs
+    // still get per-block diagnostics below.
     excluded := false;
     if (Proof cmpeq true) or ((Proof cmpeq "Auto") and Min(ells) le 13) then
-        excluded := IsIsogenous(E1, E2) or GeometricallyIsogenous(E1, E2);
+        excluded := IsIsogenous(E1, E2) or GeometricallyIsogenous(E1, E2)
+            or extraAutFactor(E1) or extraAutFactor(E2);
     end if;
 
     // Congruence prefilter first: a rational n-gluing forces n | GluingModulus, and n | N iff
@@ -430,18 +459,23 @@ function gluingCompositeCRT(E1, E2, n, PrecParam, Proof, TraceBound)
     blockGraphCounts := [];
     blockSurvivorsFull := [* *];
     allCertified := true;
+    declinedEll := 0; declinedGroupOrder := 0;   // first exact-layer decline seen (deferred strict error, GPT 4)
     for i in [1 .. k] do
         ell := ells[i]; e := es[i];
         // Mirror the prime path: exact certifies "Auto" blocks up to ell = 13, true every
-        // prime, and never runs for excluded (Q- or geometrically isogenous) pairs.
+        // prime, and never runs for an excluded pair (Q- or geometrically isogenous, or a
+        // factor with extra geometric automorphisms).
         gateBlock := (Proof cmpeq true) or (Proof cmpeq "Auto" and ell le 13);
         runExactBlock := gateBlock and not excluded;
         stableOrbit := -1; graphCount := -1; certified := false;
         if runExactBlock then
             so, srec := GaloisStableGluings(E1, E2, ell);
             if so lt 0 then
-                error if strict,
-                    Sprintf("Proof := true cannot certify n=%o: the exact layer declined at ell=%o (Galois group order %o over the degree bound); use Proof := \"Auto\"", n, ell, srec`group_order);
+                // Do NOT error here even under strict (GPT 4): a LATER block may still be
+                // certified empty and prove the whole composite empty, and that short-circuit
+                // must win. Record the first decline; the deferred strict error after the loop
+                // fires only if no block proved the composite empty.
+                if declinedEll eq 0 then declinedEll := ell; declinedGroupOrder := srec`group_order; end if;
             elif so eq 0 then
                 // Certified empty (e = 1 directly; e >= 2 by reduction mod ell). The whole
                 // composite is certified empty: return with this block as the witness.
@@ -487,15 +521,18 @@ function gluingCompositeCRT(E1, E2, n, PrecParam, Proof, TraceBound)
     end for;
 
     // Strict Proof := true (option (a)): a block left uncertified cannot enter a
-    // non-traces-only composite certificate. The check is deferred to here, AFTER the loop,
+    // non-traces-only composite certificate. Both checks are deferred to here, AFTER the loop,
     // on purpose: any block that is certified empty (congruence or exact) returns the whole
     // composite "count-matched" from inside the loop above, and that short-circuit must win even
-    // when an EARLIER block was uncertifiable (e.g. an e >= 2 block ordered before a
-    // certified-empty prime block). Reaching this point means no block was certified empty,
-    // so an uncertified block (a Q-/geometrically isogenous pair, or an e >= 2 block with
-    // stable gluings and no v1 exact layer) is fatal under strict.
+    // when an EARLIER block declined or was uncertifiable (e.g. an e >= 2 block, or a larger-ell
+    // exact decline, ordered before a certified-empty prime block). Reaching this point means no
+    // block proved the composite empty. A recorded exact-layer decline gets the specific message
+    // first; otherwise an uncertified block (an excluded pair, or an e >= 2 block with stable
+    // gluings and no v1 exact layer) is fatal under strict.
+    error if strict and declinedEll ne 0,
+        Sprintf("Proof := true cannot certify n=%o: the exact layer declined at ell=%o (Galois group order %o over the degree bound); use Proof := \"Auto\"", n, declinedEll, declinedGroupOrder);
     error if strict and not allCertified,
-        Sprintf("Proof := true cannot certify n=%o: a prime-power block is uncertifiable (E1 and E2 are Q-isogenous or geometrically isogenous, or an e >= 2 block has stable gluings but no v1 exact layer above the prime level); use Proof := \"Auto\"", n);
+        Sprintf("Proof := true cannot certify n=%o: a prime-power block is uncertifiable (E1 and E2 are Q-isogenous or geometrically isogenous, or a factor has extra geometric automorphisms (j = 0 or 1728), or an e >= 2 block has stable gluings but no v1 exact layer above the prime level); use Proof := \"Auto\"", n);
 
     // CRT-combine every tuple of block survivors into a psi mod n.
     curPsis := blockSurvivorsFull[1]; curMod := moduli[1];
@@ -560,10 +597,13 @@ false skips them. true is STRICT: it requires non-traces-only evidence for every
 block (congruence-proved emptiness, reduction to a proved-empty prime block, or an exact
 stable-quotient count matched by the analytic count) and raises rather than returning a
 traces-only result, hence it errors when the exact layer declines, when the algorithm skips
-the comparison (n = 2 under "Periods"), on a Q- or geometrically isogenous pair, or for a
-productive e >= 2 or composite block with no v1 proof. The certificate's scope is the paper's
-Algorithm 3.4 input contract: geometrically NONisogenous pairs. A pair with IsIsogenous or
-GeometricallyIsogenous true (the "isogenous to a square" case) is never certified. Under
+the comparison (n = 2 under "Periods"), on a Q- or geometrically isogenous pair or one whose
+factor has extra geometric automorphisms (j = 0 or 1728), or for a productive e >= 2 or
+composite block with no v1 proof. The certificate's scope is the paper's Algorithm 3.4 input
+contract: geometrically NONisogenous pairs, further restricted to pairs where NEITHER factor
+has extra geometric automorphisms (geometric automorphism group of order 2, i.e. j not 0 or
+1728). A pair with IsIsogenous or GeometricallyIsogenous true (the "isogenous to a square"
+case), or a factor of j = 0 or 1728, is never certified. Under
 "Auto" its proof stays "traces-only" and, at prime blocks where the certificate would have
 run, the exact Galois-stable count is still recorded in the block tuple as diagnostic data
 (certified false, never compared); under strict true it raises instead. The exact layer runs
@@ -620,18 +660,22 @@ blocks; prime-power levels only.}
     // to ell = 13 (the exact layer's practical reach at DegreeBound 2400); true
     // certifies every prime and errors if the exact layer declines; false skips.
     // Scope (paper Algorithm 3.4): the certificate is only run for GEOMETRICALLY
-    // nonisogenous E1, E2, i.e. Hom_Qbar(E1, E2) = 0. When Hom_Qbar(E1, E2) != 0
-    // (a Q-isogeny, or the twist-family/CM degeneracies GeometricallyIsogenous
-    // detects, e.g. 54a1 x 54b1 with equal j = 9261/8) the surface E1 x E2
-    // carries extra endomorphisms: Aut(E1 x E2) can exceed {+-1}^2, Kani's
-    // clean-locus vacuity for product quotients fails (a stable graph CAN have a
-    // product-type quotient, e.g. the twisted Weil restriction at n = 2), and
-    // distinct M/-M orbits can collide in moduli. The analytic rational-quotient
-    // count is then not comparable to the exact stable count, so excluded pairs
-    // stay "traces-only"; where the certificate WOULD have run, the exact stable
-    // count is still recorded in the block tuple as diagnostics (certified false,
-    // never compared, never an error). This is the paper's still-in-development
-    // "isogenous to a square" case.
+    // nonisogenous E1, E2 (Hom_Qbar(E1, E2) = 0) with NEITHER factor carrying extra
+    // geometric automorphisms (j not in {0, 1728}, so Aut_Qbar(E_i) = {+-1}). When
+    // Hom_Qbar(E1, E2) != 0 (a Q-isogeny, or the twist-family/CM degeneracies
+    // GeometricallyIsogenous detects, e.g. 54a1 x 54b1 with equal j = 9261/8) the
+    // surface E1 x E2 carries extra endomorphisms: Aut(E1 x E2) can exceed {+-1}^2,
+    // Kani's clean-locus vacuity for product quotients fails (a stable graph CAN have a
+    // product-type quotient, e.g. the twisted Weil restriction at n = 2), and distinct
+    // M/-M orbits can collide in moduli. A factor with j in {0, 1728} breaks the M/-M
+    // unit the same way (extraAutFactor): its order-4/6 automorphism can act Galois-
+    // equivariantly on the n-torsion and pair up stable graphs (probe: exact 6 vs moduli
+    // <= 3 on [0,0,0,-1,0] x [0,-4,0,3,0] at n = 2). The analytic rational-quotient count
+    // is then not comparable to the exact stable count, so excluded pairs stay
+    // "traces-only"; where the certificate WOULD have run, the exact stable count is
+    // still recorded in the block tuple as diagnostics (certified false, never compared,
+    // never an error). This is the paper's still-in-development "isogenous to a square"
+    // case (plus the extra-automorphism abstention).
     // Over a number field the exact completeness layer (exact.m) and BHLS both
     // require Q, and IsIsogenous/GeometricallyIsogenous are Q-only, so force the
     // certificate off: number-field blocks are traces-only in v1 (the congruence
@@ -640,7 +684,8 @@ blocks; prime-power levels only.}
     // the Proof gates already fail.
     gateExact := (not isNF)
         and ((Proof cmpeq true) or (Proof cmpeq "Auto" and ell le 13));
-    excluded := gateExact and (IsIsogenous(E1, E2) or GeometricallyIsogenous(E1, E2));
+    excluded := gateExact and (IsIsogenous(E1, E2) or GeometricallyIsogenous(E1, E2)
+        or extraAutFactor(E1) or extraAutFactor(E2));
     runExact := gateExact and not excluded;
     strict := (not isNF) and (Proof cmpeq true);
 
@@ -706,7 +751,7 @@ blocks; prime-power levels only.}
         // (the empty-lift-sweep return and the final e >= 2 return below). Raise here, before
         // the sweep, rather than compute a result strict will not accept.
         error if strict and excluded,
-            Sprintf("Proof := true cannot certify n=%o=%o^%o: E1 and E2 are Q-isogenous or geometrically isogenous (outside the certificate's scope); use Proof := \"Auto\"", n, ell, e);
+            Sprintf("Proof := true cannot certify n=%o=%o^%o: E1 and E2 are Q-isogenous or geometrically isogenous, or a factor has extra geometric automorphisms (j = 0 or 1728) (outside the certificate's scope); use Proof := \"Auto\"", n, ell, e);
         error if strict,
             Sprintf("Proof := true cannot certify a prime power n=%o=%o^%o with e >= 2: v1 has no exact layer above the prime level (only a prime-level certified-empty reduces to certified); use Proof := \"Auto\"", n, ell, e);
 
@@ -785,7 +830,7 @@ blocks; prime-power levels only.}
             // finish traces-only. (n = 2 is fine here: the BHLS list #cs IS the certifiable
             // count, so this branch is reached only when excluded or a product is unsplit.)
             error if strict and excluded,
-                Sprintf("Proof := true cannot certify n=%o: E1 and E2 are Q-isogenous or geometrically isogenous (the paper's isogenous-to-a-square case, outside the certificate's scope); use Proof := \"Auto\"", n);
+                Sprintf("Proof := true cannot certify n=%o: E1 and E2 are Q-isogenous or geometrically isogenous (the paper's isogenous-to-a-square case), or a factor has extra geometric automorphisms (j = 0 or 1728); both lie outside the certificate's scope; use Proof := \"Auto\"", n);
             error if strict,
                 Sprintf("Proof := true cannot certify n=%o: the analytic enumeration left a product-type quotient unclassified; use Proof := \"Auto\" or raise Precision", n);
             stable := -1;
@@ -827,19 +872,21 @@ blocks; prime-power levels only.}
     else
         // Cannot certify this block on the analytic path. Under strict Proof := true
         // (option (a)) that is a hard error with a site-specific message; otherwise record
-        // the exact stable count as diagnostics (excluded pair, never compared) and finish
-        // traces-only. The three strict cases: an excluded (Q-/geometrically isogenous) pair;
-        // n = 2, where the analytic recognition is not a reliable count and the certificate
-        // is deliberately left to the BHLS path (so "Periods" declines it); or a residual
-        // unsplit/reconstruction-rejected quotient at n >= 3.
+        // the exact stable count as diagnostics for an excluded pair (never compared; recorded
+        // at every n here, including n = 2 when BHLS declined and left this the only site) and
+        // finish traces-only. The three strict cases: an excluded pair (Q-/geometrically
+        // isogenous, or a factor with extra geometric automorphisms); n = 2, where the analytic
+        // recognition is not a reliable count and the certificate is deliberately left to the
+        // BHLS path (so "Periods" declines it); or a residual unsplit/reconstruction-rejected
+        // quotient at n >= 3.
         error if strict and excluded,
-            Sprintf("Proof := true cannot certify n=%o: E1 and E2 are Q-isogenous or geometrically isogenous (the paper's isogenous-to-a-square case, outside the certificate's scope); use Proof := \"Auto\"", n);
+            Sprintf("Proof := true cannot certify n=%o: E1 and E2 are Q-isogenous or geometrically isogenous (the paper's isogenous-to-a-square case), or a factor has extra geometric automorphisms (j = 0 or 1728); both lie outside the certificate's scope; use Proof := \"Auto\"", n);
         error if strict and n eq 2,
             "Proof := true cannot certify n = 2 on the analytic (Periods) path, which deliberately skips the exact comparison; use Algorithm := \"Auto\" or \"Algebraic\", or Proof := \"Auto\"";
         error if strict,
             Sprintf("Proof := true cannot certify n=%o: the analytic recognition left a quotient unclassified or reconstruction-rejected; use Proof := \"Auto\" or raise Precision", n);
         stable := -1;
-        if excluded and n ge 3 then stable := GaloisStableGluings(E1, E2, n); end if;
+        if excluded then stable := GaloisStableGluings(E1, E2, n); end if;
         block := <n, 1, stable, analyticCount, false>; blockProof := "traces-only";
     end if;
     info := rec< gluingInfoFmt() | n := n, proof := blockProof,
