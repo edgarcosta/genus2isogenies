@@ -116,8 +116,8 @@ intrinsic RecognizeIgusaClebsch(IC::SeqEnum) -> BoolElt, SeqEnum
 rational point of the weighted projective space P(2, 4, 6, 10). A dimensionless
 projective scale picks a weight-zero chart (the generic I2 pivot when I2 is
 projectively nonzero, else the t1 = I4 I6/I10, t2 = I4^5/I10^2 ratio chart on the
-I2 = 0 locus and its I4 = 0 / all-zero sub-strata) and RecognizeRational's its
-coordinates. On success returns true and a rational Igusa-Clebsch quadruple with
+I2 = 0 locus and its I4 = 0 / all-zero sub-strata) and recognizes its coordinates
+with RecognizeRational. On success returns true and a rational Igusa-Clebsch quadruple with
 nonzero last coordinate; otherwise false. On the I2 = 0 ratio chart the two sign
 candidates [0, t2, +-t1 t2, +-t2^2] are weighted-projectively equivalent
 (lambda = i), so the first that reconstructs via HyperellipticCurveFromIgusaClebsch

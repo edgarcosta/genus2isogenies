@@ -171,6 +171,12 @@ intrinsic GluingSelfCheck() -> BoolElt
     end try;
     assert caught;
 
+    // (GPT 5) Lock in the products / gate-deletion behavior on this sharedj pair: 54a1 x 54b1
+    // at n = 2 reports the twisted-Weil-restriction product quotient in info`products (never
+    // emitted, never counted). A distinguishing regression for the sentinel/products fix.
+    cs, i := Genus2Gluings("54a1", "54b1", 2);
+    assert i`products eq [ <9261/8, 9261/8> ];
+
     // (d) A geometrically NON-isogenous pair (14a1 x 46a1, 2 | GluingModulus so no congruence
     // short-circuit) is certifiable at n = 2 via BHLS, but the analytic ("Periods") path
     // deliberately skips the n = 2 exact comparison, so strict raises there specifically.
@@ -258,6 +264,24 @@ intrinsic GluingSelfCheck() -> BoolElt
     csp2, ip2 := Genus2Gluings(EllipticCurve([1,-1,1,-17,30]), EllipticCurve([1,-1,1,-1319,-18084]), 6);
     assert #csp2 eq 2 and ip2`proof eq "count-matched"
         and forall{b : b in ip2`blocks | b[5]};
+
+    // driver.m refusal contract (F4): AllGenus2Gluings errors BEFORE any sweep on Q-isogenous
+    // inputs (11a1 x 11a2, message names "isogenous") and on geometrically isogenous inputs
+    // (54a1 x 54b1, message names "geometrically isogenous"); no error raised is a failure.
+    caught := false;
+    try
+        _ := AllGenus2Gluings(EllipticCurve("11a1"), EllipticCurve("11a2"));
+    catch e
+        caught := Position(Sprint(e`Object), "isogenous") gt 0;
+    end try;
+    assert caught;
+    caught := false;
+    try
+        _ := AllGenus2Gluings(EllipticCurve("54a1"), EllipticCurve("54b1"));
+    catch e
+        caught := Position(Sprint(e`Object), "geometrically isogenous") gt 0;
+    end try;
+    assert caught;
 
     // driver.m (Task 12, Algorithm 3.4): AllGenus2Gluings sweeps the full isogeny classes of
     // both curves and every divisor n >= 2 of GluingModulus. The lmfdb corpus pair 26a3 x 78a4

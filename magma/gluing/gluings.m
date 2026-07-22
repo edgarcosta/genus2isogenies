@@ -115,8 +115,11 @@ end function;
 // rejection is instead made projective and precision-scaled exactly like recognize.m's
 // icChart (rho10 = |I10|/S^10 against S = max_w |I_w|^(1/w), rejected below 10^(-P/2)),
 // so weighted scaling cannot change acceptance and a genuine jacobian with a small
-// projective I10 is not dropped; the chart selectors that follow (I2^5/I10, I4^5/I10^2,
-// I6^5/I10^3) are themselves weight-0, hence already scale-free.
+// projective I10 survives down to rho10 = 10^(-P/2) (1e-20 at the fixed pass-1 40
+// digits; the corpus already reaches rho10 ~ 6e-20, so the boundary is real and a
+// genuine jacobian below it is dropped, loudly via the certificate on certified
+// paths); the chart selectors that follow (I2^5/I10, I4^5/I10^2, I6^5/I10^3) are
+// themselves weight-0, hence already scale-free.
 function LooksRationalIC(IC)
     I2 := IC[1]; I4 := IC[2]; I6 := IC[3]; I10 := IC[4];
     gate := 10^-10;
@@ -616,10 +619,14 @@ blocks in the tuple reported as unexamined sentinels, not independently certifie
 GluingInfo fields are n, proof ("count-matched" when every block certified,
 else "traces-only"), blocks (one <ell, e, stable_count, analytic_count, certified> tuple
 per prime-power block; stable_count is the exact Galois-stable QUOTIENT count when
-certified, the DIAGNOSTIC exact count when the pair is geometrically isogenous and the
-certificate would otherwise have run (certified false; -1 if the exact layer declined),
-and -1 otherwise (including every non-empty e >= 2 block); analytic_count the
-block's rational-looking survivor orbit count; the composite certificate compares the
+certified, the DIAGNOSTIC exact count when the pair is excluded (geometrically isogenous,
+or a factor has extra geometric automorphisms) and the certificate would otherwise have
+run (certified false; -1 if the exact layer declined), and -1 otherwise (including every
+non-empty e >= 2 block); analytic_count the number of distinct emitted rational jacobian
+moduli for a prime block (products are reported in products but never counted, so it is 0
+on an excluded block that emits no jacobian even when a product is present) and the
+rational-looking survivor orbit count for a composite's per-block tuple; the composite
+certificate compares the
 PRODUCT of block graph counts against the analytic graph count and a disagreement is a hard
 error), psis (a gluing matrix per returned curve; empty on the Algebraic/BHLS dispatch, which
 supplies no matrices), products (recognized <j1, j2> pairs of

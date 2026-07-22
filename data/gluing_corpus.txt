@@ -2,23 +2,26 @@
 # Blank lines and lines starting with # are ignored.
 #
 # Run with check_gluing.m from the repo root:
-#   magma -b [tags:=tag1,tag2] [line:=<entry>] [oracle:=1] check_gluing.m
+#   magma -b [tags:=tag1,tag2] [line:=<entry>] [oracle:=1] [algorithm:=Periods] check_gluing.m
 # Batch: parallel -a data/gluing_corpus.txt magma -b line:={} check_gluing.m
 # oracle:=1 is a BHLS-only replay flag that calls Genus2Elliptic2/3 +
-# CanonicalGluingList directly instead of Genus2Gluings.
+# CanonicalGluingList directly instead of Genus2Gluings; it skips the proof check.
+# algorithm:=Periods forces Genus2Gluings' analytic path and checks only the order-2
+# subset of the expected curves (that path drops higher-automorphism quotients),
+# skipping the count and proof contracts.
 #
 # Line format:
 #   tag:field:E1:E2:n:count:proof:curves
 #
 # tag    one of bhls2, bhls3, lmfdb, empty, iso, eq, cm, square, pp, composite, nf,
-#        sharedj, regress.
+#        sharedj.
 # field  0 for Q, else the defining-polynomial coefficients of K (ascending).
 # E1,E2  a-invariant lists; over K each a-invariant is itself a coefficient
 #        list on the power basis.
 # n      level (glue along full n-torsion).
 # count  expected number of returned curves; -1 = do not check.
-# proof  expected info`proof ("count-matched", "traces-only"); "-" = do not check
-#        (always "-" for oracle-mode entries, which carry no certificate).
+# proof  expected info`proof ("count-matched", "traces-only"); "-" = do not check.
+#        The oracle:=1 and algorithm:=Periods runs skip this check regardless.
 # curves expected canonical output: a list of [fcoeffs,hcoeffs] pairs
 #        (ascending coefficients, y^2 + h(x)y = f(x), data/README.md
 #        conventions); [] for expected-empty; [-1] = do not check.
@@ -117,7 +120,8 @@ composite:0:[1,0,1,-1,0]:[1,0,0,-103,-411]:6:0:count-matched:[]
 # 600.a.18000.1 (E1=20a3, E2=30a6): LMFDB C=[[0,-1,-4,3,3,-2],[0,1,0,1]] is NOT a (6,6)-gluing; pair has none (2-block exact count 0, so certified empty)
 composite:0:[0,1,0,-36,-140]:[1,0,1,-334,-2368]:6:0:count-matched:[]
 #
-# sharedj entries: geometrically isogenous (equal-j, non-Q-isogenous twist) pairs, the
+# sharedj entries: geometrically isogenous, non-Q-isogenous pairs (equal-j twists, or a
+# different-j isogeny-class j-match), the
 # certificate-abstain regressions. Each crashed with "gluing certificate mismatch"
 # before the abstain (54a1 x 54b1 and y^2 = x^3 -+ 10 at n=2 under Auto; the third
 # pair at n=3 under algorithm:=Periods, where the deleted extra-automorphism
@@ -129,6 +133,10 @@ composite:0:[0,1,0,-36,-140]:[1,0,1,-334,-2368]:6:0:count-matched:[]
 sharedj:0:[1,-1,0,12,8]:[1,-1,1,1,-1]:2:0:traces-only:[]
 sharedj:0:[0,0,0,0,-10]:[0,0,0,0,10]:2:0:traces-only:[]
 sharedj:0:[0,0,1,0,-7]:[0,0,0,0,4]:3:0:traces-only:[]
+# A different-j geometrically-isogenous (isogeny-class j-match) pair, 11a1 x
+# [0,1,1,-195508,-33338481] at n=2: NON-empty (one curve emitted) yet still traces-only,
+# since a geometrically isogenous pair is never certified whether or not it glues.
+sharedj:0:[0,-1,1,-10,-20]:[0,1,1,-195508,-33338481]:2:1:traces-only:[[[-6382,37170,-231820,20850,14500,-750,-250],[]]]
 #
 # nf entry (experimental number-field inputs, Task 13). E1 and its Galois conjugate
 # E2 over the real quadratic field K = Q(sqrt5) (theta^2 = theta + 1); E1 = LMFDB

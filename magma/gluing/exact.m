@@ -17,7 +17,8 @@
  * analytic count over-reports. Collapsing to distinct quotients (moduli classes)
  * on both sides removes that ambiguity: M and -M give isomorphic quotients (the -1
  * automorphism of E1), so distinct stable quotients are exactly the M/-M orbits,
- * and the analytic side counts distinct recognized moduli (jacobian + product).
+ * and the analytic side counts distinct recognized-and-emitted jacobian moduli;
+ * products never count toward the certificate.
  *
  * Method (the ell-torsion Galois module is read off a p-adic Galois group; no
  * large number field is ever built, which SplittingField at ell >= 5 makes
@@ -262,9 +263,9 @@ analytic, certified> together with this block's proof contribution ("count-match
 "traces-only"). The label "count-matched" records only that these two counts agree; it
 is not a proof that the emitted curve set is exactly the stable set, since the analytic
 recognition is heuristic (README.md gives the precise semantics). Both counts are
-distinct rational QUOTIENTS (M/-M orbits on the
-exact side; distinct recognized jacobian moduli plus distinct products on the
-analytic side). On a count disagreement raise "gluing certificate mismatch at
+distinct rational QUOTIENTS (M/-M orbits on the exact side; distinct
+recognized-and-emitted jacobian moduli on the analytic side, products never counting
+toward the certificate). On a count disagreement raise "gluing certificate mismatch at
 ell=<n>: exact <e> vs analytic <a>". When the exact layer declines (Galois group
 over the bound): raise an error if Strict (the Proof := true contract), else return
 the uncertified block with "traces-only". Callers gate invocation (Proof "Auto"
