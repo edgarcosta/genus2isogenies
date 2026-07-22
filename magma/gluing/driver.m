@@ -98,7 +98,8 @@ matched its analytic count, not that the emitted set is proved complete), and
 classsizes <#cls1, #cls2>.}
     // GluingModulus first, ahead of resolving Classes: an isogenous-input rejection
     // must fire even over a number field with no Classes supplied, without paying for
-    // IsogenousCurves (which the FldRat-only require just below would reject anyway).
+    // IsogenousCurves (Q-only, and reached only past the exact IsIsogenous and the
+    // GeometricallyIsogenous guards below, which a number-field input never gets to).
     N, incon := GluingModulus(E1, E2 : Bound := Bound);
     if incon then
         // Every scanned good-prime trace agreed. Over Q that is decidable:

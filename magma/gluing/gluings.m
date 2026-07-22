@@ -405,7 +405,10 @@ function gluingCompositeCRT(E1, E2, n, PrecParam, Proof, TraceBound)
 
     // Congruence prefilter first: a rational n-gluing forces n | GluingModulus, and n | N iff
     // every ell_i^e_i | N. When N is conclusive and n does not divide it, each block whose
-    // ell^e-part fails to divide N is congruence-certified empty, so the composite is.
+    // ell^e-part fails to divide N is congruence-certified empty, so the composite is. This
+    // certificate holds on ALL pairs, geometrically isogenous ones included: it rests only on a
+    // good-prime trace difference, not on the Aut(E1 x E2) = {+-1}^2 assumption the exact layer
+    // needs, so the "excluded pairs are traces-only" rule deliberately does not apply here.
     N, inconclusive := GluingModulus(E1, E2);
     if (not inconclusive) and (N mod n ne 0) then
         blocks := [];
@@ -438,7 +441,7 @@ function gluingCompositeCRT(E1, E2, n, PrecParam, Proof, TraceBound)
             so, srec := GaloisStableGluings(E1, E2, ell);
             if so lt 0 then
                 error if strict,
-                    Sprintf("gluing certificate unavailable at ell=%o: exact layer declined (Galois group order %o over the degree bound)", ell, srec`group_order);
+                    Sprintf("Proof := true cannot certify n=%o: the exact layer declined at ell=%o (Galois group order %o over the degree bound); use Proof := \"Auto\"", n, ell, srec`group_order);
             elif so eq 0 then
                 // Certified empty (e = 1 directly; e >= 2 by reduction mod ell). The whole
                 // composite is certified empty: return with this block as the witness.
@@ -667,8 +670,11 @@ blocks; prime-power levels only.}
     if (not inconclusive) and (N mod n ne 0) then
         // Congruence obstruction: a rigorous, independent proof of emptiness (n
         // does not divide a good-prime trace difference), so 0 stable graphs and
-        // 0 rational quotients, block certified without the exact layer. Necessary
-        // at prime powers too: a rational ell^e-gluing forces a_p(E1) = a_p(E2)
+        // 0 rational quotients, block certified without the exact layer. Valid on
+        // every pair, including the geometrically isogenous (square-case) ones the
+        // exact layer excludes: it needs no Aut(E1 x E2) assumption, so such pairs
+        // are still count-matched here, not traces-only. Necessary at prime powers
+        // too: a rational ell^e-gluing forces a_p(E1) = a_p(E2)
         // mod ell^e, hence ell^e | GluingModulus.
         info := rec< gluingInfoFmt() | n := n, proof := "count-matched",
             blocks := [<ell, e, 0, 0, true>], psis := [], products := [],

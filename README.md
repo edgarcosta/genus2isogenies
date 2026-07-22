@@ -63,7 +63,7 @@ magma -b input:="704:704.a:2159575534599616393:[[-1856,129536,-44,-2948]]:[[[-1,
 
 # Gluing package
 
-`magma/gluing/` glues two elliptic curves E1, E2/Q along their full n-torsion (n >= 2): an anti-symplectic isomorphism psi : E1[n] -> E2[n] (a determinant -1 matrix in symplectic period bases) has graph a maximal isotropic subgroup of (E1 x E2)[n], and the quotient (E1 x E2)/graph(psi) is a principally polarized abelian surface reached from E1 x E2 by a degree n^2 isogeny (Algorithm 3.4 of the paper, the "split, non-square" case). `Genus2Gluings` returns every genus-2 curve over Q whose Jacobian arises this way, with a certificate of how completely the search was verified.
+`magma/gluing/` glues two elliptic curves E1, E2/Q along their full n-torsion (n >= 2): an anti-symplectic isomorphism psi : E1[n] -> E2[n] (a determinant -1 matrix in symplectic period bases) has graph a maximal isotropic subgroup of (E1 x E2)[n], and the quotient (E1 x E2)/graph(psi) is a principally polarized abelian surface reached from E1 x E2 by a degree n^2 isogeny (Algorithm 3.4 of the paper, the "split, non-square" case). `Genus2Gluings` returns the genus-2 curves over Q whose Jacobian arises this way, each with a certificate of how completely the search was verified (see Limitations for the documented emission gaps).
 
 Attach the repository spec:
 ```
@@ -87,6 +87,8 @@ intrinsic Genus2Gluings(E1::CrvEll, E2::CrvEll, n::RngIntElt
 - `Proof := "Auto"`: controls the exact-count completeness layer. `"Auto"` is the best-effort mode: it attempts the exact comparison for prime blocks with ell <= 13, but its Galois-group-size cutoff (DegreeBound 2400) means it typically only succeeds up to ell = 5 for a generic pair (ell = 7 for congruent mod-ell pairs), otherwise falling back to `"traces-only"`. `true` is strict: every block must finish with non-traces-only evidence (congruence-proved emptiness, reduction to a proved-empty prime block, or an exact stable-quotient count matched by the analytic count), and it raises an error if the chosen algorithm skips the comparison (`n = 2` under `"Periods"`), the exact layer is inapplicable or declines, the pair is Q- or geometrically isogenous, a productive higher prime power (e >= 2) lacks a v1 proof, or any composite factor is traces-only. `false` skips the layer. Any boolean expression works, e.g. `Proof := n le 17` in a sweep to demand certification up to a chosen cutoff.
 - `TraceBound := 1000`: good primes checked when pinning the quadratic twist against E1 x E2's Euler factors.
 
+The `proof` field of the returned record is `"count-matched"` or `"traces-only"`. `"count-matched"` is deliberately the weakest claim in the certificate bundle: an exact algebraic calculation proves the target contains N Galois-stable anti-symplectic graph quotients, and the numerical recognition pipeline reports N distinct rational quotient candidates, so the two cardinalities agree. This is a match of counts, not a proved correspondence between the two sets: theta evaluation and rational recognition stay heuristic, so `"count-matched"` does not prove that the emitted set is exactly the stable set. Every emitted curve additionally has Euler factors matching E1 x E2 at all good primes through `TraceBound`, which is rigorous finite local evidence. The two empty-set outcomes are stronger in kind but wear the same label: a congruence obstruction (n does not divide `GluingModulus(E1, E2)`) and a certified-empty-by-reduction (a prime level with exact stable count 0, forcing every prime power above it empty) are each, on their own, a rigorous proof that no gluing exists; they report `"count-matched"` only because that is the weakest guarantee the field ever carries, not because the emptiness is merely heuristic.
+
 Also overloaded for `y^2 = f1`, `y^2 = f2` (monic univariate cubics) and for Cremona labels as strings, e.g. `Genus2Gluings("99a2", "99b3", 6)`; the string overload accepts Cremona labels only.
 
 ## Example
@@ -94,20 +96,20 @@ Also overloaded for `y^2 = f1`, `y^2 = f2` (monic univariate cubics) and for Cre
 ```
 > cs, info := Genus2Gluings(EllipticCurve("99a2"), EllipticCurve("99b3"), 6);
 > #cs, info`proof;
-2 certified
+2 count-matched
 > [[Coefficients(f), Coefficients(h)] where f, h := HyperellipticPolynomials(c) : c in cs];
 [
     [ [ -27144, -68508, -129969, -136548, -113692, -52454, -18424 ], [ 0, 0, 1, 1 ] ],
     [ [ 0, -48, 105, -126, 44, -17, 2 ], [ 0, 0, 1, 1 ] ]
 ]
 ```
-Both curves are certified: the 2-block and 3-block each carry an exact completeness certificate, and their CRT combination matches the analytic count at the composite level n = 6.
+Both curves are count-matched: the 2-block and 3-block each pass the exact-count comparison (the exact Galois-stable count equals the analytic count), and their CRT combination matches at the composite level n = 6.
 
-`AllGenus2Gluings(E1, E2)` sweeps every pair of curves isogenous to E1, E2 and every level dividing `GluingModulus(E1, E2)`, since a gluing of the class representatives need not be a gluing of E1, E2 themselves. `AllGenus2Gluings(EllipticCurve("26a3"), EllipticCurve("78a4"))` sweeps 3 x 4 x 1 = 12 (pair, level) combinations and returns 7 curves, including the LMFDB genus-2 curve 2028.a.64896.1 as a (5,5)-gluing of 26a3 and 78a1 (a different member of 78a4's class) rather than of 78a4 directly, alongside the direct pair's own certified gluing.
+`AllGenus2Gluings(E1, E2)` sweeps every pair of curves isogenous to E1, E2 and every level dividing `GluingModulus(E1, E2)`, since a gluing of the class representatives need not be a gluing of E1, E2 themselves. `AllGenus2Gluings(EllipticCurve("26a3"), EllipticCurve("78a4"))` sweeps 3 x 4 x 1 = 12 (pair, level) combinations and returns 7 curves, including the LMFDB genus-2 curve 2028.a.64896.1 as a (5,5)-gluing of 26a3 and 78a1 (a different member of 78a4's class) rather than of 78a4 directly, alongside the direct pair's own count-matched gluing.
 
 ## Corpus and runner
 
-`data/gluing_corpus.txt` (28 curated entries, format in its header) and `check_gluing.m` regression-test the package:
+`data/gluing_corpus.txt` (31 curated entries, format in its header) and `check_gluing.m` regression-test the package:
 ```
 magma -b check_gluing.m                            # full corpus, Algorithm "Auto"
 magma -b algorithm:=Periods check_gluing.m          # force the analytic path
@@ -120,7 +122,7 @@ parallel -a data/gluing_corpus.txt magma -b line:={} check_gluing.m   # one proc
 
 ## Limitations
 
-Bielliptic gluings (Jacobian automorphism group order > 2) are produced only by the Algebraic (BHLS) path at n in {2, 3}; the Periods path recognizes them analytically but cannot certify the right non-quadratic twist, so it drops them rather than emit a wrong curve. Over a number field K (experimental): recognition still targets Q, the completeness proof is `"traces-only"` except for congruence-certified-empty blocks, only the first real infinite place of K is used, and only prime-power n is supported; a genuinely productive K gluing currently ends in a loud "ambiguous twist" error, since the candidate curve and its disc(K)-twist are K-isomorphic and v1 has no way to choose between them. Ambiguous-twist and certificate-mismatch situations are always hard errors, never silent. There is no exact completeness layer for e >= 2 or composite blocks in v1; those levels are certified only via congruence or reduction to the prime level. Igusa-Clebsch recognition covers all of the weighted projective space P(2, 4, 6, 10): the projectively-I2 = 0 locus is read off the weight-0 ratio charts (t1 = I4 I6/I10, t2 = I4^5/I10^2, plus the I4 = 0 stratum u = I6^5/I10^3 and the all-zero point [0, 0, 0, 1]), so it is no longer a recognition gap, though an I2 = 0 quotient with extra automorphisms stays subject to the same non-quadratic-twist caveat above.
+Bielliptic gluings (Jacobian automorphism group order > 2) are produced only by the Algebraic (BHLS) path at n in {2, 3}; the Periods path recognizes them analytically but cannot certify the right non-quadratic twist, so it drops them rather than emit a wrong curve. Over a number field K (experimental): recognition still targets Q, the completeness proof is `"traces-only"` except for congruence-certified-empty blocks, only the first real infinite place of K is used, and only prime-power n is supported; a genuinely productive K gluing currently ends in a loud "ambiguous twist" error, since the candidate curve and its disc(K)-twist are K-isomorphic and v1 has no way to choose between them. Ambiguous-twist and certificate-mismatch situations are always hard errors, never silent. Geometrically isogenous pairs (equal j, a shared geometric CM field, or a twist of a Q-isogenous curve) are the paper's still-in-development "isogenous to a square" case and lie outside the certificate's scope: `Genus2Gluings` still runs and returns curves but stays `"traces-only"` on them (recording the exact stable count as diagnostics), and `AllGenus2Gluings` refuses them outright with a square-case message. There is no exact-count layer for e >= 2 or composite blocks in v1; those levels reach `"count-matched"` only via a congruence obstruction or reduction to a proved-empty prime level. Igusa-Clebsch recognition covers all of the weighted projective space P(2, 4, 6, 10): the projectively-I2 = 0 locus is read off the weight-0 ratio charts (t1 = I4 I6/I10, t2 = I4^5/I10^2, plus the I4 = 0 stratum u = I6^5/I10^3 and the all-zero point [0, 0, 0, 1]), so it is no longer a recognition gap, though an I2 = 0 quotient with extra automorphisms stays subject to the same non-quadratic-twist caveat above.
 
 ## Future work
 

@@ -25,8 +25,8 @@
  */
 
 // RecognizeRational at an explicit precision P (the working decimal precision).
-// The weight-zero chart ratios below are built from high powers (e.g. I4^5/I10^2),
-// so pin the digit budget to P rather than trust an arithmetic-tracked precision.
+// Magma complex fields carry one field-level precision, not a per-element one, so
+// passing Digits := P pins the recognition to the working precision P directly.
 function recQ(z, P)
     return RecognizeRational(z : Digits := P);
 end function;

@@ -58,7 +58,7 @@ intrinsic GluingSelfCheck() -> BoolElt
     E1 := EllipticCurve("14a1"); E2 := EllipticCurve("46a1");
     qs := GluedPeriodMatrices(E1, E2, 2 : Precision := 80, Filter := false);
     assert #qs eq 6;
-    assert forall{q : q in qs | q`type in ["jacobian", "product"]};
+    assert forall{q : q in qs | q`type in ["jacobian", "product", "product-unsplit"]};
 
     // EllipticPeriodBasis: orientation normalized and conjugation is an involution.
     ws, Mconj := EllipticPeriodBasis(E1, 60);
