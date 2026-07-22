@@ -115,6 +115,17 @@ certified, else "traces-only"), and classsizes <#cls1, #cls2>.}
         end while;
     end if;
 
+    // Geometrically isogenous pairs (equal j, same geometric CM field, or a twist of a
+    // Q-isogenous curve) are the paper's square case: Algorithm 3.4's input contract is
+    // geometrically NONisogenous pairs, and the certificate abstains on the excluded
+    // class, so the driver refuses rather than sweeping sources it can never certify.
+    // The test is exact and Q-only; over a number field the trace-scan refusal above is
+    // the only guard in v1.
+    if Type(BaseRing(E1)) eq FldRat then
+        require not GeometricallyIsogenous(E1, E2):
+            "curves are geometrically isogenous; this is the square case, not covered by this driver (Algorithm 3.4 takes geometrically nonisogenous pairs)";
+    end if;
+
     if Classes cmpeq false then
         require Type(BaseRing(E1)) eq FldRat and Type(BaseRing(E2)) eq FldRat:
             "AllGenus2Gluings needs Classes := [cls1, cls2] over a number field; there is no isogeny-class-over-K engine yet";
