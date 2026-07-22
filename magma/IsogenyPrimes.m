@@ -1,8 +1,48 @@
 // IsogenyPrimes.m
 //
 // Isogeny primes / congruence primes engine for elliptic curves over Q and
-// number fields. See docs/specs/billerey-engine-design.md
-// for the denotational semantics this file implements.
+// number fields. The denotational semantics are documented in the header block
+// below.
+
+//////////////////////////////////////////////////////////////////////////
+// Denotational contract (the semantics this file implements)
+//
+// Let R(E) := { ell prime : E[ell] is reducible as a Gal(Qbar/K)-module }.
+// Let L be the returned sequence, and
+//   F(D_F, f) := { p : p split or ramified in the CM field, p not dividing f }.
+//
+//   Kind        guarantee
+//   ---------   ----------------------------------------------------------
+//   Finite      R(E) subset of L
+//   CMFamily    F(D_F,f) subset R(E) subset F(D_F,f) union L
+//   AllPrimes   (congruence) target set is all primes; L empty by convention
+//   Undecided   no nontrivial upper bound certified; the only safe upper
+//               bound is all primes; L is empty; callers MUST short-circuit
+//               on Kind
+//
+// Exact is a CERTIFICATION flag, not a factual biconditional. If Exact is
+// true the guarantee upgrades to equality (L = R(E) for "Finite"; the
+// all-primes claim is proven for "AllPrimes"). If Exact is false NO equality
+// is claimed in either direction (a candidate list may coincidentally equal
+// R(E)). Assigned true for the degree-one branch and for certified
+// "AllPrimes"; false for the Billerey branch, both CM branches, "Undecided",
+// and uncertified finite congruence output.
+//
+// Accessor formulas (normative, executable):
+//   MayBeReducible(ell, L, info):
+//     Kind "Finite":   ell in L
+//     Kind "CMFamily": (ell does not divide f and
+//                       KroneckerSymbol(D_F, ell) ne -1) or ell in L
+//   MayBeCongruent(ell, L, info):
+//     Kind "Finite":    ell in L
+//     Kind "AllPrimes": true
+//     Kind "Undecided": true
+//
+// Dispatch is on ABSOLUTE DEGREE (degree-one fields take the exact rational
+// branch), not Magma type. Every good/bad decision uses the conductor support
+// of the normalized (global integral) model, never the submitted equation's
+// discriminant.
+//////////////////////////////////////////////////////////////////////////
 
 declare verbose IsogenyPrimes, 2;
 
