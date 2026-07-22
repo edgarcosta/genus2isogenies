@@ -81,9 +81,12 @@ n >= 2 dividing N := GluingModulus(E1, E2 : Bound := Bound). Sweeps cls(E1) x
 cls(E2) x the divisors n of N with n ge 2, where cls(*) is the full isogeny class
 (IsogenousCurves) unless Classes := [cls1, cls2] supplies it directly (required
 over a number field: there is no isogeny-class-over-K engine yet, so pass the
-classes in explicitly). Requires E1, E2 not isogenous (GluingModulus's
-inconclusive flag; the isogenous/square case needs Algorithm 3.4's 2-power-loop
-branch, not this driver). Proof and TraceBound pass through to every
+classes in explicitly). Requires E1, E2 not isogenous: over Q this is decided
+exactly with IsIsogenous, growing Bound until the good-prime trace scan is
+conclusive (it terminates by Faltings); over a number field, where no exact
+isogeny test is wired in, a trace scan still inconclusive at Bound is refused.
+The isogenous/square case needs Algorithm 3.4's 2-power-loop branch, not this
+driver. Proof and TraceBound pass through to every
 Genus2Gluings(F, F', n) call. Every emitted curve is checked against Kani
 uniqueness (corollary:kani non square): the same curve arising from two distinct
 (pair, level) sources raises "uniqueness violation (Kani): same curve from two
@@ -95,8 +98,22 @@ certified, else "traces-only"), and classsizes <#cls1, #cls2>.}
     // must fire even over a number field with no Classes supplied, without paying for
     // IsogenousCurves (which the FldRat-only require just below would reject anyway).
     N, incon := GluingModulus(E1, E2 : Bound := Bound);
-    require not incon:
-        "curves appear isogenous; the square case needs the 2-power loop, not this driver";
+    if incon then
+        // Every scanned good-prime trace agreed. Over Q that is decidable:
+        // IsIsogenous is exact for CrvEll/FldRat, and for a genuinely
+        // non-isogenous pair some good prime disagrees (Faltings), so
+        // growing the bound terminates. Over a number field there is no
+        // exact isogeny test in v1, so the trace-agreement refusal stands.
+        require Type(BaseRing(E1)) eq FldRat and Type(BaseRing(E2)) eq FldRat:
+            "curves appear isogenous (all traces to the bound agree); over a number field this driver cannot decide isogeny, pass a larger Bound or use the square case";
+        require not IsIsogenous(E1, E2):
+            "curves are isogenous; the square case needs the 2-power loop, not this driver";
+        b := Bound;
+        while incon do
+            b *:= 4;
+            N, incon := GluingModulus(E1, E2 : Bound := b);
+        end while;
+    end if;
 
     if Classes cmpeq false then
         require Type(BaseRing(E1)) eq FldRat and Type(BaseRing(E2)) eq FldRat:
