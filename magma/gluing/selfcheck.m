@@ -204,23 +204,23 @@ intrinsic GluingSelfCheck() -> BoolElt
     end try;
     assert caught;
 
-    // Strict must NOT over-fire: (g) a fully certifiable composite still returns "certified"
+    // Strict must NOT over-fire: (g) a fully certifiable composite still returns "count-matched"
     // under strict (99a2 x 99b3 at n = 6, both blocks certified and the CRT count matches);
     // (h) a composite that is certified EMPTY by an exact block (14a4 x 34a3 at n = 6, 2-block
-    // exact count 0) still returns "certified" under strict, confirming the in-loop empty
+    // exact count 0) still returns "count-matched" under strict, confirming the in-loop empty
     // short-circuit preempts the after-loop strict guard.
     _, ig := Genus2Gluings(EllipticCurve("99a2"), EllipticCurve("99b3"), 6 : Proof := true);
-    assert ig`proof eq "certified";
+    assert ig`proof eq "count-matched";
     _, ih := Genus2Gluings(EllipticCurve([1,0,1,-1,0]), EllipticCurve([1,0,0,-103,-411]), 6 : Proof := true);
-    assert ih`proof eq "certified" and ih`blocks[1] eq <2, 1, 0, 0, true>;
+    assert ih`proof eq "count-matched" and ih`blocks[1] eq <2, 1, 0, 0, true>;
 
     // gluings.m Task 10 (prime-power levels via lifting). The pp corpus pair 15a7 x 30a8
     // at n = 4 = 2^2 is certified EMPTY by reduction: its prime level ell = 2 has 0
     // Galois-stable gluings, and a stable (4,4)-graph reduces mod 2 to a stable (2,2)-graph,
-    // so no (4,4)-gluing exists. Block <2, 2, 0, 0, true>, proof "certified" (the firmed
+    // so no (4,4)-gluing exists. Block <2, 2, 0, 0, true>, proof "count-matched" (the firmed
     // corpus count and the certified-empty-by-reduction upgrade).
     csp, ip := Genus2Gluings(EllipticCurve([1,1,1,-80,242]), EllipticCurve([1,0,1,-454,-544]), 4);
-    assert #csp eq 0 and ip`proof eq "certified" and ip`blocks eq [<2, 2, 0, 0, true>];
+    assert #csp eq 0 and ip`proof eq "count-matched" and ip`blocks eq [<2, 2, 0, 0, true>];
 
     // The lift SWEEP itself (not the empty short-circuit): the isogenous self-gluing
     // 20a2 x 20a2 at n = 4 skips the certificate, so gluingLiftSweep runs (level-2
@@ -241,22 +241,22 @@ intrinsic GluingSelfCheck() -> BoolElt
     // composite is certified empty on that block alone (blocks[1] = <2, 1, 0, 0, true>, the 3
     // block left undetermined by the short-circuit). This is the firmed corpus count.
     csc, ic := Genus2Gluings(EllipticCurve([1,0,1,-1,0]), EllipticCurve([1,0,0,-103,-411]), 6);
-    assert #csc eq 0 and ic`proof eq "certified" and ic`blocks[1] eq <2, 1, 0, 0, true>;
+    assert #csc eq 0 and ic`proof eq "count-matched" and ic`blocks[1] eq <2, 1, 0, 0, true>;
 
     // (b) Certified-empty by the congruence fast path (kept first). 11a1 x 17a1 has
     // GluingModulus 1 (conclusive), so no ell^e-part of 6 divides it and every block is
-    // congruence-certified empty: proof "certified", 0 curves, before any exact/analytic work.
+    // congruence-certified empty: proof "count-matched", 0 curves, before any exact/analytic work.
     cse, ie := Genus2Gluings(EllipticCurve("11a1"), EllipticCurve("17a1"), 6);
-    assert #cse eq 0 and ie`proof eq "certified"
+    assert #cse eq 0 and ie`proof eq "count-matched"
         and forall{b : b in ie`blocks | b[3] eq 0 and b[5]};
 
     // (c) Productive composition + graph-level certificate. 99a2 x 99b3 glue at n = 6: the
     // 2-block (exact graph 2) and 3-block (exact graph 2) CRT-combine, and the level-n
     // recognition finds exactly the product 2 * 2 = 4 rational graphs (2 M/-M quotients), both
-    // reconstructing to Q-curves. proof "certified" (every block certified AND the analytic
+    // reconstructing to Q-curves. proof "count-matched" (every block certified AND the analytic
     // graph count equals the product of block graph counts, the composite certificate).
     csp2, ip2 := Genus2Gluings(EllipticCurve([1,-1,1,-17,30]), EllipticCurve([1,-1,1,-1319,-18084]), 6);
-    assert #csp2 eq 2 and ip2`proof eq "certified"
+    assert #csp2 eq 2 and ip2`proof eq "count-matched"
         and forall{b : b in ip2`blocks | b[5]};
 
     // driver.m (Task 12, Algorithm 3.4): AllGenus2Gluings sweeps the full isogeny classes of
@@ -272,7 +272,7 @@ intrinsic GluingSelfCheck() -> BoolElt
     Qxd := PolynomialRing(Rationals());
     witnessC := CanonicalGluingList([HyperellipticCurve(Qxd![5,9,6,6,4,1,1], Qxd![0,1,1])])[1];
     directC := CanonicalGluingList([HyperellipticCurve(Qxd![0,-4,-57,-159,246,-105,14], Qxd![0,1,0,1])])[1];
-    assert infoAllg`N eq 5 and infoAllg`classsizes eq <3, 4> and infoAllg`proof eq "certified";
+    assert infoAllg`N eq 5 and infoAllg`classsizes eq <3, 4> and infoAllg`proof eq "count-matched";
     assert exists{c : c in csAllg | IsIsomorphic(c, witnessC)};
     assert exists{c : c in csAllg | IsIsomorphic(c, directC)};
 

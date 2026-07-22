@@ -11,7 +11,7 @@
  *      (e.g. "Algebraic" implies n in {2, 3} and non-isomorphic E1, E2), before
  *      anything else runs. Composite n dispatches to gluingCompositeCRT here.
  *   2. Congruence prefilter: if GluingModulus is conclusive and n does not
- *      divide it, no gluing exists; return empty with proof "certified".
+ *      divide it, no gluing exists; return empty with proof "count-matched".
  *   3. Dispatch:
  *        "Algebraic" -> BHLS closed formulas (n in {2, 3} only);
  *        "Auto"      -> BHLS when n in {2, 3} and the curves are non-isomorphic
@@ -47,7 +47,11 @@
  * Galois-stable automorphism ORBIT of graphs already gives rational moduli with no
  * stable member). Under Proof := "Auto" (prime n <= 13) or true, a count match
  * certifies the block and a disagreement is a hard error; the proof field is
- * "certified" iff every block certified. A geometrically isogenous pair
+ * "count-matched" iff every block certified. That label is deliberately the weakest
+ * claim in the bundle: such blocks report count-matched, meaning the exact Galois-
+ * stable count EQUALS the analytic count, NOT that the emitted set is proved to be
+ * exactly the stable set (README.md and exact.m give the precise semantics). A
+ * geometrically isogenous pair
  * (GeometricallyIsogenous, modulus.m; the paper's still-in-development "isogenous
  * to a square" case) is NEVER certified: proof stays "traces-only" and, at prime
  * blocks where the certificate would have run, the exact stable count is still
@@ -71,7 +75,7 @@ end function;
 // that catches any traces-only return left unguarded by a future edit. It checks info`proof,
 // NOT the per-block certified flags: a certified-empty return legitimately carries uncertified
 // sentinel blocks (the composite short-circuit records later blocks as <ell, e, -1, -1, false>)
-// under an overall proof of "certified", which a block-level check would wrongly reject.
+// under an overall proof of "count-matched", which a block-level check would wrongly reject.
 procedure strictGuard(strict, info)
     error if strict and info`proof eq "traces-only",
         "Proof := true requires a non-traces-only certificate for every block, but this result is traces-only; use Proof := \"Auto\"";
@@ -412,7 +416,7 @@ function gluingCompositeCRT(E1, E2, n, PrecParam, Proof, TraceBound)
                 Append(~blocks, <ells[i], es[i], -1, -1, false>);
             end if;
         end for;
-        info := rec< gluingInfoFmt() | n := n, proof := "certified",
+        info := rec< gluingInfoFmt() | n := n, proof := "count-matched",
             blocks := blocks, psis := [], products := [],
             precision := 0, tracebound := TraceBound >;
         return emptyCurves(), info;
@@ -440,7 +444,7 @@ function gluingCompositeCRT(E1, E2, n, PrecParam, Proof, TraceBound)
                 // composite is certified empty: return with this block as the witness.
                 blocks := blockTuples cat [<ell, e, 0, 0, true>];
                 for j in [i + 1 .. k] do Append(~blocks, <ells[j], es[j], -1, -1, false>); end for;
-                info := rec< gluingInfoFmt() | n := n, proof := "certified",
+                info := rec< gluingInfoFmt() | n := n, proof := "count-matched",
                     blocks := blocks, psis := [], products := [],
                     precision := 0, tracebound := TraceBound >;
                 return emptyCurves(), info;
@@ -482,7 +486,7 @@ function gluingCompositeCRT(E1, E2, n, PrecParam, Proof, TraceBound)
     // Strict Proof := true (option (a)): a block left uncertified cannot enter a
     // non-traces-only composite certificate. The check is deferred to here, AFTER the loop,
     // on purpose: any block that is certified empty (congruence or exact) returns the whole
-    // composite "certified" from inside the loop above, and that short-circuit must win even
+    // composite "count-matched" from inside the loop above, and that short-circuit must win even
     // when an EARLIER block was uncertifiable (e.g. an e >= 2 block ordered before a
     // certified-empty prime block). Reaching this point means no block was certified empty,
     // so an uncertified block (a Q-/geometrically isogenous pair, or an e >= 2 block with
@@ -523,7 +527,7 @@ function gluingCompositeCRT(E1, E2, n, PrecParam, Proof, TraceBound)
         exactGraph := &*blockGraphCounts;   // all blocks certified => every graphCount >= 0
         error if analyticGraph ne exactGraph,
             Sprintf("gluing certificate mismatch at n=%o: exact %o vs analytic %o", n, exactGraph, analyticGraph);
-        proof := "certified";
+        proof := "count-matched";
     end if;
     info := rec< gluingInfoFmt() | n := n, proof := proof,
         blocks := blockTuples, psis := psisOut, products := products,
@@ -564,9 +568,9 @@ at each block's PRIME level only; for e >= 2 blocks it is out of scope in v1 (di
 polynomials at ell^e are too large), so those blocks are "traces-only" (raising under strict
 true) EXCEPT that a prime level certified empty forces ell^e empty by reduction (certified). The same shortcut applies to a composite n (gluingCompositeCRT): one
 certified-empty block (congruence-obstructed or exact-certified-empty) proves the whole
-composite empty, and the composite returns "certified" immediately with the remaining
+composite empty, and the composite returns "count-matched" immediately with the remaining
 blocks in the tuple reported as unexamined sentinels, not independently certified. The
-GluingInfo fields are n, proof ("certified" when every block certified,
+GluingInfo fields are n, proof ("count-matched" when every block certified,
 else "traces-only"), blocks (one <ell, e, stable_count, analytic_count, certified> tuple
 per prime-power block; stable_count is the exact Galois-stable QUOTIENT count when
 certified, the DIAGNOSTIC exact count when the pair is geometrically isogenous and the
@@ -666,7 +670,7 @@ blocks; prime-power levels only.}
         // 0 rational quotients, block certified without the exact layer. Necessary
         // at prime powers too: a rational ell^e-gluing forces a_p(E1) = a_p(E2)
         // mod ell^e, hence ell^e | GluingModulus.
-        info := rec< gluingInfoFmt() | n := n, proof := "certified",
+        info := rec< gluingInfoFmt() | n := n, proof := "count-matched",
             blocks := [<ell, e, 0, 0, true>], psis := [], products := [],
             precision := 0, tracebound := TraceBound >;
         return emptyCurves(), info;
@@ -684,7 +688,7 @@ blocks; prime-power levels only.}
         // and respects Proof; GaloisStableGluings declines (returns -1, not 0) when the
         // Galois group is too big, in which case we fall through to the sweep.
         if runExact and GaloisStableGluings(E1, E2, ell) eq 0 then
-            info := rec< gluingInfoFmt() | n := n, proof := "certified",
+            info := rec< gluingInfoFmt() | n := n, proof := "count-matched",
                 blocks := [<ell, e, 0, 0, true>], psis := [], products := [],
                 precision := 0, tracebound := TraceBound >;
             return emptyCurves(), info;

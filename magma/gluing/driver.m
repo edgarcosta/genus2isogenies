@@ -92,8 +92,10 @@ uniqueness (corollary:kani non square): the same curve arising from two distinct
 (pair, level) sources raises "uniqueness violation (Kani): same curve from two
 gluing data". Returns the CanonicalGluingList merge over every pair and level,
 and a metadata record with fields N, sources (one <F1 ainvs, F2 ainvs, n, count,
-proof> record per (pair, level) call), proof ("certified" iff every source
-certified, else "traces-only"), and classsizes <#cls1, #cls2>.}
+proof> record per (pair, level) call), proof ("count-matched" iff every source is
+count-matched, else "traces-only"; the label means each source's exact stable count
+matched its analytic count, not that the emitted set is proved complete), and
+classsizes <#cls1, #cls2>.}
     // GluingModulus first, ahead of resolving Classes: an isogenous-input rejection
     // must fire even over a number field with no Classes supplied, without paying for
     // IsogenousCurves (which the FldRat-only require just below would reject anyway).
@@ -142,7 +144,7 @@ certified, else "traces-only"), and classsizes <#cls1, #cls2>.}
         // Bound-limited proxy for Algorithm 3.4 Steps 1-2), so no n >= 2 can
         // divide it: certified empty at every level, no pair/level call needed.
         return CanonicalGluingList([]), rec< fmt | N := N, sources := [],
-            proof := "certified", classsizes := <#cls1, #cls2> >;
+            proof := "count-matched", classsizes := <#cls1, #cls2> >;
     end if;
 
     srcfmt := allgSourceFmt();
@@ -181,7 +183,7 @@ certified, else "traces-only"), and classsizes <#cls1, #cls2>.}
         end for;
     end for;
 
-    proof := (forall{s : s in sources | s`proof eq "certified"}) select "certified" else "traces-only";
+    proof := (forall{s : s in sources | s`proof eq "count-matched"}) select "count-matched" else "traces-only";
     return CanonicalGluingList(allCurves), rec< fmt | N := N, sources := sources,
         proof := proof, classsizes := <#cls1, #cls2> >;
 end intrinsic;

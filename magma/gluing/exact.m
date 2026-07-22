@@ -258,8 +258,11 @@ intrinsic GluingCertificateBlock(E1::CrvEll, E2::CrvEll, n::RngIntElt,
     analyticCount::RngIntElt, Strict::BoolElt : DegreeBound := 2400) -> Tup, MonStgElt
 {Compare the analytic rational-quotient count for a prime block against the exact
 GaloisStableGluings quotient count and return the info block <n, 1, stable,
-analytic, certified> together with this block's proof contribution ("certified" or
-"traces-only"). Both counts are distinct rational QUOTIENTS (M/-M orbits on the
+analytic, certified> together with this block's proof contribution ("count-matched" or
+"traces-only"). The label "count-matched" records only that these two counts agree; it
+is not a proof that the emitted curve set is exactly the stable set, since the analytic
+recognition is heuristic (README.md gives the precise semantics). Both counts are
+distinct rational QUOTIENTS (M/-M orbits on the
 exact side; distinct recognized jacobian moduli plus distinct products on the
 analytic side). On a count disagreement raise "gluing certificate mismatch at
 ell=<n>: exact <e> vs analytic <a>". When the exact layer declines (Galois group
@@ -275,5 +278,5 @@ runs it for prime n <= 13, Proof := true for every prime with Strict, false neve
     end if;
     error if stable ne analyticCount,
         Sprintf("gluing certificate mismatch at ell=%o: exact %o vs analytic %o", n, stable, analyticCount);
-    return <n, 1, stable, analyticCount, true>, "certified";
+    return <n, 1, stable, analyticCount, true>, "count-matched";
 end intrinsic;
