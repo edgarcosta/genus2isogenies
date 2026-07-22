@@ -840,9 +840,10 @@ def _gate_g1():
     (TensorCharacteristicPolynomial) identities, plus the k = 0 term
     ComposePower(.,0) = P(1), routed through the exposed CHIMP intrinsics and
     BillereyBl/BillereyRq. The private StarProductPolys/ComposePower are hit
-    indirectly. Every integer recorded from the engine on 2026-07-21; t0b's S7
-    x^2 coefficient (and the B_l value derived from it) was an arithmetic slip,
-    so the star product is pinned here from TensorCharacteristicPolynomial."""
+    indirectly. Every integer recorded from the engine on 2026-07-21; an earlier
+    design draft's S7 x^2 coefficient (and the B_l value derived from it) was an
+    arithmetic slip, so the star product is pinned here from
+    TensorCharacteristicPolynomial."""
     return [
         "    // gate: bracket/Adams (PowerCharacteristicPolynomial) and star",
         "    // product (TensorCharacteristicPolynomial) identities, with the",
@@ -1047,6 +1048,7 @@ def _sec_congruence(congs):
             L.append("    Ltw, infoTw := CongruencePrimes(E1, E2 : KnownIsogenous := false,")
             L.append("        NormBound := 6, MaxNormBound := 6,")
             L.append("        CertificationPrimeBound := 5, CertificationDepth := 1);  // %s" % eid)
+            L.append("    assert jInvariant(E1) eq jInvariant(E2);  // same-j pair, in-suite witness")
             L.append('    assert infoTw`Kind eq "Undecided";     // BFS ran, same-j node rejected')
             L.append('    assert infoTw`Kind ne "AllPrimes";     // twist guard: same j must not certify')
             L.append("    assert infoTw`BoundsUsed eq [ 6, 5, 1 ];   // [MaxNormBound, CertPrimeBound, CertDepth]")
@@ -1102,14 +1104,14 @@ def _sec_fixtures(byid):
     return "\n".join(L)
 
 def _sec_regression(entries):
-    """Model-agreed regression asserts, baked from each entry's `regression`
-    key (attached by --add-regressions from a P==C differential .out file; see
-    add_regressions()). Reads only the json -- never re-parses a .out file at
-    emission time -- so this section is empty-but-harmless (declares the
-    procedure, prints PASS) on a corpus that has never had --add-regressions
+    """Single-model recorded regression asserts, baked from each entry's
+    `regression` key (attached by --add-regressions from the P differential
+    .out file; see add_regressions()). Reads only the json -- never re-parses a
+    .out file at emission time -- so this section is empty-but-harmless (declares
+    the procedure, prints PASS) on a corpus that has never had --add-regressions
     applied. Entries are emitted in id order (matching the sorted .out file)
     regardless of their order in the corpus."""
-    L = ["// model-agreed regression (P == C on 2026-07-21), not an external oracle.",
+    L = ["// single-model recorded regression (P, post-review-fix, 2026-07-22), not an external oracle.",
          "procedure Test_regression()"]
     regs = sorted((e for e in entries if "regression" in e), key=lambda e: e["id"])
     for e in regs:
