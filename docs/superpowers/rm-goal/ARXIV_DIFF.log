@@ -1,0 +1,34 @@
+Command (run from the repository root on 2026-07-22):
+
+    diff -u <(curl -Ls https://export.arxiv.org/e-print/2405.19820v1 | gzip -dc) private/tex/note.tex
+
+Result (exit status 1 because editorial differences exist):
+
+--- arXiv:2405.19820v1 source
++++ private/tex/note.tex
+@@ -57,11 +57,10 @@
+ 
+ \begin{abstract}
+   We describe how isogenies between principally polarized abelian surfaces
+-  (PPAS) with real multiplication (RM) can be decomposed into elementary
++  (PPAS) with real multiplication (RM) can be decomposed into ``elementary''
+   isogeny types. This leads to a strategy for enumerating the isogeny class of
+-  a given PPAS with~RM. This note is part of an ongoing work with R.~van
+-  Bommel, S.~Chidambaram, and E.~Costa and is not indended for separate
+-  publication.
++  a given PPAS with~RM.
++  This note is intended to be part of a future joint paper~\cite{future}.
+ \end{abstract}
+ 
+ \section{Isogenies and real endomorphisms}
+@@ -501,6 +500,8 @@
+   J.~Kieffer. Computing isogeny classes of typical principally polarized
+   abelian surfaces over the rationals. Proceedings of the conference
+   \emph{LMFDB, Computation, and Number Theory (LuCaNT)}, 2024.
++\bibitem{future} R.~van Bommel, S.~Chidambaram, E.~Costa, J.~Kieffer. Computing the
++  isogeny class of any principally polarized abelian surface. In preparation.
+ \bibitem{faltings} G.~Faltings. Endlichkeitssätze für abelsche Varietäten über
+   Zahlkörper. Invent. Math. 73 (3), 349--366, 1983.
+ \bibitem{vdG} G.~van der Geer. Hilbert modular surfaces. Springer, 1988.
+
+Conclusion: there are no mathematical differences. The local copy changes only the abstract's publication wording/quotation marks and adds the corresponding in-preparation bibliography item. Agreement is not treated as independent validation.

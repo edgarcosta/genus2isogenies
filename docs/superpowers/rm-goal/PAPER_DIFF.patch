@@ -1,0 +1,91 @@
+diff --git a/genus2classes.bib b/genus2classes.bib
+index d0a7c0f..b9c09f6 100644
+--- a/genus2classes.bib
++++ b/genus2classes.bib
+@@ -1195,4 +1195,18 @@ MRREVIEWER = {Giancarlo\ Urz\'ua},
+ MRREVIEWER = {H.\ Lange},
+        DOI = {10.1515/crll.1997.485.93},
+        URL = {https://doi.org/10.1515/crll.1997.485.93},
+-}
+\ No newline at end of file
++}
++
++@article {GonzalezGuardiaRotger2005,
++    AUTHOR = {Gonz\'alez, Josep and Gu\`ardia, Jordi and Rotger, Victor},
++     TITLE = {Abelian surfaces of {$\rm GL_2$}-type as {J}acobians of curves},
++   JOURNAL = {Acta Arith.},
++  FJOURNAL = {Acta Arithmetica},
++    VOLUME = {116},
++      YEAR = {2005},
++    NUMBER = {3},
++     PAGES = {263--287},
++      ISSN = {0065-1036},
++       DOI = {10.4064/aa116-3-3},
++       URL = {https://doi.org/10.4064/aa116-3-3},
++}
+diff --git a/main.tex b/main.tex
+index f0a240a..ba5b2ab 100644
+--- a/main.tex
++++ b/main.tex
+@@ -545,7 +545,60 @@ Kani's results, which will also be used in the next subsection (except that we a
+ 
+ \subsection{The Rosati RM case}
+ 
+-Copy-paste the note.
++\begin{proposition}[Fixed-surface RM polarizations]
++\label{prop:fixed-surface-rm-polarizations}
++Let~$k$ be a number field and let~$A/k$ be a geometrically simple abelian
++surface.  Let~$F$ be a real quadratic field with maximal order~$\calO_F$.
++
++Fix an isomorphism
++$\iota\colon\calO_F\xrightarrow{\sim}\End_k(A)$ and a principal polarization
++$\lambda\colon A\to A^\vee$ over~$k$.  Write~$\dagger_\lambda$ for its Rosati
++involution and~$\calO_F^{\times,+}$ for the totally positive units.
++
++Every principal polarization over~$k$ on the fixed underlying surface~$A$ is
++uniquely of the form
++\[
++    \lambda_\epsilon=\lambda\circ\iota(\epsilon),
++    \qquad \epsilon\in\calO_F^{\times,+}.
++\]
++Moreover, $(A,\lambda_\epsilon)$ and $(A,\lambda_{\epsilon'})$ are isomorphic
++as polarized abelian varieties over~$k$ if and only if
++\[
++    \epsilon'=u^2\epsilon
++    \quad\text{for some }u\in\calO_F^\times.
++\]
++Thus the polarized $k$-isomorphism classes of $k$-defined principal
++polarizations on~$A$ are in bijection with
++\[
++    \calO_F^{\times,+}/(\calO_F^\times)^2.
++\]
++
++If the reference polarization is replaced by
++$\lambda_\eta=\lambda\circ\iota(\eta)$, with
++$\eta\in\calO_F^{\times,+}$, then
++\[
++    x^{\dagger_{\lambda_\eta}}
++      =\iota(\eta)^{-1}x^{\dagger_\lambda}\iota(\eta)
++      \qquad\text{for every }x\in\End_{\kbar}^{0}(A).
++\]
++Both Rosati involutions restrict to the identity on
++$\End_k^0(A)=\iota(F)$.  No equality
++$\End_{\kbar}(A)=\iota(\calO_F)$ is asserted here, and the proposition does
++not classify polarizations over~$\kbar$ arising from additional geometric
++endomorphisms.
++\end{proposition}
++
++\begin{proof}
++Since~$F$ is totally real, $\dagger_\lambda$ restricts to the identity on
++$\iota(F)$.  The classification and its base-field isomorphism relation are
++the real quadratic specialization of
++\cite[Thm.~2.10]{GonzalezGuardiaRotger2005}.
++
++Indeed, $\operatorname{Aut}_k(A)=\iota(\calO_F^\times)$, and pullback by
++$\iota(u)$ sends $\lambda_\epsilon$ to $\lambda_{u^2\epsilon}$.  The displayed
++Rosati formula follows directly from the definition of the Rosati involution
++and $\lambda_\eta=\lambda\circ\iota(\eta)$.
++\end{proof}
+ 
+ \section{Rational $\ell$-torsion groups associated}
+ 
