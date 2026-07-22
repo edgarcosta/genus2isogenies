@@ -76,61 +76,59 @@ function LooksRationalIC(IC)
     return Abs(Im(I4 / I2^2)) lt gate and Abs(Im(I6 / I2^3)) lt gate and Abs(Im(I10 / I2^5)) lt gate;
 end function;
 
-// The two-pass precision sweep, shared by the analytic dispatch (which
-// reconstructs curves from the result) and the completeness certificate (which
-// only needs the count). Enumerates the conjugation-filtered anti-symplectic
-// quotients GluedPeriodMatrices returns and recognizes the rational ones: pass 1
-// at a fixed 40 digits classifies products (recognized here) and forwards
-// plausibly-rational jacobian psi; pass 2 recomputes those at working precision,
-// doubling only while that strictly grows the recognition count. Returns the
-// recognized rational jacobian Igusa-Clebsch list recIC and their source psi
-// recPsi (per psi: both psi and -psi appear), the recognized rational product
-// j-pairs products (per psi), and the working precision used.
-//
-// The certificate's analytic count is #Seqset(recIC) + #Seqset(products): DISTINCT
-// recognized quotients (deduplicated by moduli), the same unit as the exact side's
-// M/-M-orbit count. It counts a recognized jacobian quotient whether or not its
-// curve model survives twist pinning in phase 2 (a recognized rational quotient is
-// Galois-stable regardless of the bielliptic/Mestre reconstruction obstructions),
-// but deduplicates so that two psi landing on the same rational moduli (psi and
-// -psi always; also look-alike graphs when the target has extra automorphisms)
-// count once, matching how the exact side collapses graphs to quotients.
-function gluingAnalyticEnumerate(E1, E2, n, prec)
-    pass1 := GluedPeriodMatrices(E1, E2, n : Precision := 40);
-    products := [];
-    survivorPsis := [];
-    njacobian := 0;
-    for r in pass1 do
-        if r`type eq "product" then
-            ok1, j1 := RecognizeRational(r`invariants[1]);
-            ok2, j2 := RecognizeRational(r`invariants[2]);
-            if ok1 and ok2 then
-                Append(~products, <j1, j2>);
-            else
-                vprintf Gluing: "Genus2Gluings: product quotient not over Q, skipping\n";
-            end if;
-            continue;
-        end if;
-        njacobian +:= 1;
-        if LooksRationalIC(r`invariants) then Append(~survivorPsis, r`psi); end if;
-    end for;
-    vprintf Gluing: "Genus2Gluings: pass 1 (precision 40) kept %o/%o jacobian candidate(s) for the full-precision pass\n",
-        #survivorPsis, njacobian;
+// The shared near-real gate for a numeric quotient looking defined over Q, used by the
+// prime pass 1 (gluingAnalyticEnumerate) and the lift sweep (gluingSweepLevel). Jacobian
+// type reuses LooksRationalIC (the fixed 1e-10 I2-normalized gate of the prime pass 1);
+// product type asks the two j-invariants to be near-real. Caveat: a NumericInvariants
+// product sentinel [0, 0] (returned when the reduced tau is not diagonal at the sweep
+// precision) is near-real by construction, so it passes here and is forwarded as a
+// rational-looking product; the working-precision recognizer then recognizes it as <0, 0>.
+// That is intended until T7 gives the sentinel a distinct representation.
+function quotientLooksRational(typ, inv)
+    if typ eq "jacobian" then return LooksRationalIC(inv); end if;
+    return forall{j : j in inv | Abs(Im(j)) lt 10^-10};
+end function;
 
-    doublings := 0;
-    prevRecognized := -1;
-    recIC := []; recPsi := []; usedPrec := 40;
-    while #survivorPsis gt 0 do
+// The single recognizer for every analytic path (prime pass 2, prime-power lift sweep, and
+// composite CRT): recompute the period bases at the working precision, classify each survivor
+// psi at modulus m, recognize rational jacobian Igusa-Clebsch quadruples (recIC / recPsi) and
+// rational product j-pairs (products), and return them with the precision used. The precision-
+// doubling watches BOTH the jacobian and the product recognition counts, since a composite
+// (n, n)-gluing is often product-type (a stable graph whose quotient decomposes, e.g. 54a1 x
+// 54b1 at n = 6) and its two near-real j-invariants can need more digits than the level-n
+// heuristic gives; nearFail counts a near-real quotient of either kind that stayed unrecognized.
+// It doubles while doubling HELPS, i.e. while a doubling strictly shrinks nearFail: the
+// corpus-typical population of near-real yet irrational quotients (e.g. conjugate products
+// over a real quadratic field, whose j's sit under the near-real gate forever) keeps
+// nearFail constant, and unconditional exhaustion would then pay the 2x/4x/8x theta cost
+// on essentially every prime-level call (measured ~8x overall on the corpus, up to ~24x on
+// some entry classes). So the loop stops when a doubling leaves nearFail without strict
+// decrease, or the budget (3 doublings) is spent. Known recall gap: a genuinely rational
+// quotient needing MORE than one doubling of headroom, with nothing else recognized at the
+// intermediate step, is dropped where exhaustion would have reached it. On certified paths
+// such a drop surfaces as a loud count mismatch; traces-only paths (e >= 2 prime powers,
+// uncertified composites) carry no such net, so a suspected drop there is addressed by
+// passing a larger Precision. The count (jacobian + product tuples) carries no {psi, -psi}
+// dedup: it is the GRAPH count the certificate compares.
+function gluingRecognizeAtLevel(E1, E2, survivors, m, prec)
+    doublings := 0; prevNearFail := -1;
+    recIC := []; recPsi := []; products := []; usedPrec := prec;
+    while true do
         ws1 := EllipticPeriodBasis(E1, prec);
         ws2 := EllipticPeriodBasis(E2, prec);
         usedPrec := fieldPrecision(Universe(ws1));
-        recIC := []; recPsi := []; nearFail := 0;
-        for psi in survivorPsis do
-            P := GluedBigPeriodMatrix(ws1, ws2, psi, n);
-            tau := SmallFromBig(P);
-            typ, inv := NumericInvariants(tau);
+        gate := 10^(-(usedPrec div 2));
+        recIC := []; recPsi := []; products := []; nearFail := 0;
+        for psi in survivors do
+            typ, inv := NumericInvariants(SmallFromBig(GluedBigPeriodMatrix(ws1, ws2, psi, m)));
             if typ eq "product" then
-                vprintf Gluing: "Genus2Gluings: pass 2 reclassified a psi as product (unexpected), skipping\n";
+                ok1, j1 := RecognizeRational(inv[1]);
+                ok2, j2 := RecognizeRational(inv[2]);
+                if ok1 and ok2 then
+                    Append(~products, <j1, j2>);
+                elif forall{j : j in inv | Abs(Im(j)) lt gate} then
+                    nearFail +:= 1;   // near-real product j's unrecognized: a precision shortfall
+                end if;
                 continue;
             end if;
             okIC, ICQ := RecognizeIgusaClebsch(inv);
@@ -140,17 +138,44 @@ function gluingAnalyticEnumerate(E1, E2, n, prec)
                 nearFail +:= 1;
             end if;
         end for;
-        if nearFail eq 0 or doublings ge 3 or #recIC le prevRecognized then
+        if nearFail eq 0 or doublings ge 3 or (prevNearFail ge 0 and nearFail ge prevNearFail) then
             if nearFail gt 0 then
-                vprintf Gluing: "Genus2Gluings: %o near-rational quotient(s) unrecognized (conjugate/unreconstructable), dropping\n", nearFail;
+                vprintf Gluing: "gluingRecognizeAtLevel: %o near-real quotient(s) unrecognized after %o doubling(s), dropping\n", nearFail, doublings;
             end if;
             break;
         end if;
-        prevRecognized := #recIC;
-        prec := 2 * usedPrec;
-        doublings +:= 1;
+        prevNearFail := nearFail; prec := 2 * usedPrec; doublings +:= 1;
     end while;
     return recIC, recPsi, products, usedPrec;
+end function;
+
+// The two-pass precision sweep for the prime analytic dispatch (and the completeness
+// certificate, which needs only the count). Pass 1, at a fixed cheap 40 digits, keeps every
+// conjugation-filtered quotient GluedPeriodMatrices returns that looks Q-rational
+// (quotientLooksRational: jacobian survivors by the I2-normalized gate, product survivors by the
+// near-real j gate) and forwards their psi; pass 2 is the shared gluingRecognizeAtLevel, which
+// recomputes those at working precision and recognizes the rational jacobian Igusa-Clebsch list
+// recIC (with source psi recPsi) and rational product j-pairs products, doubling to exhaust the
+// retry budget. Products are therefore recognized at working precision like the composite path,
+// not once at the fixed pass-1 precision. Returns recIC, recPsi, products, and the precision used.
+//
+// The certificate's analytic count is #Seqset(recIC) + #Seqset(products): DISTINCT recognized
+// quotients (deduplicated by moduli), the same unit as the exact side's M/-M-orbit count. A
+// recognized jacobian quotient is counted whether or not its curve model survives twist pinning
+// in phase 2 (a recognized rational quotient is Galois-stable regardless of the bielliptic/Mestre
+// reconstruction obstructions), and psi and -psi (always landing on the same moduli) count once.
+function gluingAnalyticEnumerate(E1, E2, n, prec)
+    pass1 := GluedPeriodMatrices(E1, E2, n : Precision := 40);
+    survivors := [];
+    njac := 0; nprod := 0;
+    for r in pass1 do
+        if r`type eq "product" then nprod +:= 1; else njac +:= 1; end if;
+        if quotientLooksRational(r`type, r`invariants) then Append(~survivors, r`psi); end if;
+    end for;
+    vprintf Gluing: "Genus2Gluings: pass 1 (precision 40) kept %o/%o candidate(s) (%o jacobian-type, %o product-type seen)\n",
+        #survivors, njac + nprod, njac, nprod;
+    if #survivors eq 0 then return [], [], [], 40; end if;
+    return gluingRecognizeAtLevel(E1, E2, survivors, n, prec);
 end function;
 
 // Does E admit a Q-rational ell-isogeny (a Galois-stable order-ell subgroup)?
@@ -253,14 +278,6 @@ end function;
 // I2-pivot (recognize.m's normalizeIC) and so would be missed at these uncertified
 // levels (documented limitation).
 
-// The near-real gate for the lift sweep: does this numeric quotient look defined over
-// Q? Jacobian type reuses LooksRationalIC (the fixed 1e-10 I2-normalized gate of the
-// prime pass 1); product type asks the two j-invariants to be near-real.
-function quotientLooksRational(typ, inv)
-    if typ eq "jacobian" then return LooksRationalIC(inv); end if;
-    return forall{j : j in inv | Abs(Im(j)) lt 10^-10};
-end function;
-
 // One sweep level: compute the quotient of each candidate psi at modulus m against the
 // period bases ws1, ws2 and keep those looking Q-rational.
 function gluingSweepLevel(ws1, ws2, cand, m)
@@ -312,95 +329,6 @@ function gluingLiftSweep(ws1, c1, ws2, c2, ell, e)
     return survivors, #survivors gt 0;
 end function;
 
-// Full-precision recognition of the final-level lift survivors (the e >= 2 analog of
-// gluingAnalyticEnumerate's pass 2): recompute the period bases at the target
-// precision, classify each survivor psi (modulus m = ell^e), recognize rational
-// jacobian Igusa-Clebsch quadruples (recIC / recPsi) and rational product j-pairs
-// (products), doubling the precision while that strictly grows the jacobian count (at
-// most 3 times). Returns recIC, recPsi, products and the precision used.
-function gluingRecognizeSurvivors(E1, E2, survivors, m, prec)
-    doublings := 0; prevRecognized := -1;
-    recIC := []; recPsi := []; products := []; usedPrec := prec;
-    while true do
-        ws1 := EllipticPeriodBasis(E1, prec);
-        ws2 := EllipticPeriodBasis(E2, prec);
-        usedPrec := fieldPrecision(Universe(ws1));
-        recIC := []; recPsi := []; products := []; nearFail := 0;
-        for psi in survivors do
-            typ, inv := NumericInvariants(SmallFromBig(GluedBigPeriodMatrix(ws1, ws2, psi, m)));
-            if typ eq "product" then
-                ok1, j1 := RecognizeRational(inv[1]);
-                ok2, j2 := RecognizeRational(inv[2]);
-                if ok1 and ok2 then Append(~products, <j1, j2>); end if;
-                continue;
-            end if;
-            okIC, ICQ := RecognizeIgusaClebsch(inv);
-            if okIC then
-                Append(~recIC, ICQ); Append(~recPsi, psi);
-            elif IgusaClebschNearRational(inv) then
-                nearFail +:= 1;
-            end if;
-        end for;
-        if nearFail eq 0 or doublings ge 3 or #recIC le prevRecognized then
-            if nearFail gt 0 then
-                vprintf Gluing: "Genus2Gluings: %o near-rational lift quotient(s) unrecognized, dropping\n", nearFail;
-            end if;
-            break;
-        end if;
-        prevRecognized := #recIC; prec := 2 * usedPrec; doublings +:= 1;
-    end while;
-    return recIC, recPsi, products, usedPrec;
-end function;
-
-// Level-n recognition for the composite path (gluingCompositeCRT). Same shape as
-// gluingRecognizeSurvivors but the precision-doubling watches BOTH the jacobian and the
-// product recognition counts: a composite (n, n)-gluing is often product-type (a stable graph
-// whose quotient decomposes, e.g. 54a1 x 54b1 at n = 6), and its two near-real j-invariants can
-// need more digits than the level-n heuristic gives, so a jacobian-only retry (as in
-// gluingRecognizeSurvivors, which the e >= 2 prime-power path relies on unchanged) would break
-// out immediately with the products undercounted. Doubles while the total recognized count
-// (jacobian + product tuples, no {psi, -psi} dedup: this is the GRAPH count the certificate
-// compares) strictly grows and a near-real quotient stays unrecognized, at most 3 times.
-function gluingRecognizeComposite(E1, E2, survivors, m, prec)
-    doublings := 0; prevRec := -1;
-    recIC := []; recPsi := []; products := []; usedPrec := prec;
-    while true do
-        ws1 := EllipticPeriodBasis(E1, prec);
-        ws2 := EllipticPeriodBasis(E2, prec);
-        usedPrec := fieldPrecision(Universe(ws1));
-        gate := 10^(-(usedPrec div 2));
-        recIC := []; recPsi := []; products := []; nearFail := 0;
-        for psi in survivors do
-            typ, inv := NumericInvariants(SmallFromBig(GluedBigPeriodMatrix(ws1, ws2, psi, m)));
-            if typ eq "product" then
-                ok1, j1 := RecognizeRational(inv[1]);
-                ok2, j2 := RecognizeRational(inv[2]);
-                if ok1 and ok2 then
-                    Append(~products, <j1, j2>);
-                elif forall{j : j in inv | Abs(Im(j)) lt gate} then
-                    nearFail +:= 1;   // near-real product j's unrecognized: a precision shortfall
-                end if;
-                continue;
-            end if;
-            okIC, ICQ := RecognizeIgusaClebsch(inv);
-            if okIC then
-                Append(~recIC, ICQ); Append(~recPsi, psi);
-            elif IgusaClebschNearRational(inv) then
-                nearFail +:= 1;
-            end if;
-        end for;
-        totalRec := #recIC + #products;
-        if nearFail eq 0 or doublings ge 3 or totalRec le prevRec then
-            if nearFail gt 0 then
-                vprintf Gluing: "gluingCompositeCRT: %o near-real quotient(s) unrecognized, dropping\n", nearFail;
-            end if;
-            break;
-        end if;
-        prevRec := totalRec; prec := 2 * usedPrec; doublings +:= 1;
-    end while;
-    return recIC, recPsi, products, usedPrec;
-end function;
-
 // -------- Composite levels n = prod ell_i^e_i via CRT composition (Task 11) --------
 //
 // (Z/n)^2 = direct sum_i (Z/ell_i^e_i)^2 by CRT, so an anti-symplectic psi mod n is exactly
@@ -411,7 +339,7 @@ end function;
 // per-block pipeline the prime-power path uses), CRT every combination of block survivors
 // (CRTAntiSymplectic) into a psi mod n, run the analytic quotient at level n on those
 // combinations only, and finish through the recognition/reconstruction/twist phase
-// (gluingRecognizeComposite + the shared gluingEmitCurves). The level-n recognition is the precise gate:
+// (gluingRecognizeAtLevel + the shared gluingEmitCurves). The level-n recognition is the precise gate:
 // a CRT tuple that mixes any block's rational-LOOKING-but-not-stable look-alike is not
 // Galois-stable at n, so its level-n quotient is not Q-rational and drops out, leaving exactly
 // the genuine stable gluings (per-block sweeps are kept full both-sign so no combination is
@@ -499,7 +427,9 @@ function gluingCompositeCRT(E1, E2, n, PrecParam, Proof, TraceBound)
         end if;
         if not certified then allCertified := false; end if;
 
-        sweepPrec := GluingPrecisionHeuristic(E1, E2, ell);
+        // The sweep evaluates quotients up to the block's top level moduli[i], so its
+        // precision is keyed to that top level (honoring a user Precision), not the base prime.
+        sweepPrec := (PrecParam cmpeq false) select GluingPrecisionHeuristic(E1, E2, moduli[i]) else PrecParam;
         ws1s, cc1 := EllipticPeriodBasis(E1, sweepPrec);
         ws2s, cc2 := EllipticPeriodBasis(E2, sweepPrec);
         survivors := gluingLiftSweep(ws1s, cc1, ws2s, cc2, ell, e);
@@ -535,7 +465,7 @@ function gluingCompositeCRT(E1, E2, n, PrecParam, Proof, TraceBound)
 
     // Level-n recognition (product-aware precision-doubling recognizer) + reconstruction.
     prec := (PrecParam cmpeq false) select GluingPrecisionHeuristic(E1, E2, n) else PrecParam;
-    recIC, recPsi, products, usedPrec := gluingRecognizeComposite(E1, E2, curPsis, n, prec);
+    recIC, recPsi, products, usedPrec := gluingRecognizeAtLevel(E1, E2, curPsis, n, prec);
     analyticGraph := #recIC + #products;
     cs, psisOut, _ := gluingEmitCurves(recIC, recPsi, products, E1, E2, TraceBound);
 
@@ -582,7 +512,8 @@ per prime-power block; stable_count is the exact Galois-stable QUOTIENT count wh
 certified, -1 otherwise (including every non-empty e >= 2 block), analytic_count the
 block's rational-looking survivor orbit count; the composite certificate compares the
 PRODUCT of block graph counts against the analytic graph count and a disagreement is a hard
-error), psis (a gluing matrix per returned curve), products (recognized <j1, j2> pairs of
+error), psis (a gluing matrix per returned curve; empty on the Algebraic/BHLS dispatch, which
+supplies no matrices), products (recognized <j1, j2> pairs of
 the product-type quotients), precision (digits of the successful analytic pass), and
 tracebound. Base field is Q, or (experimental, Task 13) a number field K with E1, E2 over the
 same K and the first infinite place of K real: number-field inputs run the analytic periods
@@ -688,9 +619,10 @@ blocks; prime-power levels only.}
             return emptyCurves(), info;
         end if;
 
-        // Lift sweep at the cheap prime-level sweep precision; recognition then reruns on
-        // the survivors at full target precision.
-        sweepPrec := GluingPrecisionHeuristic(E1, E2, ell);
+        // The sweep evaluates quotients up to the top level n = ell^e, so its precision is
+        // keyed to the top level (honoring a user Precision), not the base prime ell;
+        // recognition then reruns on the survivors at that same target precision.
+        sweepPrec := (Precision cmpeq false) select GluingPrecisionHeuristic(E1, E2, n) else Precision;
         ws1s, cc1 := EllipticPeriodBasis(E1, sweepPrec);
         ws2s, cc2 := EllipticPeriodBasis(E2, sweepPrec);
         survivors, nonempty := gluingLiftSweep(ws1s, cc1, ws2s, cc2, ell, e);
@@ -704,7 +636,7 @@ blocks; prime-power levels only.}
             return emptyCurves(), info;
         end if;
         prec := (Precision cmpeq false) select GluingPrecisionHeuristic(E1, E2, n) else Precision;
-        recIC, recPsi, products, usedPrec := gluingRecognizeSurvivors(E1, E2, survivors, n, prec);
+        recIC, recPsi, products, usedPrec := gluingRecognizeAtLevel(E1, E2, survivors, n, prec);
         // ell can exceed 59 here (e >= 2 lift path), past ClassicalModularPolynomial's
         // database: admitsRationalIsogenyOrUnknown treats that as "cannot rule out".
         if not (admitsRationalIsogenyOrUnknown(E1, ell) and admitsRationalIsogenyOrUnknown(E2, ell)) then products := []; end if;
