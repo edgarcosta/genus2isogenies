@@ -31,15 +31,28 @@
  * on the reconstructed model and drops the quotient with a vprint, since quadratic-
  * twist pinning cannot certify the right twist there.
  *
- * The exact completeness certificate (exact.m) closes the loop: GaloisStableGluings
- * counts the Galois-stable anti-symplectic gluings exactly (as M/-M-orbit quotients),
- * and GluingCertificateBlock compares that against the analytic count of distinct
- * recognized rational quotients (#Seqset(recIC) + #Seqset(products) from
- * gluingAnalyticEnumerate, which counts every recognized quotient including the
- * bielliptic/Mestre ones this path cannot emit and the product-type ones, one per
- * moduli class). Under Proof := "Auto" (prime n <= 13) or true, a match certifies
- * the block and a disagreement is a hard error; the proof field is "certified" iff
- * every block certified.
+ * The exact completeness certificate (exact.m) closes the loop, on the paper's
+ * Algorithm 3.4 scope only: geometrically NONisogenous pairs, Hom_Qbar(E1, E2) = 0
+ * (the clean locus). There GaloisStableGluings counts the Galois-stable
+ * anti-symplectic gluings exactly (as M/-M-orbit quotients) and
+ * GluingCertificateBlock compares that against the analytic count of distinct
+ * emitted rational jacobian quotients (#Seqset over recIC, each reconstructed AND
+ * twist-pinned by CurveFromInvariants). On the clean locus those units agree:
+ * Kani's reducibility criterion makes a product-type graph quotient impossible (it
+ * would force a nonzero geometric isogeny E1 -> E2 of degree k(n-k)), so a
+ * recognized product is always a look-alike and never counts (reported in
+ * info`products only); and a recognized quotient rejected by CurveFromInvariants
+ * never counts either, it leaves the block UNCERTIFIABLE (traces-only), because
+ * rational moduli plus extra automorphisms do not imply a Galois-stable graph (a
+ * Galois-stable automorphism ORBIT of graphs already gives rational moduli with no
+ * stable member). Under Proof := "Auto" (prime n <= 13) or true, a count match
+ * certifies the block and a disagreement is a hard error; the proof field is
+ * "certified" iff every block certified. A geometrically isogenous pair
+ * (GeometricallyIsogenous, modulus.m; the paper's still-in-development "isogenous
+ * to a square" case) is NEVER certified: proof stays "traces-only" and, at prime
+ * blocks where the certificate would have run, the exact stable count is still
+ * computed and recorded in the block tuple as diagnostic data (certified false,
+ * never compared, never an error).
  */
 
 function gluingInfoFmt()
@@ -78,14 +91,15 @@ end function;
 
 // The shared near-real gate for a numeric quotient looking defined over Q, used by the
 // prime pass 1 (gluingAnalyticEnumerate) and the lift sweep (gluingSweepLevel). Jacobian
-// type reuses LooksRationalIC (the fixed 1e-10 I2-normalized gate of the prime pass 1);
-// product type asks the two j-invariants to be near-real. Caveat: a NumericInvariants
-// product sentinel [0, 0] (returned when the reduced tau is not diagonal at the sweep
-// precision) is near-real by construction, so it passes here and is forwarded as a
-// rational-looking product; the working-precision recognizer then recognizes it as <0, 0>.
-// That is intended until T7 gives the sentinel a distinct representation.
+// type reuses LooksRationalIC (the fixed 1e-10 gate of the prime pass 1); product type
+// asks the two j-invariants to be near-real. A "product-unsplit" quotient (theta-
+// vanishing but non-diagonal reduced tau, empty invariants) is UNCLASSIFIED, so it is
+// kept as a survivor: the working-precision recognizer must see it, retry it at higher
+// precision, and leave the block uncertifiable if it persists; dropping it here would
+// fake certainty about a quotient nothing classified.
 function quotientLooksRational(typ, inv)
     if typ eq "jacobian" then return LooksRationalIC(inv); end if;
+    if typ eq "product-unsplit" then return true; end if;
     return forall{j : j in inv | Abs(Im(j)) lt 10^-10};
 end function;
 
@@ -96,7 +110,9 @@ end function;
 // doubling watches BOTH the jacobian and the product recognition counts, since a composite
 // (n, n)-gluing is often product-type (a stable graph whose quotient decomposes, e.g. 54a1 x
 // 54b1 at n = 6) and its two near-real j-invariants can need more digits than the level-n
-// heuristic gives; nearFail counts a near-real quotient of either kind that stayed unrecognized.
+// heuristic gives; nearFail counts a near-real quotient of either kind that stayed
+// unrecognized, plus every "product-unsplit" quotient (theta-vanishing, non-diagonal
+// reduced tau: unclassified, so a retry at more digits is the only move available).
 // It doubles while doubling HELPS, i.e. while a doubling strictly shrinks nearFail: the
 // corpus-typical population of near-real yet irrational quotients (e.g. conjugate products
 // over a real quadratic field, whose j's sit under the near-real gate forever) keeps
@@ -108,19 +124,26 @@ end function;
 // intermediate step, is dropped where exhaustion would have reached it. On certified paths
 // such a drop surfaces as a loud count mismatch; traces-only paths (e >= 2 prime powers,
 // uncertified composites) carry no such net, so a suspected drop there is addressed by
-// passing a larger Precision. The count (jacobian + product tuples) carries no {psi, -psi}
-// dedup: it is the GRAPH count the certificate compares.
+// passing a larger Precision. recIC carries no {psi, -psi} dedup: #recIC is the jacobian
+// GRAPH count the composite certificate compares (products never count, see the file
+// header). The fifth return value is the number of quotients STILL "product-unsplit"
+// after the retry budget: each is an unclassified quotient, so a caller may not certify
+// a block whose recognition left it nonzero.
 function gluingRecognizeAtLevel(E1, E2, survivors, m, prec)
     doublings := 0; prevNearFail := -1;
-    recIC := []; recPsi := []; products := []; usedPrec := prec;
+    recIC := []; recPsi := []; products := []; usedPrec := prec; unsplit := 0;
     while true do
         ws1 := EllipticPeriodBasis(E1, prec);
         ws2 := EllipticPeriodBasis(E2, prec);
         usedPrec := fieldPrecision(Universe(ws1));
         gate := 10^(-(usedPrec div 2));
-        recIC := []; recPsi := []; products := []; nearFail := 0;
+        recIC := []; recPsi := []; products := []; nearFail := 0; unsplit := 0;
         for psi in survivors do
             typ, inv := NumericInvariants(SmallFromBig(GluedBigPeriodMatrix(ws1, ws2, psi, m)));
+            if typ eq "product-unsplit" then
+                unsplit +:= 1; nearFail +:= 1;   // unclassified: more digits is the only move
+                continue;
+            end if;
             if typ eq "product" then
                 ok1, j1 := RecognizeRational(inv[1]);
                 ok2, j2 := RecognizeRational(inv[2]);
@@ -142,11 +165,14 @@ function gluingRecognizeAtLevel(E1, E2, survivors, m, prec)
             if nearFail gt 0 then
                 vprintf Gluing: "gluingRecognizeAtLevel: %o near-real quotient(s) unrecognized after %o doubling(s), dropping\n", nearFail, doublings;
             end if;
+            if unsplit gt 0 then
+                vprintf Gluing: "gluingRecognizeAtLevel: %o product-type quotient(s) still unsplit (non-diagonal reduced tau) at %o digits: unclassified, so this block cannot certify\n", unsplit, usedPrec;
+            end if;
             break;
         end if;
         prevNearFail := nearFail; prec := 2 * usedPrec; doublings +:= 1;
     end while;
-    return recIC, recPsi, products, usedPrec;
+    return recIC, recPsi, products, usedPrec, unsplit;
 end function;
 
 // The two-pass precision sweep for the prime analytic dispatch (and the completeness
@@ -157,69 +183,45 @@ end function;
 // recomputes those at working precision and recognizes the rational jacobian Igusa-Clebsch list
 // recIC (with source psi recPsi) and rational product j-pairs products, doubling to exhaust the
 // retry budget. Products are therefore recognized at working precision like the composite path,
-// not once at the fixed pass-1 precision. Returns recIC, recPsi, products, and the precision used.
+// not once at the fixed pass-1 precision. Returns recIC, recPsi, products, the precision used,
+// and the residual product-unsplit count (gluingRecognizeAtLevel).
 //
-// The certificate's analytic count is #Seqset(recIC) + #Seqset(products): DISTINCT recognized
-// quotients (deduplicated by moduli), the same unit as the exact side's M/-M-orbit count. A
-// recognized jacobian quotient is counted whether or not its curve model survives twist pinning
-// in phase 2 (a recognized rational quotient is Galois-stable regardless of the bielliptic/Mestre
-// reconstruction obstructions), and psi and -psi (always landing on the same moduli) count once.
+// The certificate's analytic count is built downstream by gluingEmitCurves: DISTINCT
+// recognized-and-emitted jacobian moduli (Seqset dedup, so psi and -psi count once), the same
+// unit as the exact side's M/-M-orbit count. Products never count (clean-locus Kani vacuity,
+// see the file header), and a recognized quotient that fails reconstruction or twist pinning
+// makes the block uncertifiable instead of being counted.
 function gluingAnalyticEnumerate(E1, E2, n, prec)
     pass1 := GluedPeriodMatrices(E1, E2, n : Precision := 40);
     survivors := [];
     njac := 0; nprod := 0;
     for r in pass1 do
-        if r`type eq "product" then nprod +:= 1; else njac +:= 1; end if;
+        if r`type eq "jacobian" then njac +:= 1; else nprod +:= 1; end if;
         if quotientLooksRational(r`type, r`invariants) then Append(~survivors, r`psi); end if;
     end for;
     vprintf Gluing: "Genus2Gluings: pass 1 (precision 40) kept %o/%o candidate(s) (%o jacobian-type, %o product-type seen)\n",
         #survivors, njac + nprod, njac, nprod;
-    if #survivors eq 0 then return [], [], [], 40; end if;
+    if #survivors eq 0 then return [], [], [], 40, 0; end if;
     return gluingRecognizeAtLevel(E1, E2, survivors, n, prec);
 end function;
 
-// Does E admit a Q-rational ell-isogeny (a Galois-stable order-ell subgroup)?
-// A product ell-gluing is E1' x E2' with E1' ell-isogenous to E1 and E2' to E2
-// over Q, so if either curve has no rational ell-isogeny there is NO Galois-stable
-// product gluing of the pair. A recognized rational product is then a look-alike
-// (a non-Galois-stable graph whose product quotient happens to share moduli with
-// a Q-rational product that does not descend through this graph, as at j = 0 with
-// an irreducible mod-ell image) and must be dropped from the certificate count so
-// it matches the exact Galois-stable count. When both curves do admit a rational
-// ell-isogeny the recognized products are kept; any residual over-count then
-// surfaces as a loud certificate mismatch rather than a silent false certification.
-function admitsRationalIsogeny(E, ell)
-    if ell eq 2 then
-        return #Roots(DivisionPolynomial(E, 2)) gt 0;   // rational 2-torsion point
-    end if;
-    // odd ell: a rational point on X_0(ell) over j(E), i.e. a rational root of
-    // Phi_ell(j(E), Y) (the ell-th classical modular polynomial). Phi_ell is
-    // integral, so change to Q before substituting the (rational) j-invariant.
-    Phi := ChangeRing(ClassicalModularPolynomial(ell), Rationals());
-    return #Roots(UnivariatePolynomial(Evaluate(Phi, 1, jInvariant(E)))) gt 0;
-end function;
-
-// admitsRationalIsogeny, but for a level past ClassicalModularPolynomial's database
-// (ell > 59): that lookup errors rather than returning false, so treat "unavailable"
-// as "cannot rule out" (gate passes, product kept) instead of crashing.
-function admitsRationalIsogenyOrUnknown(E, ell)
-    try
-        return admitsRationalIsogeny(E, ell);
-    catch err
-        return true;
-    end try;
-end function;
-
 // Phase 2, shared by the prime and prime-power analytic paths: from the recognized
-// rational jacobian invariants recIC (with source psi recPsi) and the recognized
-// rational product j-pairs, reconstruct and twist-pin Q-models, canonicalize, and
-// match a source psi to each returned curve. A twist-validated quotient is emitted; a
-// bielliptic / Mestre one is a genuine Galois-stable gluing counted but not emitted; a
-// look-alike (twist-rejected, order-2 automorphisms, over Q) is dropped. Returns the
-// canonical curve list cs, the per-curve source psi list, and the analytic quotient
-// count jacCount + #distinct products (the certificate unit).
-function gluingEmitCurves(recIC, recPsi, products, E1, E2, TraceBound)
-    curves := []; sourcePsis := []; jacCount := 0;
+// rational jacobian invariants recIC (with source psi recPsi), reconstruct and
+// twist-pin Q-models, canonicalize, and match a source psi to each returned curve.
+// A twist-validated quotient is emitted and counted; a quotient CurveFromInvariants
+// rejects (bielliptic / Mestre reconstruction obstruction, or a twist-rejected
+// look-alike) is NOT counted and instead raises the dropped flag, which makes the
+// enclosing block uncertifiable. There is deliberately no "counted but not emitted"
+// middle ground: rational moduli plus a geometric automorphism group of order > 2 do
+// NOT imply a Galois-stable graph (a Galois-stable automorphism ORBIT of graphs
+// already forces rational moduli with no stable member, so that inference
+// over-counts), and this path cannot match a rejected quotient to an exact stable
+// graph, so certification has to be withheld rather than guessed. Products are not
+// an input: they never count (clean-locus Kani vacuity, file header). Returns the
+// canonical curve list cs, the per-curve source psi list, the analytic quotient
+// count (DISTINCT emitted moduli, the certificate unit), and the dropped flag.
+function gluingEmitCurves(recIC, recPsi, E1, E2, TraceBound)
+    curves := []; sourcePsis := []; jacCount := 0; dropped := false;
     for ic in Setseq(Seqset(recIC)) do
         okC, C := CurveFromInvariants(ic, E1, E2 : TraceBound := TraceBound);
         if okC then
@@ -229,22 +231,11 @@ function gluingEmitCurves(recIC, recPsi, products, E1, E2, TraceBound)
                 if recIC[j] eq ic then Append(~sourcePsis, recPsi[j]); break; end if;
             end for;
         else
-            genuine := false;
-            try
-                C0 := HyperellipticCurveFromIgusaClebsch(ic);
-                genuine := (Type(BaseRing(C0)) ne FldRat) or (#GeometricAutomorphismGroup(C0) gt 2);
-            catch e
-                genuine := false;
-            end try;
-            if genuine then
-                jacCount +:= 1;
-                vprintf Gluing: "Genus2Gluings: quotient recognized but not emitted (bielliptic / Mestre), counted only\n";
-            else
-                vprintf Gluing: "Genus2Gluings: recognized quotient is a non-stable look-alike, dropping\n";
-            end if;
+            dropped := true;
+            vprintf Gluing: "Genus2Gluings: recognized quotient IC = %o rejected by CurveFromInvariants: not counted, block left uncertifiable\n", ic;
         end if;
     end for;
-    analyticCount := jacCount + #Seqset(products);
+    analyticCount := jacCount;
     cs := CanonicalGluingList(curves);
     // A gluing matrix per returned curve. CanonicalGluingList reduces, dedups by
     // isomorphism and sorts, so match each returned curve back to a source psi.
@@ -254,7 +245,7 @@ function gluingEmitCurves(recIC, recPsi, products, E1, E2, TraceBound)
             if IsIsomorphic(c, curves[i]) then Append(~psisOut, sourcePsis[i]); break; end if;
         end for;
     end for;
-    return cs, psisOut, analyticCount;
+    return cs, psisOut, analyticCount, dropped;
 end function;
 
 // -------- Prime-power levels n = ell^e via lifting (Task 10) --------
@@ -351,16 +342,18 @@ end function;
 // {psi, -psi} identification (-1 mod n negates every block at once) means orbit counts do NOT
 // multiply across several odd blocks (|tuples| = prod graphs_i, orbits = |tuples|/2 for n > 2,
 // so prod(orbits_i) undercounts by 2^(#oddblocks - 1)); multiplying at the graph level
-// sidesteps that. The analytic side counts graphs too: one recognized rational tuple = one
-// graph, no {psi, -psi} dedup (#recIC jacobian + #products product). certified iff every block
-// certified AND the analytic graph count equals the product of block graph counts; a
-// disagreement is the same hard error as the prime certificate, ell replaced by n. If any
-// block is certified empty (congruence obstruction on its ell^e-part, exact count 0, or the
-// e >= 2 certified-empty-by-reduction) the composite is certified empty and returns early.
-// Composite products are NOT rational-isogeny gated (unlike the prime path): the level-n
-// recognition already discards non-stable graphs, and a genuine product block-gluing need not
-// give either curve a rational ell-isogeny; a residual look-alike would surface as a loud
-// certificate mismatch, never a silent false certification.
+// sidesteps that. The analytic side counts graphs too: one recognized rational jacobian
+// tuple = one graph, no {psi, -psi} dedup (#recIC). Recognized products do NOT count: the
+// certificate only runs on the clean locus (see below), where Kani's criterion rules out
+// product-type graph quotients at every level n (a product would force a nonzero geometric
+// isogeny E1 -> E2 of degree k(n-k)), so a recognized product is a look-alike, reported in
+// info`products only. certified iff every block certified AND the analytic graph count
+// equals the product of block graph counts AND the level-n recognition/reconstruction left
+// nothing unclassified (no residual product-unsplit quotient, no CurveFromInvariants-
+// rejected quotient); a count disagreement is the same hard error as the prime certificate,
+// ell replaced by n. If any block is certified empty (congruence obstruction on its
+// ell^e-part, exact count 0, or the e >= 2 certified-empty-by-reduction) the composite is
+// certified empty and returns early.
 function gluingCompositeCRT(E1, E2, n, PrecParam, Proof, TraceBound)
     fact := Factorization(n);
     k := #fact;
@@ -368,14 +361,17 @@ function gluingCompositeCRT(E1, E2, n, PrecParam, Proof, TraceBound)
     es := [f[2] : f in fact];
     moduli := [ells[i]^es[i] : i in [1 .. k]];
     strict := (Proof cmpeq true);
-    // The exact certificate assumes Aut(E1 x E2) = {+-1}^2. A Q-isogeny (Hom over Q) enlarges
-    // it, as the prime path already documents; so does a GEOMETRIC one, which for the block
-    // counts to compose must be excluded here too. A shared j-invariant is the common witness
-    // (E1, E2 isomorphic over Qbar, the twist-family degeneracy, e.g. 54a1 x 54b1, j = 9261/8):
-    // the CRT of stable BLOCK graphs stays valid, but such a graph's level-n quotient need not
-    // be a recognizable rational curve, so prod(block graph counts) over-predicts the analytic
-    // count. These pairs are left traces-only rather than risking a spurious mismatch abort.
-    degenerate := IsIsogenous(E1, E2) or (jInvariant(E1) eq jInvariant(E2));
+    // Certificate scope (paper Algorithm 3.4; see the prime path's runExact comment): the
+    // exact layer only certifies geometrically NONisogenous pairs, and IsIsogenous or
+    // GeometricallyIsogenous excludes a pair outright. GeometricallyIsogenous subsumes the
+    // old shared-j test (equal j is its first case) and adds the exact CM-field and
+    // isogeny-class j-match cases. Computed once per call, and only when some block's
+    // Proof gate could fire at all (Proof := false never needs it); excluded pairs still
+    // get per-block diagnostics below.
+    excluded := false;
+    if (Proof cmpeq true) or ((Proof cmpeq "Auto") and Min(ells) le 13) then
+        excluded := IsIsogenous(E1, E2) or GeometricallyIsogenous(E1, E2);
+    end if;
 
     // Congruence prefilter first: a rational n-gluing forces n | GluingModulus, and n | N iff
     // every ell_i^e_i | N. When N is conclusive and n does not divide it, each block whose
@@ -404,8 +400,9 @@ function gluingCompositeCRT(E1, E2, n, PrecParam, Proof, TraceBound)
     for i in [1 .. k] do
         ell := ells[i]; e := es[i];
         // Mirror the prime path: exact certifies "Auto" blocks up to ell = 13, true every
-        // prime, and never runs for isogenous pairs (Aut(E1 x E2) then exceeds {+-1}^2).
-        runExactBlock := ((Proof cmpeq true) or (Proof cmpeq "Auto" and ell le 13)) and not degenerate;
+        // prime, and never runs for excluded (Q- or geometrically isogenous) pairs.
+        gateBlock := (Proof cmpeq true) or (Proof cmpeq "Auto" and ell le 13);
+        runExactBlock := gateBlock and not excluded;
         stableOrbit := -1; graphCount := -1; certified := false;
         if runExactBlock then
             so, srec := GaloisStableGluings(E1, E2, ell);
@@ -424,6 +421,12 @@ function gluingCompositeCRT(E1, E2, n, PrecParam, Proof, TraceBound)
             elif e eq 1 then
                 stableOrbit := so; graphCount := srec`graph_count; certified := true;
             end if;   // e >= 2 with so > 0: no exact ell^e layer, block stays uncertified
+        elif gateBlock and e eq 1 then
+            // Excluded pair, prime block where the certificate would have run: record the
+            // exact stable count as DIAGNOSTIC data (square-case theory development). It is
+            // never compared against anything and never certifies or empties a block here,
+            // not even at stable count 0: the pair is outside the certificate's scope.
+            stableOrbit := GaloisStableGluings(E1, E2, ell);
         end if;
         if not certified then allCertified := false; end if;
 
@@ -465,9 +468,16 @@ function gluingCompositeCRT(E1, E2, n, PrecParam, Proof, TraceBound)
 
     // Level-n recognition (product-aware precision-doubling recognizer) + reconstruction.
     prec := (PrecParam cmpeq false) select GluingPrecisionHeuristic(E1, E2, n) else PrecParam;
-    recIC, recPsi, products, usedPrec := gluingRecognizeAtLevel(E1, E2, curPsis, n, prec);
-    analyticGraph := #recIC + #products;
-    cs, psisOut, _ := gluingEmitCurves(recIC, recPsi, products, E1, E2, TraceBound);
+    recIC, recPsi, products, usedPrec, unsplit := gluingRecognizeAtLevel(E1, E2, curPsis, n, prec);
+    analyticGraph := #recIC;   // jacobian graphs only; products never count (header)
+    cs, psisOut, _, dropped := gluingEmitCurves(recIC, recPsi, E1, E2, TraceBound);
+    if allCertified and (unsplit gt 0 or dropped) then
+        // An unclassified (still-unsplit product) or CurveFromInvariants-rejected quotient:
+        // the analytic side did not fully account for its survivors, so certification is
+        // unavailable regardless of how the counts compare.
+        vprintf Gluing: "gluingCompositeCRT: unclassified or rejected quotient(s) at level %o, certificate withheld\n", n;
+        allCertified := false;
+    end if;
 
     proof := "traces-only";
     if allCertified then
@@ -499,7 +509,12 @@ at double the precision (see the Pipeline note above). TraceBound bounds the Eul
 twist certificate. Proof drives the exact
 completeness certificate (exact.m, GaloisStableGluings): "Auto" certifies prime blocks up
 to ell = 13, true certifies every prime and errors if the exact layer declines, false
-skips it. The exact layer runs at each block's PRIME level only; for e >= 2 blocks it is
+skips it. The certificate's scope is the paper's Algorithm 3.4 input contract:
+geometrically NONisogenous pairs. A pair with IsIsogenous or GeometricallyIsogenous true
+(the "isogenous to a square" case) is never certified: its proof stays "traces-only" and,
+at prime blocks where the certificate would have run, the exact Galois-stable count is
+still recorded in the block tuple as diagnostic data (certified false, never compared,
+never an error). The exact layer runs at each block's PRIME level only; for e >= 2 blocks it is
 out of scope in v1 (division polynomials at ell^e are too large), so those blocks are
 "traces-only" EXCEPT that a prime level certified empty forces ell^e empty by reduction
 (certified). The same shortcut applies to a composite n (gluingCompositeCRT): one
@@ -509,12 +524,15 @@ blocks in the tuple reported as unexamined sentinels, not independently certifie
 GluingInfo fields are n, proof ("certified" when every block certified,
 else "traces-only"), blocks (one <ell, e, stable_count, analytic_count, certified> tuple
 per prime-power block; stable_count is the exact Galois-stable QUOTIENT count when
-certified, -1 otherwise (including every non-empty e >= 2 block), analytic_count the
+certified, the DIAGNOSTIC exact count when the pair is geometrically isogenous and the
+certificate would otherwise have run (certified false; -1 if the exact layer declined),
+and -1 otherwise (including every non-empty e >= 2 block); analytic_count the
 block's rational-looking survivor orbit count; the composite certificate compares the
 PRODUCT of block graph counts against the analytic graph count and a disagreement is a hard
 error), psis (a gluing matrix per returned curve; empty on the Algebraic/BHLS dispatch, which
 supplies no matrices), products (recognized <j1, j2> pairs of
-the product-type quotients), precision (digits of the successful analytic pass), and
+the product-type quotients; reported only, never part of any certificate count),
+precision (digits of the successful analytic pass), and
 tracebound. Base field is Q, or (experimental, Task 13) a number field K with E1, E2 over the
 same K and the first infinite place of K real: number-field inputs run the analytic periods
 path at one fixed real embedding (EllipticPeriodBasis), recognize over Q, and are always
@@ -549,21 +567,29 @@ blocks; prime-power levels only.}
     // Exact completeness certificate (exact.m). "Auto" certifies prime blocks up
     // to ell = 13 (the exact layer's practical reach at DegreeBound 2400); true
     // certifies every prime and errors if the exact layer declines; false skips.
-    // The certificate is only run for non-isogenous E1, E2: when Hom(E1, E2) != 0
-    // the surface E1 x E2 carries extra endomorphisms, so Aut(E1 x E2) is larger
-    // than {+-1}^2 and product-type quotients proliferate (a cross-isogeny already
-    // gives (E1 x E2)/graph(psi) = E1 x E2). The analytic side then cannot
-    // reconcile its rational-quotient count with the exact graph count by the
-    // {psi, -psi}-fold and rational-isogeny gate this module uses, so isogenous
-    // pairs (the degenerate iso/eq/cm inputs) stay "traces-only".
+    // Scope (paper Algorithm 3.4): the certificate is only run for GEOMETRICALLY
+    // nonisogenous E1, E2, i.e. Hom_Qbar(E1, E2) = 0. When Hom_Qbar(E1, E2) != 0
+    // (a Q-isogeny, or the twist-family/CM degeneracies GeometricallyIsogenous
+    // detects, e.g. 54a1 x 54b1 with equal j = 9261/8) the surface E1 x E2
+    // carries extra endomorphisms: Aut(E1 x E2) can exceed {+-1}^2, Kani's
+    // clean-locus vacuity for product quotients fails (a stable graph CAN have a
+    // product-type quotient, e.g. the twisted Weil restriction at n = 2), and
+    // distinct M/-M orbits can collide in moduli. The analytic rational-quotient
+    // count is then not comparable to the exact stable count, so excluded pairs
+    // stay "traces-only"; where the certificate WOULD have run, the exact stable
+    // count is still recorded in the block tuple as diagnostics (certified false,
+    // never compared, never an error). This is the paper's still-in-development
+    // "isogenous to a square" case.
     // Over a number field the exact completeness layer (exact.m) and BHLS both
-    // require Q, and IsIsogenous is not available for CrvEll[FldNum], so force the
+    // require Q, and IsIsogenous/GeometricallyIsogenous are Q-only, so force the
     // certificate off: number-field blocks are traces-only in v1 (the congruence
-    // certified-empty path below still applies, GluingModulus holding over K). The
-    // "and" short-circuits, so IsIsogenous is never evaluated over K.
-    runExact := (not isNF)
-        and ((Proof cmpeq true) or (Proof cmpeq "Auto" and ell le 13))
-        and not IsIsogenous(E1, E2);
+    // certified-empty path below still applies, GluingModulus holding over K).
+    // gateExact short-circuits, so neither predicate is evaluated over K or when
+    // the Proof gates already fail.
+    gateExact := (not isNF)
+        and ((Proof cmpeq true) or (Proof cmpeq "Auto" and ell le 13));
+    excluded := gateExact and (IsIsogenous(E1, E2) or GeometricallyIsogenous(E1, E2));
+    runExact := gateExact and not excluded;
     strict := (not isNF) and (Proof cmpeq true);
 
     // Dispatch validation, ahead of the fast path below: an Algorithm choice
@@ -637,13 +663,11 @@ blocks; prime-power levels only.}
         end if;
         prec := (Precision cmpeq false) select GluingPrecisionHeuristic(E1, E2, n) else Precision;
         recIC, recPsi, products, usedPrec := gluingRecognizeAtLevel(E1, E2, survivors, n, prec);
-        // ell can exceed 59 here (e >= 2 lift path), past ClassicalModularPolynomial's
-        // database: admitsRationalIsogenyOrUnknown treats that as "cannot rule out".
-        if not (admitsRationalIsogenyOrUnknown(E1, ell) and admitsRationalIsogenyOrUnknown(E2, ell)) then products := []; end if;
-        cs, psisOut, analyticCount := gluingEmitCurves(recIC, recPsi, products, E1, E2, TraceBound);
+        cs, psisOut, analyticCount := gluingEmitCurves(recIC, recPsi, E1, E2, TraceBound);
         // No exact ell^e layer in v1, so stable_count is -1 and the block is traces-only
         // even when curves are emitted (each still passes the Euler-factor twist
-        // certificate to TraceBound in CurveFromInvariants).
+        // certificate to TraceBound in CurveFromInvariants). Recognized products are
+        // reported in info`products but never counted (file header).
         info := rec< gluingInfoFmt() | n := n, proof := "traces-only",
             blocks := [<ell, e, -1, analyticCount, false>], psis := psisOut, products := products,
             precision := usedPrec, tracebound := TraceBound >;
@@ -669,25 +693,31 @@ blocks; prime-power levels only.}
     end if;
 
     if usedAlgebraic then
-        if runExact then
-            // BHLS is a complete algorithm for the (n, n)-jacobian gluings at
-            // n in {2, 3}, so #cs is the exact jacobian-quotient count (recognition
-            // is unreliable here: at small mod-n image the conjugation filter barely
-            // cuts the pool and look-alike quotients isogenous to E1 x E2 twist-
-            // validate). Only the product quotients, which BHLS does not emit, are
-            // recovered from the period enumeration (rational-isogeny gated to drop
-            // product look-alikes; see admitsRationalIsogeny).
+        // BHLS is a complete algorithm for the (n, n)-jacobian gluings at n in {2, 3},
+        // and on the certificate's clean locus every stable quotient is a jacobian
+        // (product-type graph quotients are impossible there by Kani, file header), so
+        // #cs is the analytic count the exact quotient count must match. Jacobian
+        // recognition from the period enumeration is deliberately NOT used for the
+        // count here (at small mod-n image the conjugation filter barely cuts the pool
+        // and look-alike quotients isogenous to E1 x E2 twist-validate); the
+        // enumeration runs only to report the product-type quotients' j-pairs in
+        // info`products (user-facing data on clean pairs, square-case data on excluded
+        // ones), under the same gates the certificate/diagnostics obey.
+        products := []; usedPrec := 0; unsplit := 0;
+        if runExact or excluded then
             prec := (Precision cmpeq false) select GluingPrecisionHeuristic(E1, E2, n) else Precision;
-            _, _, products, usedPrec := gluingAnalyticEnumerate(E1, E2, n, prec);
-            // n in {2, 3} here (usedAlgebraic implies BHLS domain), well inside
-            // ClassicalModularPolynomial's range; only worth the gate when there is a
-            // product quotient to gate.
-            if #products gt 0 and not (admitsRationalIsogeny(E1, n) and admitsRationalIsogeny(E2, n)) then products := []; end if;
-            analyticCount := #cs + #Seqset(products);
+            _, _, products, usedPrec, unsplit := gluingAnalyticEnumerate(E1, E2, n, prec);
+        end if;
+        analyticCount := #cs;
+        if runExact and unsplit eq 0 then
             block, blockProof := GluingCertificateBlock(E1, E2, n, analyticCount, strict);
         else
-            products := []; usedPrec := 0;
-            block := <n, 1, -1, #cs, false>; blockProof := "traces-only";
+            // Excluded pair (diagnostic exact count, never compared), or a residual
+            // unsplit product left a quotient unclassified (certificate withheld), or
+            // the Proof gates are off: traces-only in every case.
+            stable := -1;
+            if excluded then stable := GaloisStableGluings(E1, E2, n); end if;
+            block := <n, 1, stable, analyticCount, false>; blockProof := "traces-only";
         end if;
         info := rec< gluingInfoFmt() | n := n, proof := blockProof,
             blocks := [block], psis := [], products := products,
@@ -700,30 +730,32 @@ blocks; prime-power levels only.}
     // here we reconstruct Q-models from the recognized jacobian invariants and run
     // the completeness certificate.
     prec := (Precision cmpeq false) select GluingPrecisionHeuristic(E1, E2, n) else Precision;
-    recIC, recPsi, products, usedPrec := gluingAnalyticEnumerate(E1, E2, n, prec);
-    // n is an arbitrary prime here (the general periods path) and can exceed 59, past
-    // ClassicalModularPolynomial's database: admitsRationalIsogenyOrUnknown treats that
-    // as "cannot rule out".
-    if not (admitsRationalIsogenyOrUnknown(E1, n) and admitsRationalIsogenyOrUnknown(E2, n)) then products := []; end if;
+    recIC, recPsi, products, usedPrec, unsplit := gluingAnalyticEnumerate(E1, E2, n, prec);
 
     // Phase 2 (reconstruction + count), shared with the prime-power path via
     // gluingEmitCurves: one pass over the distinct recognized jacobian moduli. A
-    // twist-validated quotient is emitted as a curve; a bielliptic / Mestre one is a
-    // genuine Galois-stable gluing counted but not emitted; a look-alike (twist-rejected,
-    // order-2 automorphisms, over Q) has no rational isogeny to E1 x E2 and is dropped
-    // from both. analyticCount is the genuine jacobian quotients plus the
-    // rational-isogeny-gated products, the same unit as the exact layer.
-    cs, psisOut, analyticCount := gluingEmitCurves(recIC, recPsi, products, E1, E2, TraceBound);
+    // twist-validated quotient is emitted as a curve and counted; a quotient
+    // CurveFromInvariants rejects is not counted and makes the block uncertifiable
+    // (dropped flag). Products are reported in info`products but never counted
+    // (clean-locus Kani vacuity, file header). analyticCount is the distinct emitted
+    // jacobian moduli, the same unit as the exact layer's M/-M orbits.
+    cs, psisOut, analyticCount, dropped := gluingEmitCurves(recIC, recPsi, E1, E2, TraceBound);
 
     // The analytic recognition is a reliable rational-quotient count only at odd n,
     // where the conjugation filter is tight; at n = 2 it barely cuts the candidate
     // pool and look-alike jacobians isogenous to E1 x E2 twist-validate, so the n = 2
     // certificate is left to the BHLS path (which Auto always takes at n = 2, non-
     // isomorphic). Under Algorithm := "Periods" an n = 2 block stays "traces-only".
-    if runExact and n ge 3 then
+    // The certificate also requires every survivor accounted for: a residual unsplit
+    // product or a CurveFromInvariants-rejected quotient withholds it (traces-only).
+    if runExact and n ge 3 and unsplit eq 0 and not dropped then
         block, blockProof := GluingCertificateBlock(E1, E2, n, analyticCount, strict);
     else
-        block := <n, 1, -1, analyticCount, false>; blockProof := "traces-only";
+        // Excluded pair at a level where the certificate would have run: record the
+        // exact stable count as diagnostics (certified false, never compared).
+        stable := -1;
+        if excluded and n ge 3 then stable := GaloisStableGluings(E1, E2, n); end if;
+        block := <n, 1, stable, analyticCount, false>; blockProof := "traces-only";
     end if;
     info := rec< gluingInfoFmt() | n := n, proof := blockProof,
         blocks := [block], psis := psisOut, products := products,

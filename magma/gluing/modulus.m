@@ -2,7 +2,55 @@
  * Congruence-modulus prefilter: a necessary condition on n for a rational
  * gluing of E1 and E2 along full n-torsion to exist, cheap to test before
  * running the analytic or algebraic gluing machinery.
+ *
+ * Also home to GeometricallyIsogenous, the exact scope test for the paper's
+ * Algorithm 3.4 (which takes geometrically NONisogenous pairs): the certificate
+ * layer (gluings.m) abstains whenever it returns true.
  */
+
+// Exact CM detection over Q: E has complex multiplication iff j(E) is one of the
+// 13 rational CM j-invariants, i.e. a root of HilbertClassPolynomial(D) for one of
+// the 13 imaginary quadratic orders D of class number one. A finite table lookup,
+// not an analytic decision; returns the discriminant on a hit.
+function rationalCMDiscriminant(j)
+    for D in [-3, -4, -7, -8, -11, -12, -16, -19, -27, -28, -43, -67, -163] do
+        if Evaluate(HilbertClassPolynomial(D), j) eq 0 then return true, D; end if;
+    end for;
+    return false, 0;
+end function;
+
+intrinsic GeometricallyIsogenous(E1::CrvEll, E2::CrvEll) -> BoolElt
+{True iff E1 and E2 are isogenous over Qbar, i.e. Hom_Qbar(E1, E2) is nonzero. The
+test is exact, not heuristic. Equal j-invariants: geometrically isomorphic, true.
+Otherwise CM is decided by comparing j against the 13 rational CM j-invariants
+(HilbertClassPolynomial of the class-number-one discriminants): two CM curves are
+geometrically isogenous iff their CM fields agree (product of discriminants a
+square), and a CM curve is never geometrically isogenous to a non-CM curve (an
+isogeny preserves End tensor Q). Two non-CM curves are geometrically isogenous iff
+some member of the Q-isogeny class of E1 has the j-invariant of E2: the geometric
+Hom generator of a non-CM pair is rational after a quadratic twist, so such a
+member exists exactly when Hom_Qbar(E1, E2) is nonzero (the IsQuadraticTwist call
+is a defensive consistency check only). E1 and E2 must be defined over Q.}
+    require Type(BaseRing(E1)) eq FldRat and Type(BaseRing(E2)) eq FldRat:
+        "GeometricallyIsogenous requires E1 and E2 defined over Q";
+    j1 := jInvariant(E1); j2 := jInvariant(E2);
+    if j1 eq j2 then return true; end if;
+    cm1, D1 := rationalCMDiscriminant(j1);
+    cm2, D2 := rationalCMDiscriminant(j2);
+    if cm1 or cm2 then
+        return cm1 and cm2 and IsSquare(D1 * D2);
+    end if;
+    for F in IsogenousCurves(E1) do
+        if jInvariant(F) eq j2 then
+            ok, _ := IsQuadraticTwist(F, E2);
+            if not ok then
+                vprintf Gluing: "GeometricallyIsogenous: same-j member of the isogeny class is not a quadratic twist of E2 (unexpected for non-CM); the j-match already decides\n";
+            end if;
+            return true;
+        end if;
+    end for;
+    return false;
+end intrinsic;
 
 intrinsic GluingModulus(E1::CrvEll, E2::CrvEll : Bound := 500) -> RngIntElt, BoolElt
 {N = gcd over primes p <= Bound of good reduction for both curves of

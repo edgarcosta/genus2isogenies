@@ -10,7 +10,8 @@
 # Line format:
 #   tag:field:E1:E2:n:count:proof:curves
 #
-# tag    one of bhls2, bhls3, lmfdb, empty, iso, eq, cm, square, pp, composite, nf, regress.
+# tag    one of bhls2, bhls3, lmfdb, empty, iso, eq, cm, square, pp, composite, nf,
+#        sharedj, regress.
 # field  0 for Q, else the defining-polynomial coefficients of K (ascending).
 # E1,E2  a-invariant lists; over K each a-invariant is itself a coefficient
 #        list on the power basis.
@@ -26,17 +27,22 @@
 # Cremona curves for pairs with isomorphic 2-torsion (resp. 3-torsion)
 # splitting fields and gluing with the BHLS algebraic formulas
 # (magma/gluing/bhls.m), then curated for a spread of distinct curves.
-bhls2:0:[0,0,1,0,-7]:[0,0,0,0,4]:2:1:certified:[[[-7,0,0,0,0,0,1],[1]]]
-bhls2:0:[0,1,0,1,1]:[0,1,0,3,-5]:2:1:certified:[[[-8,0,4,0,-2,0,1],[]]]
-bhls2:0:[0,1,0,2,0]:[0,-1,0,2,0]:2:1:certified:[[[-2,0,5,0,-5,0,2],[]]]
-bhls2:0:[0,-1,0,-4,-2]:[0,1,0,-4,2]:2:1:certified:[[[0,-1,0,1,0,-1],[]]]
+# Five of them (the first four bhls2 and the first bhls3 lines) are equal-j pairs
+# (quadratic twists), hence geometrically isogenous: the exact certificate abstains
+# on those (paper Algorithm 3.4 covers geometrically nonisogenous pairs only), so
+# their proof is traces-only while counts and curves are unchanged (BHLS output
+# does not depend on the certificate).
+bhls2:0:[0,0,1,0,-7]:[0,0,0,0,4]:2:1:traces-only:[[[-7,0,0,0,0,0,1],[1]]]
+bhls2:0:[0,1,0,1,1]:[0,1,0,3,-5]:2:1:traces-only:[[[-8,0,4,0,-2,0,1],[]]]
+bhls2:0:[0,1,0,2,0]:[0,-1,0,2,0]:2:1:traces-only:[[[-2,0,5,0,-5,0,2],[]]]
+bhls2:0:[0,-1,0,-4,-2]:[0,1,0,-4,2]:2:1:traces-only:[[[0,-1,0,1,0,-1],[]]]
 bhls2:0:[0,1,0,3,-1]:[0,0,1,2,0]:2:1:certified:[[[-7,0,6,0,-2],[0,0,0,1]]]
 bhls2:0:[1,0,1,9,90]:[1,1,1,0,1]:2:1:certified:[[[1,0,1,3,4,3,1],[1,1,1]]]
 bhls2:0:[0,1,0,0,4]:[0,0,0,1,-2]:2:2:certified:[[[8,0,19,0,15,0,4],[]],[[0,-1,-1,-4,-1,-1],[]]]
 bhls2:0:[0,-1,0,-5,6]:[0,1,0,-13,-4]:2:2:certified:[[[9,0,16,0,8,0,1],[]],[[9,-6,1,-5,2,-1],[]]]
 bhls2:0:[0,0,0,0,1]:[0,0,0,6,-7]:2:2:certified:[[[9,0,12,0,6,0,1],[]],[[0,-2,3,-8,3,-2],[1,1,1,1]]]
 bhls2:0:[0,0,0,-11,-6]:[0,-1,0,-4,0]:2:2:certified:[[[0,1,-5,4,-5,1],[]],[[8,-28,19,-32,7,-4,-4],[]]]
-bhls3:0:[0,0,0,0,1]:[0,0,0,0,4]:3:1:certified:[[[4,0,0,-5,0,0,1],[]]]
+bhls3:0:[0,0,0,0,1]:[0,0,0,0,4]:3:1:traces-only:[[[4,0,0,-5,0,0,1],[]]]
 bhls3:0:[0,1,0,4,4]:[1,0,1,-1,-2]:3:1:certified:[[[-4,-4,-7,-6,-3,-2],[]]]
 bhls3:0:[0,1,0,7,0]:[0,1,0,-5,-25]:3:1:certified:[[[-4,-4,-6,-1,-1,1],[]]]
 bhls3:0:[0,-1,0,-8,-16]:[0,-1,0,7,0]:3:1:certified:[[[-4,-4,-5,0,0,1],[]]]
@@ -107,6 +113,19 @@ pp:0:[1,0,1,-334,-2368]:[0,-1,0,1,0]:4:0:certified:[]
 composite:0:[1,0,1,-1,0]:[1,0,0,-103,-411]:6:0:certified:[]
 # 600.a.18000.1 (E1=20a3, E2=30a6): LMFDB C=[[0,-1,-4,3,3,-2],[0,1,0,1]] is NOT a (6,6)-gluing; pair has none (2-block exact count 0, so certified empty)
 composite:0:[0,1,0,-36,-140]:[1,0,1,-334,-2368]:6:0:certified:[]
+#
+# sharedj entries: geometrically isogenous (equal-j, non-Q-isogenous twist) pairs, the
+# certificate-abstain regressions. Each crashed with "gluing certificate mismatch"
+# before the abstain (54a1 x 54b1 and y^2 = x^3 -+ 10 at n=2 under Auto; the third
+# pair at n=3 under algorithm:=Periods, where the deleted extra-automorphism
+# inference counted a CurveFromInvariants-rejected quotient, exact 0 vs analytic 1).
+# Now: 0 curves, proof traces-only, and the block tuple carries the DIAGNOSTIC exact
+# stable count with certified false (54a1 x 54b1 records <2,1,1,0,false>: the one
+# stable graph is the twisted-Weil-restriction product quotient, reported in
+# info`products as <9261/8, 9261/8>, never emitted and never counted).
+sharedj:0:[1,-1,0,12,8]:[1,-1,1,1,-1]:2:0:traces-only:[]
+sharedj:0:[0,0,0,0,-10]:[0,0,0,0,10]:2:0:traces-only:[]
+sharedj:0:[0,0,1,0,-7]:[0,0,0,0,4]:3:0:traces-only:[]
 #
 # nf entry (experimental number-field inputs, Task 13). E1 and its Galois conjugate
 # E2 over the real quadratic field K = Q(sqrt5) (theta^2 = theta + 1); E1 = LMFDB

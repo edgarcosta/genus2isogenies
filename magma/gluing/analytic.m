@@ -164,9 +164,11 @@ end intrinsic;
 intrinsic NumericInvariants(tau::Mtrx) -> MonStgElt, SeqEnum
 {Classify the ppas with small period matrix tau. Siegel-reduce; if the smallest
 of the 10 even theta constants is below 10^(-prec/2) the quotient is a product
-of elliptic curves and we return "product", [j1, j2] (j-invariants of the
-reduced diagonal, or unevaluated zeros if the reduced tau is not diagonal);
-otherwise "jacobian", the numeric Igusa-Clebsch quadruple of
+of elliptic curves: "product", [j1, j2] (j-invariants of the reduced diagonal)
+when the reduced tau is diagonal at this precision, else "product-unsplit",
+[] (theta-vanishing but non-diagonal reduced tau: the elliptic factors were NOT
+evaluated, a distinct unclassified state rather than a fake j-pair); otherwise
+"jacobian", the numeric Igusa-Clebsch quadruple of
 y^2 = x (x-1)(x-e1)(x-e2)(x-e3) from RosenhainInvariants.}
     require Nrows(tau) eq 2 and Ncols(tau) eq 2: "tau must be 2x2";
     CC := BaseRing(tau);
@@ -179,7 +181,7 @@ y^2 = x (x-1)(x-e1)(x-e2)(x-e3) from RosenhainInvariants.}
         if Abs(taured[1, 2]) lt thr then
             return "product", [jInvariant(taured[1, 1]), jInvariant(taured[2, 2])];
         end if;
-        return "product", [CC | 0, 0];
+        return "product-unsplit", [CC | ];
     end if;
     e := Setseq(RosenhainInvariants(taured));
     assert #e eq 3;
@@ -201,8 +203,9 @@ intrinsic GluedPeriodMatrices(E1::CrvEll, E2::CrvEll, n::RngIntElt : Precision :
 {All quotients (E1 x E2)/graph(psi) over the anti-symplectic psi : E1[n] -> E2[n],
 for prime-power n = ell^e. Each entry is a record <psi, P, taured, type, invariants>:
 psi the determinant -1 matrix, P the 2x4 big period matrix, taured the Siegel-reduced
-small period matrix, type one of "jacobian" or "product", invariants the numeric
-Igusa-Clebsch quadruple or pair of j-invariants. Precision defaults to
+small period matrix, type one of "jacobian", "product" or "product-unsplit"
+(NumericInvariants), invariants the numeric Igusa-Clebsch quadruple, pair of
+j-invariants, or empty for an unsplit product. Precision defaults to
 GluingPrecisionHeuristic(E1, E2, n). Filter (default true) restricts psi to the
 conjugation-equivariance necessary condition below; Filter := false enumerates
 every anti-symplectic psi (the "all quotients over C" contract). This is the
