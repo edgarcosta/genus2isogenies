@@ -34,6 +34,12 @@ must survive into a production API; **GAP/OUT_OF_SCOPE** is not established by
 this slice; and **BLOCKER** would invalidate a promised scoped result.  There
 are no findings with disposition **BLOCKER**.
 
+Post-review recheck: the implementation subsequently received two narrowly
+scoped specification fixes.  This review rechecked only those fixes and the
+requested launcher detail.  AR-08 now records the record-local ideal payload,
+AR-13 is **RESOLVED**, and AR-15 confirms that the former `python3` shebang is
+gone.  The help and normalization limitations in AR-12 and AR-14 remain.
+
 ## Arithmetic attacks and dispositions
 
 | ID | Attack and exact evidence | Disposition |
@@ -45,13 +51,14 @@ are no findings with disposition **BLOCKER**.
 | AR-05 | **Using the image rather than the kernel of squaring.**  In `D=229`, both ordinary and narrow groups are `C3`.  Squaring is surjective on `C3` but has trivial kernel.  The output has one ideal class and one record, so it does not include the two false image-of-squaring candidates. | **PASS** |
 | AR-06 | **Missing an eligible class when the image is too small.**  In `D=40` (the field `Q(sqrt(10))`), the ordinary `C2` class with norm-two representative is retained even though `Sq:Cl(F)->Cl^+(F)` has trivial image. | **PASS** |
 | AR-07 | **Nonmaximal order and order-discriminant confusion.**  `D=5,f=2` exits `2` with `UNSUPPORTED_NONMAXIMAL_ORDER`, order discriminant `20`, and no HM data.  `D=20,f=1` exits `2` with `INVALID_FIELD_DISCRIMINANT`; it is not silently reinterpreted as the conductor-two order in the field of discriminant `5`.  Conductors `0` and `-1` return `INVALID_ORDER_CONDUCTOR`. | **PASS** |
-| AR-08 | **Exact record reconstruction.**  For `D=5,12,40,60,145,205,229`, reconstructing every output ideal from its row HNF and every `alpha` from its `[1,w]` coefficients verified `a^2=(alpha)` and positivity at both real embeddings.  An all-pairs test using principal ideal quotients and exact unit-group coordinates found no two equivalent output pairs. | **PASS** (corroborating Sage computation) |
+| AR-08 | **Exact record reconstruction and record-local ideal provenance.**  For `D=5,12,40,60,145,205,229`, reconstructing every output ideal from its row HNF and every `alpha` from its `[1,w]` coefficients verified `a^2=(alpha)` and positivity at both real embeddings.  An all-pairs test using principal ideal quotients and exact unit-group coordinates found no two equivalent output pairs.  In the post-review output, every one of the 14 `hm_records` also contains a nested `ideal` object with exactly `id`, `norm`, `ordinary_class_coordinates`, and `row_hnf`; that object equals the `hm_ideal_classes` entry selected by `ideal_id`.  Thus each record locally carries the exact ideal lattice and class diagnostic. | **PASS** (corroborating Sage computation) |
 | AR-09 | **Canonicalization and identity drift.**  The successful `D=60` process output was byte-identical on repetition, and the public test checks one JSON line, empty stderr, and a final newline.  A stress sweep through all 153 positive fundamental discriminants `D<=500` found no failed run check, wrong genus-theory count, or case where `unit-0` was not `[1,0]`.  Ideal selection is by the promised `(norm,row-HNF)` key. | **PASS** for the fixed Sage toolchain; **ACCEPTED boundary** across Sage versions because diagnostic class coordinates depend on Sage's chosen class-group generators and are not claimed as a cross-version interchange format. |
 | AR-10 | **Dependence on the field involution/chosen RM embedding.**  Output coefficients use the fixed canonical generator `w`; no quotient by `w |-> Tr(w)-w` is added.  For the nontrivial eligible class of `D=145`, the chosen ideal has HNF `[[1,3],[0,4]]`, while its conjugate has HNF `[[4,0],[0,1]]`.  Their ideal quotient is principal and the induced positive unit has unit coordinates `[0,-2]`, a square, so this example returns to the same arithmetic pair through the declared pair equivalence, not through an illicit field-automorphism quotient.  A future surface adapter must still interpret the coefficients through the supplied `iota`; conjugating `iota` is different marked input. | **PASS / ACCEPTED boundary** |
 | AR-11 | **Validated error/status behavior.**  No command, an unknown command, a noninteger discriminant, and an extra flag each exit `2`, emit one JSON `INVALID_ARGUMENTS` document, and put the human diagnostic on stderr.  Mathematical input rejections contain no HM records.  Generic proof/internal exceptions are statically routed to exit `3` statuses rather than nonexistence. | **PASS** for exercised success and rejection paths; exit-`3` fault injection is **NOT_INDEPENDENTLY_VALIDATED**. |
 | AR-12 | **Help output versus the one-JSON wording.**  `--help` and `enumerate --help` are argparse metacommands: they exit `0` with 12 and 7 lines of text, respectively, rather than JSON.  They are outside the frozen `enumerate --field-discriminant D --order-conductor f` result grammar, but the unqualified sentence “Stdout is one byte-stable JSON document” could be read more broadly. | **GAP/OUT_OF_SCOPE**, nonblocking.  A production contract should explicitly exempt CLI help or make help a JSON status. |
-| AR-13 | **Status-specific rejection metadata.**  The nonmaximal rejection correctly has the decisive status and no HM records, but its shared `theorem_boundary` says `arithmetic_result=EXACT_PROOF_ENABLED` even though class/unit arithmetic was intentionally not run. | **GAP/OUT_OF_SCOPE**, nonblocking semantic overbreadth.  Production result variants should have status-specific payloads. |
+| AR-13 | **Status-specific rejection metadata.**  The original review found that the nonmaximal rejection reused success-oriented proof metadata.  The post-review `D=5,f=2` output now says `arithmetic_result=EXACT_ORDER_REJECTION_ONLY`, `class_unit_enumeration=NOT_RUN`, and `geometric_interpretation=NOT_EVALUATED`; it still exits `2` and contains no HM data.  This accurately distinguishes an exact order check from class/unit enumeration. | **RESOLVED / PASS** |
 | AR-14 | **Unbounded normalization.**  Unit-square normalization has a defensive 10,000-step cap.  No input bound is stated, and no proof of that operational cap was found.  Exceeding it would, however, return an explicit exit-`3` internal-inconsistency state rather than a false arithmetic answer. | **ACCEPTED boundary** for a throwaway prototype; the production implementation should use a directly bounded/logarithmic reduction or document a resource limit. |
+| AR-15 | **Launcher/shebang mismatch.**  The former `python3` shebang is absent from `test_prototype.py`; that file now starts with its module docstring and is invoked by every documented command through `sage -python`.  `prototype.sage` retains its Sage launcher header.  Neither file advertises plain-Python execution. | **RESOLVED / PASS** |
 
 The sweep in AR-09 used the independent classical cardinality formula
 `2^(omega(D)-1)` as its expected value.  That formula is not called by
@@ -135,6 +142,25 @@ These two auxiliary checks are exactly reproducible from Sage objects, but
 because they share Sage arithmetic with the prototype they are explicitly
 labelled **NOT FULLY INDEPENDENT**.
 
+The post-review record-local check invoked the public process separately for
+all seven acceptance fields and printed:
+
+```text
+D=5 records=1 local_ideal_matches=True exact_fields=True
+D=12 records=2 local_ideal_matches=True exact_fields=True
+D=40 records=2 local_ideal_matches=True exact_fields=True
+D=60 records=4 local_ideal_matches=True exact_fields=True
+D=145 records=2 local_ideal_matches=True exact_fields=True
+D=205 records=2 local_ideal_matches=True exact_fields=True
+D=229 records=1 local_ideal_matches=True exact_fields=True
+python3_shebang_absent=true
+```
+
+Here `local_ideal_matches` means `record["ideal"]` equals the unique global
+ideal entry named by `record["ideal_id"]`; `exact_fields` checks that the local
+object has exactly the four required provenance fields.  The nonmaximal public
+command independently printed the corrected rejection values in AR-13.
+
 ## Unresolved broader gaps
 
 The adversarial review found that `REPORT.md` keeps the following claims out of
@@ -162,6 +188,6 @@ The frozen prototype and the scoped paper proposition may survive this review.
 The safe handoff is the arithmetic list of pair classes together with explicit
 surface/analytic obligations.  It is not a computed isogeny graph.  A
 production extraction should preserve the rejection variants as distinct
-types, make their payloads status-specific, keep the chosen `iota` in every
-geometric call, and require an exact polarized `k`-isomorphism certificate
-before deduplicating targets.
+types and preserve their now status-specific payloads, keep the chosen `iota`
+in every geometric call, and require an exact polarized `k`-isomorphism
+certificate before deduplicating targets.

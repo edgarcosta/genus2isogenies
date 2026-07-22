@@ -292,3 +292,99 @@ These entries pre-existed this validation.  `docs/superpowers/` is locally
 excluded by `.git/info/exclude`, so adding this assigned transcript does not
 alter the porcelain output.  No prototype, test, paper-worktree, report, or
 other artifact was edited during this pass.
+
+## Post-review conformance rerun
+
+Validation timestamp: `2026-07-22T04:54:24Z`
+
+Result: **PASS**.  This rerun validates the review-amended working-tree files,
+not merely the earlier committed snapshot.  The repository HEAD and exact
+input hashes at launch were:
+
+```text
+HEAD=c29edc4e108b28aa5c2b66c9ed862c9409ff7f91
+e4df0891b8de036872652feb3317c0568b357708bc51ede7bdac5fcf9ea6afa9  docs/superpowers/rm-goal/FROZEN_SLICE.md
+d5c42c48d8fcb075c1151fde6cacbeaef8d5af9aad70e0e051e2d1ab21a4f43f  docs/superpowers/rm-goal/prototype.sage
+8d3f1df28cc7ee48a6bb04022e0404685f17918ac4bb98bfece90f4ce421a687  docs/superpowers/rm-goal/test_prototype.py
+```
+
+The environment and working directory were exactly the same as in the first
+passing run: the minimal `env -i` envelope documented above, including Sage's
+required real `HOME`, from the repository root.
+
+### Complete public suite
+
+Command:
+
+```sh
+/usr/local/bin/sage -python docs/superpowers/rm-goal/test_prototype.py -v
+```
+
+Exact captured result:
+
+```text
+exit code:       0
+wall time:       23.468124 seconds
+stdout bytes:    0
+stdout sha256:   e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+stderr bytes:    2042
+stderr sha256:   1bfddd8661c11eb8ebcd81d325b4a185ace6984fbdd060c47cd084e3955ea314
+suite-reported:  Ran 13 tests in 23.363s / OK
+```
+
+All 13 test names listed in the initial run again ended in `ok`.  The stderr
+hash differs only because the exact suite-reported elapsed time is embedded
+in `unittest` output.
+
+### Clean direct probes
+
+The same four public commands produced these exact process results:
+
+```text
+D=60,f=1: exit=0, status=OK_ARITHMETIC_ONLY, wall=0.705690s, stdout=4921 bytes, stdout_sha256=80d0bb87f5c7e6851f4a262ae5de0fb6377a27e7c3f6472f8999fcdc514ab9ba, stderr=0 bytes
+D=5,f=2:  exit=2, status=UNSUPPORTED_NONMAXIMAL_ORDER, wall=0.637012s, stdout=995 bytes, stdout_sha256=7914b82e8623a14fc243c1aef2a4d2d0fea2692c51bd2c2f4e5f5f5b8e53c409, stderr=0 bytes
+D=20,f=1: exit=2, status=INVALID_FIELD_DISCRIMINANT, wall=0.615523s, stdout=661 bytes, stdout_sha256=411d307784b7553a9d5e6abad48d10a3a73e435386ca47e6f0d3aefd16654b56, stderr=0 bytes
+malformed: exit=2, status=INVALID_ARGUMENTS, wall=0.639103s, stdout=598 bytes, stdout_sha256=c51f34a791e9b25f6dfa8c68ce2fc1e2061a3214c3544d3a651be25633fee73e, stderr=86 bytes
+```
+
+Every stdout parsed as one JSON document.  The three empty stderr streams had
+SHA-256
+`e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`.
+The malformed case retained the exact expected diagnostic and stderr hash:
+
+```text
+invalid arguments: argument --field-discriminant: invalid int value: 'not-an-integer'
+db09d29d078750571e5cd695c2fd5071dcc12a4fb54d9b78c9415f7358eec488
+```
+
+The amended `D=60` document still has alphas
+`[[1,0],[4,1],[2,0],[8,2]]`, four records, and all run/record checks true.
+Each record now embeds its referenced ideal exactly: the first two embed
+`ideal-0` with norm `1` and HNF `[[1,0],[0,1]]`; the last two embed `ideal-1`
+with norm `2` and HNF `[[1,1],[0,2]]`.  The nonmaximal result contains no HM
+records and its theorem boundary is now exactly:
+
+```json
+{
+  "arithmetic_result": "EXACT_ORDER_REJECTION_ONLY",
+  "class_unit_enumeration": "NOT_RUN",
+  "geometric_interpretation": "NOT_EVALUATED",
+  "quotient_ppas": "NOT_COMPUTED",
+  "target_deduplication": "NOT_COMPUTED"
+}
+```
+
+### Fresh byte-stability pair
+
+Two additional `D=60,f=1` processes, independent of the direct probe above,
+gave:
+
+```text
+run 1: exit=0, wall=0.695811s, stdout=4921 bytes, stdout_sha256=80d0bb87f5c7e6851f4a262ae5de0fb6377a27e7c3f6472f8999fcdc514ab9ba, LF_count=1, final_byte=b'\n', stderr=0 bytes
+run 2: exit=0, wall=0.680172s, stdout=4921 bytes, stdout_sha256=80d0bb87f5c7e6851f4a262ae5de0fb6377a27e7c3f6472f8999fcdc514ab9ba, LF_count=1, final_byte=b'\n', stderr=0 bytes
+stdout byte comparison: True
+stderr byte comparison: True
+```
+
+No implementation, test, paper, report, or validation file other than this
+assigned transcript was edited by the conformance rerun.

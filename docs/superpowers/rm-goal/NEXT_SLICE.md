@@ -67,9 +67,10 @@ RMArithmeticUnknown
 ```
 
 Only `RMArithmeticSuccess` may carry unit, ideal, pair, or theorem-conditional
-degree data.  This removes the prototype's overbroad theorem payload on a
-nonmaximal rejection.  Help belongs to a separate CLI adapter and is
-explicitly exempt from the result-JSON contract.
+degree data.  This preserves the prototype's reviewed correction that a
+nonmaximal rejection reports only exact order-rejection metadata and marks
+class/unit enumeration `NOT_RUN`.  Help belongs to a separate CLI adapter and
+is explicitly exempt from the result-JSON contract.
 
 Every success must retain these invariants:
 

@@ -19,6 +19,11 @@ group invariant factors in all seven diagnostic fields.
 This is an arithmetic validation only.  It says nothing about construction or
 uniqueness of quotient PPAS targets.
 
+Post-review rerun (2026-07-22): PASS again with the exact command below after
+the CLI schema was strengthened to embed the complete ideal payload in every
+HM record.  The amended validator checked all 148 record-local payloads for
+exact equality with the canonical ideal record referenced by `ideal_id`.
+
 ## Reproduction
 
 Run from the repository root:
@@ -68,6 +73,8 @@ For every returned document it checks:
 - for every record, the exact equality `a^2 = (alpha)`, total positivity of
   `alpha`, `Norm(alpha) = Norm(a)^2`, and the declared graph-weight/degree norm
   identities;
+- for every record, exact JSON equality between its record-local `ideal`
+  payload and the canonical top-level ideal record referenced by `ideal_id`;
 - uniqueness of unit, ideal, and record IDs, uniqueness of every
   `(ideal_id, unit_class_id)`, and pairwise inequivalence under
   `(a,alpha) ~ (x*a,x^2*alpha)` using exact principal-ideal and unit-square

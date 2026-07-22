@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Public-boundary tests for the maximal-RM arithmetic prototype."""
 
 import json
@@ -182,6 +181,15 @@ class PrototypeCLITests(unittest.TestCase):
             [[1, 0], [4, 1], [2, 0], [8, 2]],
         )
         self.assertEqual(
+            [record["ideal"] for record in document["hm_records"]],
+            [
+                document["hm_ideal_classes"][0],
+                document["hm_ideal_classes"][0],
+                document["hm_ideal_classes"][1],
+                document["hm_ideal_classes"][1],
+            ],
+        )
+        self.assertEqual(
             document["hm_structure"],
             {
                 "eligible_ordinary_class_count": 2,
@@ -289,6 +297,14 @@ class PrototypeCLITests(unittest.TestCase):
         )
         self.assertNotIn("hm_ideal_classes", document)
         self.assertNotIn("hm_records", document)
+        self.assertEqual(
+            document["theorem_boundary"]["arithmetic_result"],
+            "EXACT_ORDER_REJECTION_ONLY",
+        )
+        self.assertEqual(
+            document["theorem_boundary"]["class_unit_enumeration"],
+            "NOT_RUN",
+        )
 
     def test_order_discriminant_is_not_accepted_as_a_field_discriminant(self):
         completed, document = run_enumerate(20)

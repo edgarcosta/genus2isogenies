@@ -159,13 +159,16 @@ canonical ideals and generators were reconstructed through a separate
 control path but share Sage/Pari, so `VALIDATION.md` labels that evidence
 accordingly rather than calling it an independent CAS result.
 
-The adversarial pass found no arithmetic or paper blocker.  It retained three
-prototype-only limitations: argparse help is textual rather than result JSON,
-the nonmaximal rejection inherits overbroad proof metadata despite emitting no
-HM data, and the normalization loop has a defensive rather than proved step
-cap.  `NEXT_SLICE.md` resolves these at the production type/API boundary.  No
-validation in this run constructs or identifies a quotient PPAS; that layer
-remains explicitly unvalidated.
+The adversarial pass found no arithmetic or paper blocker.  The two formal
+review findings were corrected test-first: every HM record now carries its
+exact ideal provenance locally, and a nonmaximal rejection has an
+order-rejection-only theorem payload with class/unit enumeration marked
+`NOT_RUN`.  The independent clean and black-box/Magma agents then reran on the
+amended bytes and passed.  Two prototype-only limitations remain: argparse
+help is textual rather than result JSON, and the normalization loop has a
+defensive rather than proved step cap.  `NEXT_SLICE.md` resolves these at the
+production type/API boundary.  No validation in this run constructs or
+identifies a quotient PPAS; that layer remains explicitly unvalidated.
 
 ## Future-case interfaces
 

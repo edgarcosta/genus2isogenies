@@ -228,7 +228,9 @@ def _distinct_modulo_unit_squares(unit_group, elements):
     return True
 
 
-def _make_hm_record(K, ideal, ideal_id, unit_id, alpha, record_index, embeddings):
+def _make_hm_record(
+    K, ideal, ideal_record, unit_id, alpha, record_index, embeddings
+):
     alpha_signatures = _signatures(alpha, embeddings)
     norm = ZZ(ideal.norm())
     record_checks = {
@@ -247,7 +249,15 @@ def _make_hm_record(K, ideal, ideal_id, unit_id, alpha, record_index, embeddings
         "expected_quotient_degree": int(norm**2),
         "geometric_label_status": "THEOREM_CONDITIONAL",
         "id": "hm-{}".format(record_index),
-        "ideal_id": ideal_id,
+        "ideal": {
+            "id": ideal_record["id"],
+            "norm": ideal_record["norm"],
+            "ordinary_class_coordinates": list(
+                ideal_record["ordinary_class_coordinates"]
+            ),
+            "row_hnf": [list(row) for row in ideal_record["row_hnf"]],
+        },
+        "ideal_id": ideal_record["id"],
         "unit_class_id": unit_id,
     }
 
@@ -301,6 +311,16 @@ def _theorem_boundary():
     }
 
 
+def _order_rejection_theorem_boundary():
+    return {
+        "arithmetic_result": "EXACT_ORDER_REJECTION_ONLY",
+        "class_unit_enumeration": "NOT_RUN",
+        "geometric_interpretation": "NOT_EVALUATED",
+        "quotient_ppas": "NOT_COMPUTED",
+        "target_deduplication": "NOT_COMPUTED",
+    }
+
+
 def _fixed_surface_statement():
     return {
         "status": "CONDITIONAL_ON_POLARIZATION_CORRESPONDENCE",
@@ -348,7 +368,7 @@ def enumerate_arithmetic(D, conductor):
                     ),
                     "is_maximal": False,
                 },
-                "theorem_boundary": _theorem_boundary(),
+                "theorem_boundary": _order_rejection_theorem_boundary(),
             }
         )
         return document, 2
@@ -425,7 +445,7 @@ def enumerate_arithmetic(D, conductor):
                 _make_hm_record(
                     K,
                     ideal,
-                    ideal_record["id"],
+                    ideal_record,
                     unit_record["id"],
                     alpha,
                     len(records),

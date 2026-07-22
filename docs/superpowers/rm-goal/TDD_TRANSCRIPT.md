@@ -174,3 +174,39 @@ OK
 ```
 
 Exit status was `0`.
+
+## Post-review conformance cycle
+
+The parallel Spec review found two partial contract mismatches: an HM record
+linked to its ideal data only through `ideal_id`, and a nonmaximal rejection
+reused success-like proof metadata.  Tests for the literal frozen behavior
+were added first.  The full command was RED with exit `1`:
+
+```text
+test_D60_emits_the_literal_cartesian_HM_representatives ... ERROR
+test_nonmaximal_order_is_a_validated_rejection_without_HM_data ... FAIL
+
+KeyError: 'ideal'
+
+AssertionError: 'EXACT_PROOF_ENABLED' != 'EXACT_ORDER_REJECTION_ONLY'
+
+----------------------------------------------------------------------
+Ran 13 tests in 23.054s
+
+FAILED (failures=1, errors=1)
+```
+
+The implementation then embedded an exact copy of the referenced ideal record
+inside each HM record and introduced a status-specific order-rejection theorem
+boundary.  The same full command was GREEN:
+
+```text
+----------------------------------------------------------------------
+Ran 13 tests in 23.110s
+
+OK
+```
+
+The arithmetic enumeration itself was unchanged.  A separate clean agent and
+the black-box/Magma validator reran after this remediation; their final
+results are recorded in `RERUN_TRANSCRIPT.md` and `BRUTE_FORCE.md`.

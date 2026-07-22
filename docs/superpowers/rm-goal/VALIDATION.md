@@ -26,10 +26,10 @@ All arithmetic commands are run from the repository root.
 PYTHONHASHSEED=0 sage -python docs/superpowers/rm-goal/test_prototype.py -v
 ```
 
-Independent clean-agent result:
+Final post-review independent clean-agent result:
 
 ```text
-Ran 13 tests in 22.991s
+Ran 13 tests in 23.363s
 OK
 exit 0
 ```
@@ -58,12 +58,14 @@ positive_unit_class_count=2
 eligible_ordinary_class_count=2
 record_count=4
 alpha=[[1,0],[4,1],[2,0],[8,2]]
-stdout_bytes=4557
-stdout_sha256=b18e5f9f27a7bff631c4b58856d04d6e65cb5a239c46bcbd788240dc9dba66ab
+stdout_bytes=4921
+stdout_sha256=80d0bb87f5c7e6851f4a262ae5de0fb6377a27e7c3f6472f8999fcdc514ab9ba
 stderr_bytes=0
 ```
 
-Two new processes produced the same 4,557 bytes and the same SHA-256.
+Each of the four records contains an exact local copy of its referenced ideal
+ID, norm, row HNF, and ordinary class coordinates.  Two new processes produced
+the same 4,921 bytes and the same SHA-256.
 
 ### Validated rejections
 
@@ -78,6 +80,8 @@ status=UNSUPPORTED_NONMAXIMAL_ORDER
 field_discriminant=5
 order_discriminant=20
 index_in_maximal_order=2
+arithmetic_result=EXACT_ORDER_REJECTION_ONLY
+class_unit_enumeration=NOT_RUN
 hm_records absent
 ```
 
@@ -198,14 +202,15 @@ blocker was found.  The decisive counterexamples are:
 - `D=5,f=2` versus `D=20,f=1`: an order discriminant is not a field
   discriminant.
 
-Three prototype-only limitations remain visible rather than silently fixed:
+Two prototype-only limitations remain visible rather than silently fixed:
 
 1. `--help` is an argparse text metacommand, outside the JSON result grammar.
-2. A nonmaximal rejection reuses an overbroad `EXACT_PROOF_ENABLED` theorem
-   payload even though it correctly emits no class/unit data.
-3. The 10,000-step normalization guard is operational, not a proved input
+2. The 10,000-step normalization guard is operational, not a proved input
    bound; exceeding it produces an explicit exit-3 state rather than a false
    result.
 
-The production slice in `NEXT_SLICE.md` resolves these at the type and API
-boundary without expanding this throwaway prototype.
+Formal review also found two partial contract mismatches, both resolved before
+the final reruns: HM records now include record-local ideal provenance, and a
+nonmaximal result now uses status-specific theorem metadata.  The production
+slice in `NEXT_SLICE.md` preserves those corrections and resolves the two
+remaining limitations at the type and API boundary.

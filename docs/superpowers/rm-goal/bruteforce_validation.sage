@@ -278,6 +278,7 @@ def reconstruct_document(discriminant, document):
 
     ideal_records = document["hm_ideal_classes"]
     require(len({record["id"] for record in ideal_records}) == len(ideal_records), "duplicate ideal ID")
+    ideal_records_by_id = {record["id"]: record for record in ideal_records}
     ideals = {}
     ordinary_coordinates = set()
     for record in ideal_records:
@@ -311,6 +312,10 @@ def reconstruct_document(discriminant, document):
     for record in records:
         require(record["ideal_id"] in ideals, "HM record references unknown ideal")
         require(record["unit_class_id"] in {item["id"] for item in unit_records}, "HM record references unknown unit")
+        require(
+            record["ideal"] == ideal_records_by_id[record["ideal_id"]],
+            "HM record-local ideal data do not match its ideal ID",
+        )
         ideal = ideals[record["ideal_id"]]
         alpha = element_from_coefficients(field, record["alpha"])
         norm = ZZ(ideal.norm())
