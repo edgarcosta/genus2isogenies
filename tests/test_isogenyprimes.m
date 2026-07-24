@@ -493,14 +493,34 @@ procedure Test_regression(corpus)
     printf "SECTION regression: PASS\n";
 end procedure;
 
+// Validate the section selector before dispatching: an unknown name would
+// match no section block below and, without this guard, run nothing yet fall
+// through to PASS. FAIL loudly and quit 1 instead.
+knownSections := { "golden", "gates", "branch1", "branch2", "cm",
+                   "congruence", "fixtures", "regression" };
+if section ne "all" and section notin knownSections then
+    printf "SUITE FAILED: unknown section %o (known: all, %o)\n",
+        section, Join(Sort(SetToSequence(knownSections)), ", ");
+    quit 1;
+end if;
+
 // Magma -b continues past an uncaught top-level runtime error onto the next
 // top-level statement, so an unconditional footer would still print PASS
 // after a section blew up: wrap each call so a caught error flips ok. A
 // procedure that failed to compile (missing intrinsic) is never bound, and
 // calling an unbound name raises an error try/catch does NOT intercept, so
 // guard each call with `assigned` first.
+//
+// nRun counts the sections that actually reach their dispatch body. A
+// selection that reaches none is a vacuous run (e.g. section:=cm under
+// cmscope:=0, which gates the only selected section off) and must FAIL rather
+// than PASS; the corpus-driven procedures separately `error if n eq 0` when a
+// running section matches no entries, so a section that runs but processes
+// zero entries fails there.
+nRun := 0;
 ok := true;
 if section eq "all" or section eq "golden" then
+    nRun +:= 1;
     if assigned Test_golden then
         try
             Test_golden(corpus);
@@ -514,6 +534,7 @@ if section eq "all" or section eq "golden" then
     end if;
 end if;
 if section eq "all" or section eq "gates" then
+    nRun +:= 1;
     if assigned Test_gates then
         try
             Test_gates();
@@ -527,6 +548,7 @@ if section eq "all" or section eq "gates" then
     end if;
 end if;
 if section eq "all" or section eq "branch1" then
+    nRun +:= 1;
     if assigned Test_branch1 then
         try
             Test_branch1(corpus);
@@ -540,6 +562,7 @@ if section eq "all" or section eq "branch1" then
     end if;
 end if;
 if section eq "all" or section eq "branch2" then
+    nRun +:= 1;
     if assigned Test_branch2 then
         try
             Test_branch2(corpus);
@@ -553,6 +576,7 @@ if section eq "all" or section eq "branch2" then
     end if;
 end if;
 if (section eq "all" or section eq "cm") and cmscope ne "0" then
+    nRun +:= 1;
     if assigned Test_cm then
         try
             Test_cm(corpus);
@@ -566,6 +590,7 @@ if (section eq "all" or section eq "cm") and cmscope ne "0" then
     end if;
 end if;
 if section eq "all" or section eq "congruence" then
+    nRun +:= 1;
     if assigned Test_congruence then
         try
             Test_congruence(corpus);
@@ -579,6 +604,7 @@ if section eq "all" or section eq "congruence" then
     end if;
 end if;
 if section eq "all" or section eq "fixtures" then
+    nRun +:= 1;
     if assigned Test_fixtures then
         try
             Test_fixtures(corpus);
@@ -595,6 +621,7 @@ end if;
 // shared-scope by construction (the recorded differential runs at
 // cmscope:=0, so no CM-only entry ever gets a pin).
 if section eq "all" or section eq "regression" then
+    nRun +:= 1;
     if assigned Test_regression then
         try
             Test_regression(corpus);
@@ -606,6 +633,14 @@ if section eq "all" or section eq "regression" then
         ok := false;
         printf "SECTION regression: FAIL: procedure not declared (spec/engine not attached?)\n";
     end if;
+end if;
+// A selection that executed no section at all (only reachable now via
+// section:=cm cmscope:=0, since unknown names are rejected up front) ran zero
+// tests: that is a vacuous pass, so FAIL it.
+if nRun eq 0 then
+    ok := false;
+    printf "SUITE FAILED: no sections executed for section=%o cmscope=%o (vacuous run)\n",
+        section, cmscope;
 end if;
 // Failure quits nonzero so batch drivers and CI see it; success falls
 // through to PASS and Magma's default exit 0.
