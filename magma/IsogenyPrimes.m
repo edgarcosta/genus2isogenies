@@ -39,9 +39,12 @@
 //     Kind "Undecided": true
 //
 // Dispatch is on ABSOLUTE DEGREE (degree-one fields take the exact rational
-// branch), not Magma type. Every good/bad decision uses the conductor support
-// of the normalized (global integral) model, never the submitted equation's
-// discriminant.
+// branch), not Magma type. Every good/bad decision that affects the
+// certification semantics uses the conductor support of the normalized (global
+// integral) model, never the submitted equation's discriminant. Witness
+// sampling may conservatively use a model discriminant instead (see
+// SampleFrobeniusCharpolies): it only under-samples good primes, which can
+// never drop a genuine reducible prime, so containment is preserved.
 //////////////////////////////////////////////////////////////////////////
 
 declare verbose IsogenyPrimes, 2;
@@ -115,8 +118,9 @@ end function;
 // FrobeniusCharpoly
 //
 // Magma does not allow user intrinsics to declare a parameter of type Any
-// (verified: "Illegal intrinsic"), so the P::Any of the design spec is
-// realized as two overloads, one per admissible type of P.
+// (verified: "Illegal intrinsic"), so a single P::Any prime argument is
+// realized as two overloads, one per admissible type of P (rational prime over
+// Q, prime ideal over a number field).
 //////////////////////////////////////////////////////////////////////////
 
 intrinsic FrobeniusCharpoly(E::CrvEll, P::RngIntElt) -> RngUPolElt
@@ -238,10 +242,11 @@ end function;
 // charpoly would be reducible mod p. One good charpoly that is IRREDUCIBLE
 // mod p already proves p is not an isogeny prime, without ever forming the
 // p-division polynomial. Same style of test as this repo's own
-// genus2isogenies.py reducible_ell and the design spec's branch-2 Frobenius
-// filter; purely a performance short-circuit (the 67- and 163-division
-// polynomials are otherwise minutes-scale to factor on some curves -- see
-// the design spec's Risks section on capping pathological enumeration).
+// genus2isogenies.py reducible_ell and the branch-2 Frobenius filter
+// (FrobeniusFilterPrimes below); purely a performance short-circuit (the 67-
+// and 163-division polynomials are otherwise minutes-scale to factor on some
+// curves; the kernel-enumeration safety cap in HasPrimeIsogeny bounds the
+// pathological case).
 function FrobeniusExcludesPrime(E, p)
     Fp := GF(p);
     Fpx := PolynomialRing(Fp);
@@ -278,8 +283,8 @@ IsogenyFromKernel(E, candidate) succeeds.}
         subsets := IndexSubsetsSummingTo([ Degree(h) : h in factors ], target);
         error if #subsets gt 10000, Sprintf(
             "HasPrimeIsogeny: candidate kernel enumeration exceeded its safety cap at p = %o " *
-            "(%o Galois-stable subsets); this looks like the pathological case flagged in the " *
-            "design spec's Risks section.", p, #subsets);
+            "(%o Galois-stable subsets); this is the pathological many-factor case the cap " *
+            "guards against.", p, #subsets);
         candidates := [ &*[ factors[i] : i in s ] : s in subsets ];
     end if;
 
@@ -362,9 +367,9 @@ end function;
 // geometric CM).
 //
 // Port of Sage 10.8 gal_reps_number_field.py (Billerey_P_l / _B_l / _R_q /
-// _B_bound / _R_bound / Frobenius_filter / reducible_primes_Billerey), with
-// the design spec's pinned deviations recorded inline. Star/power operations
-// use the vendored helpers above:
+// _B_bound / _R_bound / Frobenius_filter / reducible_primes_Billerey), with the
+// deviations from the Sage reference recorded inline at each function. Star and
+// power operations use the vendored helpers above:
 //   PowerCharacteristicPolynomial(f, n)  roots -> n-th powers  (adams_operator)
 //   TensorCharacteristicPolynomial(f, g) roots -> products a*b (composed_op mul)
 //////////////////////////////////////////////////////////////////////////
@@ -399,8 +404,9 @@ end function;
 
 // Auxiliary-prime admissibility (BOTH phases): r >= 5 prime not dividing
 // 6 * Disc(K) * Norm(cond E). The conductor-based rule (not Sage's model
-// discriminant) is the spec's second pinned deviation. r | Norm(cond E) iff r
-// is a residue characteristic of the conductor support, precomputed in badRat;
+// discriminant) is a deliberate deviation from the Sage reference, keeping the
+// test model-invariant. r | Norm(cond E) iff r is a residue characteristic of
+// the conductor support, precomputed in badRat;
 // r | 6 iff r < 5 for a prime.
 function IsAdmissiblePrime(r, DiscK, badRat)
     return r ge 5 and IsPrime(r) and (DiscK mod r ne 0) and (r notin badRat);
@@ -625,8 +631,8 @@ function RunRPhase(E, d, bad, DiscK, badRat, ClK, mClK, AuxBound, MaxAuxBound)
     end while;
 end function;
 
-// Frobenius filter (Sage Frobenius_filter, spec-pinned by FilterBound not
-// patience): discard ell that has a good ideal q, Norm(q) <= FilterBound, with
+// Frobenius filter (Sage Frobenius_filter, bounded by FilterBound rather than
+// Sage's patience count): discard ell that has a good ideal q, Norm(q) <= FilterBound, with
 // Frobenius charpoly x^2 - a x + N irreducible mod ell and constant term N
 // nonzero mod ell. For odd ell that is KroneckerSymbol(a^2 - 4N, ell) = -1
 // (which already forces ell not dividing N); ell = 2 is the a,N both-odd case.
@@ -676,8 +682,8 @@ end function;
 // isogeny_class.py isogeny_degrees_cm(E): a finite set of primes generating
 // the CM isogeny class, obtained by class-group enumeration over the orders
 // between End(E) = O (discriminant d) and the maximal order, then trimmed by
-// the Frobenius filter. C_CM := that ported output; the design spec's branch-3
-// construction folds the finite fuzz into L := Sort(C_CM join {p : p divides
+// the Frobenius filter. C_CM := that ported output; branch 3 of IsogenyPrimes
+// folds the finite fuzz into L := Sort(C_CM join {p : p divides
 // f * Disc(K) * Norm(cond E)}).
 //////////////////////////////////////////////////////////////////////////
 
@@ -852,11 +858,13 @@ end function;
 intrinsic IsogenyPrimes(E::CrvEll :
     AuxBound := 200, MaxAuxBound := 1600,
     FilterBound := 1000) -> SeqEnum, Rec
-{A certified superset L of R(E), the primes ell such that E[ell] is
-reducible as a Gal(Qbar/K)-module, plus a tagged IsogenyPrimesInfo record.
-See the design spec's Denotational semantics section for the exact
-guarantee. E must be defined over Q or an absolute number field; pass a curve
-over a relative field as its AbsoluteField.}
+{A list L plus a tagged IsogenyPrimesInfo record bounding R(E), the primes ell
+such that E[ell] is reducible as a Gal(Qbar/K)-module. The guarantee depends on
+info`Kind: for "Finite" L is a certified superset of R(E); for "CMFamily" R(E)
+lies between the family F(D_F,f) and F(D_F,f) union L (use MayBeReducible to
+test membership). See the Denotational contract section at the top of this file
+for the exact per-Kind guarantee. E must be defined over Q or an absolute number
+field; pass a curve over a relative field as its AbsoluteField.}
     require Type(BaseRing(E)) eq FldRat or ISA(Type(BaseRing(E)), FldNum) :
         "IsogenyPrimes: E must be defined over the rationals or a number field";
     require Type(BaseRing(E)) eq FldRat or IsAbsoluteField(BaseRing(E)) :
@@ -1117,11 +1125,15 @@ intrinsic CongruencePrimes(E1::CrvEll, E2::CrvEll :
     NormBound := 1000, MaxNormBound := 8000,
     KnownIsogenous := false,
     CertificationPrimeBound := 100, CertificationDepth := 3) -> SeqEnum, Rec
-{A certified superset L of the primes ell such that E1[ell] and E2[ell] have
-isomorphic semisimplifications over their common base field, plus a tagged
-CongruencePrimesInfo record. See the design spec's CongruencePrimes
-semantics section for the exact guarantee. E1 and E2 must be defined over Q
-or an absolute number field; pass curves over a relative field as their
+{A list L plus a tagged CongruencePrimesInfo record bounding the primes ell such
+that E1[ell] and E2[ell] have isomorphic semisimplifications over their common
+base field. The guarantee depends on info`Kind: for "Finite" L is a certified
+superset of that set; for "AllPrimes" the two curves are certified isogenous so
+every prime is congruent (L is empty); for "Undecided" no nontrivial upper bound
+is certified, so all primes must be treated as possible (L is empty). Use
+MayBeCongruent to test membership. See the Denotational contract section at the
+top of this file for the exact per-Kind guarantee. E1 and E2 must be defined
+over Q or an absolute number field; pass curves over a relative field as their
 AbsoluteField.}
     require Type(BaseRing(E1)) eq FldRat or ISA(Type(BaseRing(E1)), FldNum) :
         "CongruencePrimes: E1 must be defined over the rationals or a number field";
