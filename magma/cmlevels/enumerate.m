@@ -545,3 +545,227 @@ intrinsic GoodPrimeDepth1CrossCheck(O::AlgQuatOrd, p::RngIntElt) -> BoolElt
         cat " lattices but the catalogue gave " cat IntegerToString(#catset);
     return true;
 end intrinsic;
+
+// ===========================================================================
+// BAD-PRIME DESCENT CATALOGUES (T2b)
+//
+// For a prime p dividing discrd(O), the catalogue Cat(p, e) of locally principal
+// candidate ideals of reduced norm p^e is built by bounded BFS descent through
+// ALL maximal invariant subspaces of J/pJ starting from J = O, RETAINING every
+// stable intermediate lattice (including non-locally-principal ones: pruning by
+// local principality mid-descent is UNSOUND because a non-principal intermediate
+// can have locally principal descendants). Only the terminal set (stable, index
+// p^(2e), containing p^e O) is filtered through the T2c local-principality layer.
+//
+// Completeness is Nakayama: a proper O-stable sublattice K of a stable lattice J
+// maps to a PROPER invariant subspace of J/pJ (else K + pJ = J forces K = J),
+// hence lies in a MAXIMAL invariant subspace whose preimage is a stable
+// intermediate above K; iterating reaches every stable lattice of bounded index.
+// At bad p the algebra O/pO need not be semisimple, so maximal invariant
+// subspaces have codimension 1 or 2 and the index steps by p or p^2:
+// log_p[O:J'] is tracked exactly (never assumed even).
+//
+// Two prunes are sound and give termination: J' not containing p^e O is dropped
+// (no sublattice of it contains p^e O either), and J' past index p^(2e) is
+// dropped (every target lies between p^e O and O, so within (Z/p^e)^4). A node
+// cap turns runaway growth into a clean error; a cutoff NEVER returns a partial
+// catalogue.
+//
+// Reuses the T2c file-local helpers OrderMultData, ValidateStable, NuFromBasis,
+// IdealBasisElts and the exported CMCandidatePremise / LocalPrincipalityData. The
+// maximal-invariant-subspace helper is self-contained here (Bad prefix; the
+// good-prime section keeps its own).
+// ===========================================================================
+
+// Catalogue entry: X (4x4 integral HNF, rows a Z-basis of the ideal in
+// Basis(O)-coordinates), reduced norm n = p^e, and the T2c filter record.
+BadCatalogueEntryFormat := recformat< X, n, Filter >;
+
+// Descent statistics (audit trail plus the retained-intermediate evidence).
+//   NodesExpanded     : nodes whose maximal invariant subspaces were computed.
+//   NodesSeenPerIndex : SeqEnum of length 2e+1; entry k+1 is the count of distinct
+//                       seen lattices with log_p[O:.] = k, for k = 0..2e.
+//   TerminalCount     : pre-filter terminal candidates (index p^(2e), >= p^e O).
+//   KeptCount         : locally principal terminals retained (= #entries).
+//   KeptBelowNonLP    : kept entries with at least one non-locally-principal
+//                       stable lattice strictly between O and them in the
+//                       explored poset (evidence that retaining non-principal
+//                       intermediates is necessary for completeness).
+//   Codims            : sorted distinct codimensions encountered in descent.
+//   Terminals         : the pre-filter terminal HNF matrices (for cross-checks).
+BadCatalogueStatsFormat := recformat<
+    p, e, NodesExpanded, NodesSeenPerIndex, TerminalCount, KeptCount,
+    KeptBelowNonLP, Codims, Terminals >;
+
+// Deterministic total order on integer matrices: lexicographic on Eltseq.
+function BadHNFCmp(a, b)
+    ea := Eltseq(a); eb := Eltseq(b);
+    for i in [1..#ea] do
+        if ea[i] lt eb[i] then return -1; end if;
+        if ea[i] gt eb[i] then return 1; end if;
+    end for;
+    return 0;
+end function;
+
+// Maximal invariant subspaces of F_p^4 under RIGHT multiplication by the four
+// matrices AAp (left multiplication by Basis(O) on the current node, mod p),
+// returned as canonical row-echelon basis matrices, sorted. Canonicalizing and
+// sorting makes the output independent of MeatAxe internal basis/order choices.
+function BadMaxInvariantSubspaces(AAp)
+    Mod := RModule(AAp);
+    subs := MaximalSubmodules(Mod);
+    bases := [ EchelonForm(Morphism(S, Mod)) : S in subs ];
+    Sort(~bases, BadHNFCmp);
+    return bases;
+end function;
+
+// Preimage in O-coordinates of a submodule W (row-echelon basis Wb over F_p in
+// the J-basis) of J/pJ, where J has HNF matrix Xi (rows = Z-basis of J in
+// Basis(O)-coordinates). The preimage is the Z-span of integer lifts of Wb and p
+// times each J-basis vector, carried to O-coordinates by Xi, Hermite-reduced.
+function BadPreimageLattice(Xi, Wb, p)
+    d := Nrows(Wb);
+    rowsJ := [ [ Integers()!Wb[a,b] : b in [1..4] ] : a in [1..d] ]
+             cat [ [ (i eq j select p else 0) : j in [1..4] ] : i in [1..4] ];
+    H := HermiteForm(Matrix(Integers(), rowsJ) * Xi);
+    nz := [ H[l] : l in [1..Nrows(H)] | not IsZero(H[l]) ];
+    return HermiteForm(Matrix(nz));
+end function;
+
+// Local principality at p of a stable lattice M (HNF Xi) known to contain p^e O
+// (so [O:M] is a power of p). Principal iff that power is even, = p^(2k), and the
+// content nu(M) = p^k. E is Basis(O) as algebra elements.
+function BadLatLocPrincipal(E, Xi, p)
+    g := Valuation(Determinant(Xi), p);
+    if IsOdd(g) then return false; end if;
+    return NuFromBasis(IdealBasisElts(E, Xi)) eq p^(g div 2);
+end function;
+
+intrinsic BadPrimeCatalogue(O::AlgQuatOrd, p::RngIntElt, e::RngIntElt) -> SeqEnum, Rec
+{ Catalogue Cat(p, e) at a BAD prime p (dividing the reduced discriminant
+  discrd(O)) and exponent e at least 1: all locally principal integral left
+  O-ideals of reduced norm p^e, i.e. stable lattices J' with p^e O inside J'
+  inside O, index [O:J'] = p^(2e), and J' principal over O_p. Built by bounded BFS
+  from J = O through every maximal invariant subspace of J/pJ (right action of the
+  four Basis(O) left-multiplication matrices mod p), retaining non-locally-
+  principal intermediates, tracking log_p[O:J'] exactly, pruning any node that
+  fails to contain p^e O or exceeds index p^(2e), and HNF-deduplicating. Terminal
+  candidates pass through CMCandidatePremise and LocalPrincipalityData; only the
+  locally principal ones are kept (rejection is expected at bad primes). Requires
+  p prime dividing discrd(O); a good prime redirects to the good-prime catalogue.
+  Returns the kept entries (BadCatalogueEntryFormat records X, n = p^e, filter
+  record; ordered canonically by HNF) and a BadCatalogueStatsFormat statistics
+  record. Raises a clean error on a node-cap overflow rather than returning a
+  partial catalogue. }
+    require IsPrime(p): "p must be a prime";
+    require e ge 1: "e must be a positive integer";
+    require IsDivisibleBy(Integers()!Discriminant(O), p):
+        "p must divide discrd(O); a good prime (p unramified in the algebra, O p-maximal) uses the good-prime catalogue (T2a)";
+
+    _, E, _, _, AO := OrderMultData(O);
+    F := GF(p);
+    pe := p^e;
+    twoe := 2*e;
+    // One matrix parent for every lattice, so set/AssociativeArray keys compare by
+    // value (IdentityMatrix and HermiteForm can otherwise land in distinct parents).
+    MS := RMatrixSpace(Integers(), 4, 4);
+    I4 := MS ! IdentityMatrix(Integers(), 4);
+    NODECAP := 200000;
+
+    // BFS state. seen dedupes; logOf carries log_p[O:.]; frontier holds nodes
+    // still to expand (log < 2e); terminals holds leaves (log = 2e, >= p^e O).
+    seen := { I4 };
+    logOf := AssociativeArray();
+    logOf[I4] := 0;
+    seenList := [ I4 ];
+    frontier := [ I4 ];
+    terminals := [ MS | ];
+    nodesExpanded := 0;
+    codimSet := { Integers() | };
+
+    while #frontier gt 0 do
+        Xi := frontier[1];
+        Remove(~frontier, 1);
+        g := logOf[Xi];
+        nodesExpanded +:= 1;
+
+        ok, _, AA := ValidateStable(Xi, AO);
+        assert ok;                          // every node is O-stable by construction
+        AAp := [ ChangeRing(AA[i], F) : i in [1..4] ];
+
+        newnodes := [ MS | ];
+        for Wb in BadMaxInvariantSubspaces(AAp) do
+            codim := 4 - Nrows(Wb);
+            Include(~codimSet, codim);
+            Xp := MS ! BadPreimageLattice(Xi, Wb, p);
+            gp := g + codim;
+            assert Determinant(Xp) eq p^gp;         // exact index cross-check
+            if gp gt twoe then continue; end if;    // stop past index p^(2e)
+            XpQ := ChangeRing(Xp, Rationals());
+            if not &and[Denominator(c) eq 1 : c in Eltseq(pe*XpQ^-1)] then
+                continue;                            // does not contain p^e O: sound prune
+            end if;
+            if Xp in seen then continue; end if;
+            Include(~seen, Xp);
+            logOf[Xp] := gp;
+            Append(~seenList, Xp);
+            Append(~newnodes, Xp);
+            require #seen le NODECAP:
+                "BadPrimeCatalogue: node cap exceeded; refusing to return a partial catalogue";
+        end for;
+
+        Sort(~newnodes, BadHNFCmp);
+        for Xp in newnodes do
+            if logOf[Xp] eq twoe then
+                Append(~terminals, Xp);
+            else
+                Append(~frontier, Xp);
+            end if;
+        end for;
+    end while;
+
+    Sort(~terminals, BadHNFCmp);
+
+    // Filter terminals through the T2c local-principality layer; keep principal.
+    entries := [ ];
+    for Xp in terminals do
+        _ := CMCandidatePremise(O, Xp, pe);
+        fdata := LocalPrincipalityData(O, Xp, pe : Witnesses := true);
+        if fdata`LocallyPrincipal then
+            Append(~entries, rec< BadCatalogueEntryFormat |
+                X := Xp, n := pe, Filter := fdata >);
+        end if;
+    end for;
+
+    // Evidence: kept entries sitting below a non-locally-principal intermediate.
+    keptbelow := 0;
+    for entry in entries do
+        Xk := entry`X;
+        XkQ := ChangeRing(Xk, Rationals());
+        below := false;
+        for M in seenList do
+            if M eq Xk or M eq I4 then continue; end if;      // strict, and not O
+            T := XkQ * (ChangeRing(M, Rationals()))^-1;        // Xk <= M iff integral
+            if not &and[Denominator(c) eq 1 : c in Eltseq(T)] then continue; end if;
+            if not BadLatLocPrincipal(E, M, p) then below := true; break; end if;
+        end for;
+        if below then keptbelow +:= 1; end if;
+    end for;
+
+    perindex := [ 0 : k in [0..twoe] ];
+    for M in seenList do
+        perindex[logOf[M] + 1] +:= 1;
+    end for;
+
+    stats := rec< BadCatalogueStatsFormat |
+        p := p, e := e,
+        NodesExpanded := nodesExpanded,
+        NodesSeenPerIndex := perindex,
+        TerminalCount := #terminals,
+        KeptCount := #entries,
+        KeptBelowNonLP := keptbelow,
+        Codims := Sort(SetToSequence(codimSet)),
+        Terminals := terminals >;
+
+    return entries, stats;
+end intrinsic;
