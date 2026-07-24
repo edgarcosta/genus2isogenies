@@ -523,6 +523,16 @@ procedure Test_regression(corpus)
         byid[r`id] := r;
     end for;
     error if #ids eq 0, "no regression pins in the corpus";
+    // Completeness: every eligible entry (each pair, each non-CM single, i.e.
+    // exactly the cmscope:=0 differential scope) must carry a pin, so a silent
+    // gap (a truncated differential, a new fixture never baked) fails loudly
+    // here instead of being skipped.
+    for r in corpus do
+        if r`ispair or not IsCMEntry(r) then
+            error if not assigned r`regkind,
+                Sprintf("regression: eligible entry %o carries no pin", r`id);
+        end if;
+    end for;
     Sort(~ids);
     for id in ids do
         r := byid[id];
