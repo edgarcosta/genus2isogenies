@@ -339,8 +339,9 @@ end intrinsic;
 // PowerCharacteristicPolynomial). Kept file-local (function, not intrinsic) so
 // they never collide with the CHIMP intrinsics of the same name when a caller
 // also attaches CHIMP; project policy is that no code here may depend on CHIMP
-// at run time. Local changes: intrinsic converted to function, the require
-// converted to an error, docstrings dropped; the algorithm is unchanged.
+// at run time. Local changes: intrinsic converted to function,
+// TensorCharacteristicPolynomial's require converted to an error, docstrings
+// dropped; the algorithm is unchanged.
 //////////////////////////////////////////////////////////////////////////
 
 // Characteristic polynomial of the induced map on the tensor product, given the

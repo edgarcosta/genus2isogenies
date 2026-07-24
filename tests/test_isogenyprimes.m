@@ -20,8 +20,10 @@
 //                       check and must exit 1
 //
 // Success prints one PASS line per selected section and a final
-// "ALL SELECTED SECTIONS PASS" (exit 0); any failure prints the failing
-// section with the offending entry id and quits 1.
+// "ALL SELECTED SECTIONS PASS" (exit 0). A section failure prints
+// "SECTION <name>: FAIL" with the offending entry id; an unknown section or a
+// vacuous run (no section executed) prints a top-level "SUITE FAILED" line
+// carrying no entry id. Either way the driver quits 1.
 
 load "tests/_corpus.m";
 load "tests/_suite_body.m";

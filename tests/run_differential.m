@@ -13,6 +13,11 @@
 //
 // cmscope:=0 skips the entries whose Sage CM oracle flagged CM (the scope
 // the recorded regression outputs are taken at); the default includes them.
+//
+// An entry whose engine call throws emits "DIFFERENTIAL ERROR <id>: <msg>"
+// and is dropped from the pin output; if the emitted (successful) set then
+// fails to cover every in-scope entry, the script prints DIFFERENTIAL FAILED
+// and quits 1 so an incomplete .out is never baked.
 
 load "tests/_corpus.m";
 

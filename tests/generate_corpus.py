@@ -254,7 +254,7 @@ def assemble_inputs(data):
     # so Sage's own oE/CM oracles are unaffected by it (isogenies_prime_degree/
     # has_cm/cm_discriminant do not require a minimal model): these three flow
     # through the ordinary _compute_expect_for_entry pipeline like any other
-    # entry. Only tests/_corpus.m's BuildCurve must reproduce the scaled
+    # entry. Only tests/_lib.m's BuildCurve (loaded via _corpus.m) must reproduce the scaled
     # ainvs
     # exactly, so never call a minimal-model method on these curves. Placed
     # last in assembly (after every seeded/random block above) so nothing here
@@ -324,7 +324,7 @@ def assemble_inputs(data):
 # Oracle computation.
 #
 # The oracles below reconstruct each entry's K and E in Sage the same way the
-# Magma BuildField/BuildCurve constructors in tests/_corpus.m do. Sage and
+# Magma BuildField/BuildCurve constructors in tests/_lib.m (loaded via _corpus.m) do. Sage and
 # Magma may pick
 # conjugate roots of the defining polynomial, but every oracle value used in an
 # assert (O(E), CM data, congruence-trace gcd) is a Galois invariant, and the
@@ -756,7 +756,7 @@ INPUTS_PATH = "tests/corpus_inputs.txt"
 def split_top(s, sep=":"):
     """Split s on sep at bracket depth 0, preserving empty fields (Python's
     str.split would break bracketed lists; Magma's Split also drops empty
-    fields, so tests/_corpus.m carries this same loop)."""
+    fields, so tests/_lib.m (loaded via _corpus.m) carries this same loop)."""
     parts, cur, depth = [], [], 0
     for ch in s:
         if ch == "[":

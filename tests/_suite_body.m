@@ -53,9 +53,9 @@ end procedure;
 
 // Raw engine gates: pure Magma identities of the exposed intrinsics, no
 // Sage oracle, so the pinned integers stay literal here rather than in the
-// corpus. The bracket/Adams and star-product helpers are file-local after the
-// CHIMP vendoring (2b64222), so they are unreachable from a test that only
-// loads magma/spec; each identity is therefore pinned through the public
+// corpus. The bracket/Adams and star-product charpoly helpers are vendored as
+// file-local functions in the engine (2b64222), so they are unreachable from a
+// test that only loads magma/spec; each identity is therefore pinned through the public
 // intrinsics that consume it (BillereyBl at a split prime IS the star product;
 // BillereyRq at an inert principal prime IS the k = 0-included power product).
 // The model-invariance block, the split/inert Billerey pins, the
