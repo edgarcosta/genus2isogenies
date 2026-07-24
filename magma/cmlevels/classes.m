@@ -19,10 +19,13 @@
  * Ideal representation (shared with enumerate.m, by orchestrator agreement): an
  * integral left O-ideal a of reduced norm n is its 4x4 integral HNF coordinate
  * matrix X w.r.t. Basis(O) (rows = Z-basis of a in O-coordinates), plus n, with
- * det(X) = n^2. This file does NOT depend on enumerate.m; premise checks are
- * inline. Local principality is an input CONTRACT (T2c/T2d filter for it): the
- * certified minimum-equals-product characterization needs it, and the
- * min-nrd >= n_a*n_b assert below fails loudly if a non-invertible ideal slips in.
+ * det(X) = n^2. Premise checks are inline (CheckPremise). Local principality is an
+ * input contract (T2c/T2d filter for it) that the certified minimum-equals-product
+ * characterization needs: AssertIdealPremise tests it EXACTLY via LocalPrincipalityGCD
+ * (enumerate.m, same attached module), require nu = n. The min-nrd >= n_a*n_b and
+ * divisibility asserts in the certified intrinsics are only CONSEQUENCES of local
+ * principality, not an equivalent test, so they backstop callers that bypass
+ * AssertIdealPremise rather than standing as a loud-failure guarantee on their own.
  */
 
 // Class record produced by ClassifyByEquivalence.
@@ -33,7 +36,12 @@
 //   Gammas     : parallel to Members; Gammas[t] is the exact, re-verified gamma with
 //                member = Rep * Gammas[t] (Gammas at the representative is 1)
 //   BucketKey  : the exact invariant key the representative bucketed under
-CMIdealClass := recformat< Order, RepX, RepN, RepIndex, Members, Gammas, BucketKey >;
+//   GlobalMin  : class global minimal integral norm when CertifyGlobalMinima was on
+//                (then GlobalMin = RepN, hard-asserted); 0 when off, where the record
+//                is only STREAM-minimal (see ClassifyByEquivalence)
+//   GlobalMinCert : CMGlobalMinCert replay record from GlobalMinimalNorm when
+//                   certified; a blank record when not
+CMIdealClass := recformat< Order, RepX, RepN, RepIndex, Members, Gammas, BucketKey, GlobalMin, GlobalMinCert >;
 
 // Replay certificate for GlobalMinimalNorm.
 //   NMin            : the certified global minimal integral norm of the class
@@ -131,9 +139,13 @@ end intrinsic;
 
 intrinsic AssertIdealPremise(O::AlgQuatOrd, X::Mtrx, n::RngIntElt) -> BoolElt
 { Assert the ideal premise for (X, n): X integral 4x4, full rank, det(X) = n^2,
-  n*O contained in the row lattice, and left O-stability. Errors on any violation;
-  returns true on success. }
+  n*O contained in the row lattice, left O-stability, and local principality
+  (nu(a) = n via LocalPrincipalityGCD). Errors on any violation; returns true on
+  success. }
     _ := CheckPremise(O, X, n);
+    nu := LocalPrincipalityGCD(O, X);
+    require nu eq n:
+        Sprintf("input ideal is not locally principal, nu=%o != n=%o", nu, n);
     return true;
 end intrinsic;
 
@@ -228,14 +240,19 @@ intrinsic BucketKey(O::AlgQuatOrd, X::Mtrx, n::RngIntElt) -> SeqEnum
     return [ (Rationals()!R[a][b]) / n : a in [1..4], b in [1..4] ];
 end intrinsic;
 
-intrinsic ClassifyByEquivalence(O::AlgQuatOrd, ideals::SeqEnum) -> SeqEnum
+intrinsic ClassifyByEquivalence(O::AlgQuatOrd, ideals::SeqEnum : CertifyGlobalMinima := true) -> SeqEnum
 { Group ideals (a sequence of <X, n> tuples given in nondecreasing n) into left-ideal
   classes. Each incoming ideal is compared (by AreLeftEquivalent) only against the
   existing class representatives in its bucket; the first occurrence of a class is its
-  minimal integral representative. Returns a sequence of CMIdealClass records. A final
+  minimal integral representative. Returns a sequence of CMIdealClass records. A
   certification pass asserts that no two class representatives are equivalent, which
   certifies the bucketed grouping was complete (equivalent ideals never split across
-  classes) independently of any canonicity assumption on the bucket key. }
+  classes) independently of any canonicity assumption on the bucket key. With
+  CertifyGlobalMinima (default true) a further pass hard-asserts every representative
+  norm equals its class global minimum (GlobalMinimalNorm) and records GlobalMin /
+  GlobalMinCert; set it false (diagnostics only) to skip that pass, leaving GlobalMin
+  = 0, a blank GlobalMinCert, and records that are only STREAM-minimal (minimal within
+  the supplied nondecreasing stream, not proven globally minimal). }
     require Type(ideals) eq SeqEnum: "ideals must be a sequence of <X, n> tuples";
     for t in [2..#ideals] do
         require ideals[t][2] ge ideals[t-1][2]:
@@ -284,6 +301,21 @@ intrinsic ClassifyByEquivalence(O::AlgQuatOrd, ideals::SeqEnum) -> SeqEnum
             error if eqab,
                 "two class representatives are equivalent: the bucket key failed to be a class invariant and a class was split (classification incomplete); investigate ReducedGramMatrix canonicity";
         end for;
+    end for;
+    // Global-minimum guard: a nondecreasing stream alone proves only stream-minimality,
+    // so without this a representative could be non-minimal in its class globally.
+    for ci in [1..#classes] do
+        c := classes[ci];
+        if CertifyGlobalMinima then
+            AssertFirstOccurrenceIsGlobalMin(O, c`RepX, c`RepN);
+            gm, gcert := GlobalMinimalNorm(O, c`RepX, c`RepN);
+            c`GlobalMin := gm;
+            c`GlobalMinCert := gcert;
+        else
+            c`GlobalMin := 0;
+            c`GlobalMinCert := rec< CMGlobalMinCert | >;
+        end if;
+        classes[ci] := c;
     end for;
     return classes;
 end intrinsic;
