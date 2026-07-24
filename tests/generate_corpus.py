@@ -16,14 +16,16 @@ Usage:
     sage -python tests/generate_corpus.py --smoke    # deterministic subset,
         writes /tmp/smoke_corpus.txt only, never touches the committed
         corpus (fast; verifies the oracle and writer machinery).
-    sage -python tests/generate_corpus.py --add-regressions [out_file]
+    sage -python tests/generate_corpus.py --add-regressions <out_file>
         # bakes recorded engine outputs into the regression fields of
-        tests/corpus.txt. out_file (default .superpowers/sdd/P.out) is in the
+        tests/corpus.txt. out_file is required (no default path): it is in the
         differential .out format written by tests/run_differential.m: a
         curve-pair line is id:kind:exact:stabilized:primes:certmethod, a
-        single-curve line id:kind:exact:primes:cmdisc. Text-level rewrite:
-        every byte of tests/corpus.txt outside the regression fields and the
-        regressions provenance line is preserved.
+        single-curve line id:kind:exact:primes:cmdisc. Every eligible corpus
+        entry (each pair and each non-CM single) must have a line in out_file or
+        the bake aborts, so a partial .out never leaves stale pins in place.
+        Text-level rewrite: every byte of tests/corpus.txt outside the
+        regression fields and the regressions provenance line is preserved.
     sage -python tests/generate_corpus.py --convert-json <corpus_curves.json>
         # one-time conversion from the retired JSON corpus (now in git
         history only): writes tests/corpus_inputs.txt (the fetched LMFDB
@@ -47,7 +49,6 @@ except Exception:      # optional; the modular-polynomial screen degrades to ski
 
 SEED = 20260720
 MAZUR = [2, 3, 5, 7, 11, 13, 17, 19, 37, 43, 67, 163]
-REGRESSION_DEFAULT_OUT = ".superpowers/sdd/P.out"   # --add-regressions default
 ORACLE_TIMEOUT = 120   # cap (seconds) per oracle, and per-ell for the oE
                        # construction certificate (steps 2-3 of the cascade)
 ENTRY_TIMEOUT = 1800   # outer per-entry fork cap (compute_oracles): a backstop
@@ -1062,7 +1063,7 @@ def harvest_regressions(path=CORPUS_PATH):
 
 def add_regressions(out_path):
     lines = open(CORPUS_PATH).read().splitlines()
-    ispair, lineno = {}, {}
+    ispair, lineno, eligible = {}, {}, set()
     for i, line in enumerate(lines):
         if not line or line.startswith("#"):
             continue
@@ -1070,7 +1071,14 @@ def add_regressions(out_path):
         _reg_span(len(f))          # validates the field count
         ispair[f[0]] = (len(f) == 20)
         lineno[f[0]] = i
+        # Eligible for a pin = every entry the cmscope:=0 differential covers:
+        # each pair, and each single whose cm field is not a CM oracle ([1,...]).
+        # An empty or [0] cm field is a non-CM single (IsCMEntry is false), so
+        # it is eligible.
+        if len(f) == 20 or not f[5].startswith("[1"):
+            eligible.add(f[0])
     n = 0
+    applied = set()
     with open(out_path) as fh:
         for raw in fh:
             raw = raw.rstrip("\n")
@@ -1080,6 +1088,7 @@ def add_regressions(out_path):
             eid = parts[0]
             assert eid in ispair, (
                 "add-regressions: id %r not found in corpus (%r)" % (eid, raw))
+            applied.add(eid)
             f = split_top(lines[lineno[eid]])
             if ispair[eid]:
                 assert len(parts) == 6, (
@@ -1099,6 +1108,14 @@ def add_regressions(out_path):
                             str(int(cmdisc))]
             lines[lineno[eid]] = ":".join(f)
             n += 1
+    # Completeness: every eligible corpus entry must be covered by out_path, so
+    # a truncated differential run cannot leave stale pins on the uncovered
+    # entries while silently succeeding.
+    missing = eligible - applied
+    if missing:
+        raise SystemExit(
+            "add-regressions: %d eligible corpus entries missing from %s: %s"
+            % (len(missing), out_path, ", ".join(sorted(missing))))
     npins = 0
     for line in lines:
         if not line or line.startswith("#"):
@@ -1213,10 +1230,10 @@ def main():
         return
     if "--add-regressions" in args:
         idx = args.index("--add-regressions")
-        out_path = REGRESSION_DEFAULT_OUT
-        if idx + 1 < len(args) and not args[idx + 1].startswith("--"):
-            out_path = args[idx + 1]
-        add_regressions(out_path)
+        if idx + 1 >= len(args) or args[idx + 1].startswith("--"):
+            sys.exit("--add-regressions requires an explicit .out path "
+                     "(written by tests/run_differential.m); there is no default")
+        add_regressions(args[idx + 1])
         return
     smoke = "--smoke" in args
     iprov, lm = read_inputs()
