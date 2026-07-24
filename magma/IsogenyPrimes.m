@@ -125,9 +125,13 @@ rational prime P, for E defined over the rationals.}
     require Type(BaseRing(E)) eq FldRat :
         "FrobeniusCharpoly: E must be defined over the rationals when P is a rational prime";
     require IsPrime(P) : "FrobeniusCharpoly: P must be a prime integer";
-    require Valuation(Discriminant(E), P) eq 0 :
+    // Minimize first (Q always has a global minimal model) so an isomorphic
+    // rescaled model of a good-reduction curve is accepted: good reduction is
+    // then exactly the discriminant valuation of the minimal model being 0.
+    Emin := MinimalModel(E);
+    require Valuation(Discriminant(Emin), P) eq 0 :
         "FrobeniusCharpoly: E must have good reduction at P";
-    Ered := ChangeRing(E, GF(P));
+    Ered := ChangeRing(Emin, GF(P));
     a := TraceOfFrobenius(Ered);
     return CharpolyFromTraceAndNorm(a, P);
 end intrinsic;
