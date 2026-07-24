@@ -360,3 +360,188 @@ intrinsic LocalPrincipalityData(O::AlgQuatOrd, X::Mtrx, n::RngIntElt : Witnesses
     return rec< CMFilterFormat |
         n := n, nu := nu, LocallyPrincipal := lp, PerPrime := perprime >;
 end intrinsic;
+
+// ===========================================================================
+// GOOD-PRIME CATALOGUES (T2a)
+// ===========================================================================
+//
+// At a catalogue-good prime p (B = Algebra(O) unramified at p and O p-maximal,
+// so O_p = M_2(Z_p)) every stable lattice a with p^e O <= a <= O is locally
+// principal at p, and the stable lattices of index p^(2k) are in bijection with
+// the index-p^k sublattices of Z_p^2, of which there are 1 + p + ... + p^k. We
+// build Cat(p,e) by certified descent: from each node a take the p+1 maximal
+// O-invariant subspaces of a/pa (each of codimension 2, since a/pa = S + S for
+// the 2-dimensional simple M_2(F_p)-module S), pull them back, HNF-dedupe per
+// depth, and ASSERT the deduped depth-k count is 1 + p + ... + p^k. The p-adic
+// splitting is used only to CERTIFY goodness (IsUnramified/IspMaximal); the
+// descent is exact F_p / Z linear algebra, so no p-adic precision enters the
+// catalogue. Every depth-e entry is passed through the T2c filter; at a good
+// prime it must be locally principal, so a filter failure is a hard error.
+//
+// Catalogue entry record: X (the 4x4 HNF O-coordinate matrix of the ideal a),
+// n (= p^e, its reduced norm), Filter (the CMFilterFormat record from
+// LocalPrincipalityData). Named distinctly from any T2b catalogue record so the
+// parallel bad-prime section can coexist in this file; T2d may unify them.
+CMGoodCatalogueEntry := recformat< X, n, Filter >;
+
+// Deterministic total order on integer matrices: lexicographic on the row-major
+// entries. Comparison function for Sort (returns -1, 0, or 1).
+GoodCatMatLt := func< A, B |
+    Eltseq(A) lt Eltseq(B) select -1 else (Eltseq(A) eq Eltseq(B) select 0 else 1) >;
+
+// Preimage of an F_p-subspace W of a/pa as an HNF O-coordinate matrix. Wrows are
+// integer lifts of an F_p-basis of W in the a-coordinates b_1..b_4 (rows of Xi);
+// the preimage lattice in a-coordinates is lift(W) + p*Z^4 (index p^(4-dim W)),
+// whose HNF basis is carried to O-coordinates by right multiplication by Xi.
+function GoodCatPreimage(Wrows, Xi, p)
+    d := #Wrows;
+    lift := Matrix(Integers(), d, 4, &cat Wrows);
+    stack := VerticalJoin(lift, p*IdentityMatrix(Integers(), 4));
+    H := HermiteForm(stack);
+    nz := [ H[l] : l in [1..Nrows(H)] | not IsZero(H[l]) ];
+    assert #nz eq 4;
+    return HermiteForm(Matrix(nz) * Xi);
+end function;
+
+// All 2-dimensional (codimension-2) subspaces of F_p^4, each as its unique 2x4
+// reduced row-echelon matrix, in a fixed deterministic order. There are
+// (p^2+1)(p^2+p+1) of them. Used only by the independent depth-1 cross-check.
+function GoodCatAllTwoSubspaces(p)
+    F := GF(p);
+    res := [];
+    for c1 in [1..4] do
+      for c2 in [c1+1..4] do
+        free1 := [ c : c in [c1+1..4] | c ne c2 ];   // row 1 non-pivot cols after c1
+        free2 := [ c : c in [c2+1..4] ];              // row 2 non-pivot cols after c2
+        nf := #free1 + #free2;
+        for tup in CartesianPower([0..p-1], nf) do
+            R := ZeroMatrix(F, 2, 4);
+            R[1,c1] := 1; R[2,c2] := 1;
+            j := 1;
+            for c in free1 do R[1,c] := F ! tup[j]; j +:= 1; end for;
+            for c in free2 do R[2,c] := F ! tup[j]; j +:= 1; end for;
+            Append(~res, R);
+        end for;
+      end for;
+    end for;
+    return res;
+end function;
+
+// ---------------------------------------------------------------------------
+// Exported: good-prime certification and catalogues.
+// ---------------------------------------------------------------------------
+
+intrinsic IsCatalogueGoodPrime(O::AlgQuatOrd, p::RngIntElt) -> BoolElt
+{ True iff p is a catalogue-good prime for O: p is a rational prime, the algebra
+  B = Algebra(O) is unramified at p, and O is p-maximal (IspMaximal(O, p)). Then
+  O_p = M_2(Z_p) and GoodPrimeCatalogue applies. This is the catalogue notion of
+  "good", broader than the theorem's good primes (odd, not dividing discrd(O)):
+  p = 2 qualifies whenever B is unramified at 2 and O is 2-maximal. }
+    require IsPrime(p): "p must be a rational prime";
+    return IsUnramified(p, Algebra(O)) and IspMaximal(O, p);
+end intrinsic;
+
+intrinsic GoodPrimeCatalogue(O::AlgQuatOrd, p::RngIntElt, e::RngIntElt) -> SeqEnum
+{ The catalogue Cat(p,e): every integral locally principal left O-ideal a with
+  p^e O <= a <= O and [O:a] = p^(2e), at a catalogue-good prime p, built by
+  certified descent through the p+1 maximal O-invariant subspaces of a/pa at each
+  node (module machinery over the four left-multiplication matrices of Basis(O)),
+  HNF-deduped per depth, with the count assert 1 + p + ... + p^k at every depth
+  k <= e. Every depth-e entry passes the T2c filter (CMCandidatePremise at n = p^e,
+  then LocalPrincipalityData with witnesses); a filter failure is a hard error,
+  since at a good prime every such stable lattice is locally principal. Returns a
+  deterministically ordered (lexicographic on HNF entries) SeqEnum of
+  CMGoodCatalogueEntry records (fields X, n, Filter). Requires
+  IsCatalogueGoodPrime(O, p); otherwise a clean error points at the bad-prime
+  catalogue (T2b). }
+    require IsPrime(p): "p must be a rational prime";
+    require e ge 1: "e must be a positive integer";
+    require IsCatalogueGoodPrime(O, p):
+        "p is not a catalogue-good prime for O (B ramified at p, or O not p-maximal); "
+        cat "use the bad-prime catalogue (T2b) for this prime";
+
+    F := GF(p);
+    I4 := IdentityMatrix(Integers(), 4);
+    current := { I4 };   // depth 0: the unit ideal O
+    for k in [1..e] do
+        nextset := {};
+        for X in current do
+            Xi, _, AA := CMCandidatePremise(O, X, p^(k-1));   // A_i on this node a
+            AAp := [ ChangeRing(AA[i], F) : i in [1..4] ];
+            M := RModule(AAp);
+            ms := MaximalSubmodules(M);
+            // O_p = M_2(Z_p) forces a/pa = S + S: exactly p+1 maximal submodules,
+            // each of codimension 2 (each descent step multiplies index by p^2).
+            error if #ms ne p+1,
+                "good-prime descent invariant violated at p=" cat IntegerToString(p)
+                cat ": expected " cat IntegerToString(p+1)
+                cat " maximal O-invariant subspaces of a/pa but found " cat IntegerToString(#ms);
+            for S in ms do
+                assert Dimension(S) eq 2;
+                mor := Morphism(S, M);
+                Wrows := [ [ Integers() ! x : x in Eltseq(mor[r]) ] : r in [1..Nrows(mor)] ];
+                Xnew := GoodCatPreimage(Wrows, Xi, p);
+                assert Determinant(Xnew) eq p^(2*k);   // stable lattice of index p^(2k)
+                Include(~nextset, Xnew);
+            end for;
+        end for;
+        current := nextset;
+        expected := &+[ p^j : j in [0..k] ];   // 1 + p + ... + p^k
+        error if #current ne expected,
+            "good-prime catalogue count mismatch at p=" cat IntegerToString(p) cat ", depth "
+            cat IntegerToString(k) cat ": expected " cat IntegerToString(expected)
+            cat " deduped stable lattices but found " cat IntegerToString(#current);
+    end for;
+
+    norm := p^e;
+    catalogue := [];
+    for X in Sort([ M : M in current ], GoodCatMatLt) do
+        Xi := CMCandidatePremise(O, X, norm);    // premise (index, containment, stability)
+        assert Determinant(Xi) eq norm^2;        // norm-index identity [O:a] = n^2
+        fr := LocalPrincipalityData(O, X, norm : Witnesses := true);
+        error if not fr`LocallyPrincipal,
+            "GOOD-PRIME FILTER FAILURE at p=" cat IntegerToString(p) cat ", e="
+            cat IntegerToString(e) cat " (nu=" cat IntegerToString(fr`nu) cat ", n="
+            cat IntegerToString(norm) cat "): a good-prime stable lattice must be locally "
+            cat "principal, so this is a mathematical inconsistency";
+        Append(~catalogue, rec< CMGoodCatalogueEntry | X := X, n := norm, Filter := fr >);
+    end for;
+    return catalogue;
+end intrinsic;
+
+intrinsic GoodPrimeDepth1CrossCheck(O::AlgQuatOrd, p::RngIntElt) -> BoolElt
+{ Independent verification of Cat(p,1) at a catalogue-good prime p: enumerate ALL
+  (p^2+1)(p^2+p+1) codimension-2 subspaces of O/pO by reduced row echelon form,
+  keep those invariant under the four left-multiplication matrices of Basis(O),
+  pull each back to an HNF O-coordinate lattice, and ASSERT the resulting set of
+  HNF matrices equals that of GoodPrimeCatalogue(O, p, 1). This uses no
+  maximal-submodule machinery, so it independently cross-checks the descent.
+  Returns true on success; a mismatch is a hard error. }
+    require IsPrime(p): "p must be a rational prime";
+    require IsCatalogueGoodPrime(O, p):
+        "p is not a catalogue-good prime for O; the depth-1 cross-check assumes O_p = M_2(Z_p)";
+    F := GF(p);
+    I4 := IdentityMatrix(Integers(), 4);
+    _, _, AA := CMCandidatePremise(O, I4, 1);
+    AAp := [ ChangeRing(AA[i], F) : i in [1..4] ];
+
+    invset := {};
+    for R in GoodCatAllTwoSubspaces(p) do
+        good := true;
+        for i in [1..4] do
+            // W invariant under right multiplication by AAp[i] iff no rank gain.
+            if Rank(VerticalJoin(R, R*AAp[i])) ne 2 then good := false; break; end if;
+        end for;
+        if good then
+            Wrows := [ [ Integers() ! x : x in Eltseq(R[r]) ] : r in [1..2] ];
+            Include(~invset, GoodCatPreimage(Wrows, I4, p));
+        end if;
+    end for;
+
+    catset := { entry`X : entry in GoodPrimeCatalogue(O, p, 1) };
+    error if invset ne catset,
+        "depth-1 cross-check MISMATCH at p=" cat IntegerToString(p)
+        cat ": independent invariant-subspace enumeration gave " cat IntegerToString(#invset)
+        cat " lattices but the catalogue gave " cat IntegerToString(#catset);
+    return true;
+end intrinsic;
