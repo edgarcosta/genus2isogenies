@@ -1,4 +1,6 @@
 {
   lattices.m
   order.m
+  enumerate.m
+  classes.m
 }
