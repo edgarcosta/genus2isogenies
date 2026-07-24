@@ -46,11 +46,17 @@
 //   LocallyPrincipal : boolean, a_p principal over O_p (the gcd verdict; when
 //                      witnesses are requested it equals the cyclicity verdict,
 //                      enforced by a hard consistency assert).
+//   Searched         : boolean, whether the cyclicity search ran for this prime
+//                      (true iff LocalPrincipalityData had Witnesses := true).
+//                      Witness/WitnessLift are meaningful ONLY when Searched; when
+//                      false they hold [] and 0 as placeholders, which is NOT a
+//                      "no witness / nonprincipal" verdict (read LocallyPrincipal).
 //   Witness          : the F_p generator vector v as a SeqEnum of integers in
-//                      [0,p-1] when principal, or [] ("none") when not. A LOCAL
-//                      generation claim: u = sum v_i b_i generates a_p, never a
-//                      global generator.
-//   WitnessLift      : the algebra element u = sum v_i b_i when principal, else 0.
+//                      [0,p-1] when principal, or [] ("none") when not; meaningful
+//                      only when Searched. A LOCAL generation claim: u = sum v_i b_i
+//                      generates a_p, never a global generator.
+//   WitnessLift      : the algebra element u = sum v_i b_i when principal, else 0;
+//                      meaningful only when Searched.
 //
 // CMFilterFormat  (one per candidate a):
 //   n                : reduced norm, sqrt([O:a]).
@@ -59,7 +65,7 @@
 //   LocallyPrincipal : boolean, nu eq n.
 //   PerPrime         : List of CMPrimeVerdictFormat records, one per p | n.
 // ---------------------------------------------------------------------------
-CMPrimeVerdictFormat := recformat< p, e, LocallyPrincipal, Witness, WitnessLift >;
+CMPrimeVerdictFormat := recformat< p, e, LocallyPrincipal, Searched, Witness, WitnessLift >;
 CMFilterFormat       := recformat< n, nu, LocallyPrincipal, PerPrime >;
 
 // ===========================================================================
@@ -268,22 +274,41 @@ intrinsic CyclicityWitness(O::AlgQuatOrd, X::Mtrx, p::RngIntElt) -> BoolElt, Mod
     B, E, _, _, AO := OrderMultData(O);
     oks, msgs, AA := ValidateStable(Xi, AO);
     require oks: msgs;
+    // Frozen consistency requirement on EVERY path (direct callers included): the
+    // cyclicity verdict must agree with the gcd verdict. n comes from the premise
+    // index [O:a] = det(X) = n^2 (asserted here since we skip CMCandidatePremise).
+    dX := Determinant(Xi);
+    n := Isqrt(dX);
+    assert n^2 eq dX;
+    e := Valuation(n, p);
+    nu := LocalPrincipalityGCD(O, X);
+    expected := (Valuation(nu, p) eq e);
     F := GF(p);
     AAp := [ ChangeRing(AA[i], F) : i in [1..4] ];
     bk := IdealBasisElts(E, Xi);
     Sset := (p le 3) select [0..p-1] else [0, 1, 2, 3, 4];
     cands := [ [1,0,0,0], [0,1,0,0], [0,0,1,0], [0,0,0,1], [1,1,1,1] ]
              cat [ [t[1], t[2], t[3], t[4]] : t in CartesianPower(Sset, 4) ];
+    found := false;
+    vwit := VectorSpace(F, 4) ! 0;
+    uwit := B ! 0;
     for vv in cands do
         v := Vector(F, vv);
         if IsZero(v) then continue; end if;
         D := Matrix(F, [ Eltseq(v*AAp[i]) : i in [1..4] ]);
         if not IsZero(Determinant(D)) then
-            u := &+[ (Integers()!v[l]) * bk[l] : l in [1..4] ];
-            return true, v, u;
+            found := true;
+            vwit := v;
+            uwit := &+[ (Integers()!v[l]) * bk[l] : l in [1..4] ];
+            break;
         end if;
     end for;
-    return false, VectorSpace(F, 4) ! 0, B ! 0;
+    error if found ne expected,
+        "CONSISTENCY FAILURE at p=" cat IntegerToString(p) cat
+        ": gcd test (nu=" cat IntegerToString(nu) cat ", n=" cat IntegerToString(n) cat
+        ") says " cat (expected select "principal" else "not principal") cat
+        " but cyclicity search found " cat (found select "a witness" else "none");
+    return found, vwit, uwit;
 end intrinsic;
 
 // ---------------------------------------------------------------------------
@@ -327,7 +352,7 @@ intrinsic LocalPrincipalityData(O::AlgQuatOrd, X::Mtrx, n::RngIntElt : Witnesses
             end if;
         end if;
         Append(~perprime, rec< CMPrimeVerdictFormat |
-            p := p, e := ep, LocallyPrincipal := gcdverdict,
+            p := p, e := ep, LocallyPrincipal := gcdverdict, Searched := Witnesses,
             Witness := wit, WitnessLift := witlift >);
     end for;
     assert lp eq allp;   // nu eq n iff locally principal at every p | n
