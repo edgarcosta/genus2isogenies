@@ -321,34 +321,53 @@ primes and CongruencePrimesInfo record info returned by CongruencePrimes(E1, E2)
 end intrinsic;
 
 //////////////////////////////////////////////////////////////////////////
+// Vendored characteristic-polynomial helpers
+//
+// Copied from CHIMP, file endomorphisms/endomorphisms/magma/upperbounds/utils.m
+// (the intrinsics TensorCharacteristicPolynomial and
+// PowerCharacteristicPolynomial). Kept file-local (function, not intrinsic) so
+// they never collide with the CHIMP intrinsics of the same name when a caller
+// also attaches CHIMP; project policy is that no code here may depend on CHIMP
+// at run time. Local changes: intrinsic converted to function, the require
+// converted to an error, docstrings dropped; the algorithm is unchanged.
+//////////////////////////////////////////////////////////////////////////
+
+// Characteristic polynomial of the induced map on the tensor product, given the
+// characteristic polynomials of two linear transformations.
+function TensorCharacteristicPolynomial(f, g)
+    error if Parent(g) ne Parent(f), "both arguments should have the same parent";
+    R := Parent(g);
+    k := BaseRing(R);
+    _<x, y> := PolynomialRing(k, 2);
+    A := Evaluate(f, y);
+    B := Homogenization( Evaluate(g, x), y);
+    return R!Coefficients(Resultant(A, B, y), x);
+end function;
+
+// Characteristic polynomial of the k-th power of the linear transformation.
+function PowerCharacteristicPolynomial(f, k)
+    R := Parent(f);
+    S<t, u> := PolynomialRing(BaseRing(R), 2);
+    return R!Coefficients(Resultant(Evaluate(f, u), u^k - t, u), t);
+end function;
+
+//////////////////////////////////////////////////////////////////////////
 // Billerey reducible-prime machinery (branch 2: absolute degree >= 2, no
 // geometric CM).
 //
 // Port of Sage 10.8 gal_reps_number_field.py (Billerey_P_l / _B_l / _R_q /
 // _B_bound / _R_bound / Frobenius_filter / reducible_primes_Billerey), with
 // the design spec's pinned deviations recorded inline. Star/power operations
-// use CHIMP:
+// use the vendored helpers above:
 //   PowerCharacteristicPolynomial(f, n)  roots -> n-th powers  (adams_operator)
 //   TensorCharacteristicPolynomial(f, g) roots -> products a*b (composed_op mul)
 //////////////////////////////////////////////////////////////////////////
 
-// Fetch a CHIMP intrinsic by name at call time. Nothing in this package's call
-// graph may name a CHIMP intrinsic statically: on Magma 2.29-8 an absent one
-// aborts at bind time, before the top-of-body requires can report it. This
-// error is the backstop for callers that slip past those requires.
-function ChimpIntrinsic(name)
-    ok, f := IsIntrinsic(name);
-    error if not ok, Sprintf(
-        "IsogenyPrimes package: CHIMP is not attached (%o absent); AttachSpec CHIMP first", name);
-    return f;
-end function;
-
 // Composed product (Sage composed_op with mul) of a nonempty polynomial seq.
 function StarProductPolys(fs)
-    tcp := ChimpIntrinsic("TensorCharacteristicPolynomial");
     g := fs[1];
     for i in [2 .. #fs] do
-        g := tcp(g, fs[i]);
+        g := TensorCharacteristicPolynomial(g, fs[i]);
     end for;
     return g;
 end function;
@@ -390,7 +409,6 @@ end function;
 // B-phase passes admissible l (coprime to Norm(cond E)) and BillereyBl
 // requires good reduction above l.
 function BilPlStar(E, l, bad)
-    pcp := ChimpIntrinsic("PowerCharacteristicPolynomial");
     OK := Integers(BaseRing(E));
     factors := [];
     for pr in Decomposition(OK, l) do
@@ -399,7 +417,7 @@ function BilPlStar(E, l, bad)
             return false, _;
         end if;
         cp := FrobeniusCharpoly(E, q);
-        Append(~factors, pcp(cp, 12 * pr[2]));
+        Append(~factors, PowerCharacteristicPolynomial(cp, 12 * pr[2]));
     end for;
     return true, StarProductPolys(factors);
 end function;
@@ -431,10 +449,9 @@ end function;
 // GCD(Res(P, compose_power(Q, k)), B), the k = 0 factor included (easy to
 // drop by mistake), or 0 as soon as a resultant vanishes.
 function BilRqValue(E, q, d, h, gamma, B)
-    pcp := ChimpIntrinsic("PowerCharacteristicPolynomial");
     Zx := PolynomialRing(Integers());
-    P := pcp(FrobeniusCharpoly(E, q), 12*h);
-    Qpoly := pcp(Zx ! MinimalPolynomial(gamma), 12);
+    P := PowerCharacteristicPolynomial(FrobeniusCharpoly(E, q), 12*h);
+    Qpoly := PowerCharacteristicPolynomial(Zx ! MinimalPolynomial(gamma), 12);
     Rq := 1;
     for k in [0 .. d div 2] do
         factor := Resultant(P, ComposePower(Qpoly, k));
@@ -452,8 +469,6 @@ the rational prime l: the product over k = 0 .. d/2 of P_l^* evaluated at
 l^(12k), where P_l^* is equation (9). E must have good reduction at every
 prime above l; the value is a model invariant. Exposed for the
 inert-principal gate.}
-    require IsIntrinsic("PowerCharacteristicPolynomial") :
-        "BillereyBl: CHIMP is not attached (PowerCharacteristicPolynomial absent); AttachSpec CHIMP first";
     require Type(BaseRing(E)) eq FldNum :
         "BillereyBl: E must be defined over a number field";
     d := AbsoluteDegree(BaseRing(E));
@@ -474,8 +489,6 @@ intrinsic BillereyRq(E::CrvEll, q::RngOrdIdl) -> RngIntElt
 the prime ideal q, with the pinned deviation h = ord([q]) in Cl(K) in place of
 the class number. The full product over k = 0 .. d/2, k = 0 included. Exposed
 for the inert-principal gate (R_q = B_l for l inert, q = (l)).}
-    require IsIntrinsic("PowerCharacteristicPolynomial") :
-        "BillereyRq: CHIMP is not attached (PowerCharacteristicPolynomial absent); AttachSpec CHIMP first";
     require Type(BaseRing(E)) eq FldNum :
         "BillereyRq: E must be defined over a number field";
     require IsPrime(q) : "BillereyRq: q must be a prime ideal";
@@ -921,9 +934,6 @@ guarantee.}
     end if;
 
     // --- Branch 2: degree >= 2, no geometric CM (certified superset of R(E)) ---
-    require IsIntrinsic("PowerCharacteristicPolynomial") :
-        "IsogenyPrimes: CHIMP is not attached (PowerCharacteristicPolynomial absent); AttachSpec CHIMP first";
-
     OK := Integers(K);
     DiscK := Discriminant(OK);
     d := AbsoluteDegree(K);

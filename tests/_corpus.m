@@ -4,16 +4,10 @@
 // tests/corpus.txt (schema documented in its header), and the field/curve
 // constructors. Both drivers load this file first, from the repository root.
 
-// spec:="" is the red-state syntactic check: no engine spec, CHIMP not
-// needed; the engine-presence guard below then quits 1.
+// spec:="" is the red-state syntactic check: no engine spec attached; the
+// engine-presence guard below then quits 1.
 if assigned spec then useSpec := spec; else useSpec := "magma/spec"; end if;
 if useSpec ne "" then
-    // CHIMP supplies the star/bracket charpoly intrinsics the engine needs.
-    ok, _ := IsIntrinsic("PowerCharacteristicPolynomial");
-    if not ok then
-        printf "SUITE FAILED: CHIMP is not attached (PowerCharacteristicPolynomial absent); AttachSpec your CHIMP.spec first\n";
-        quit 1;
-    end if;
     AttachSpec(useSpec);
 end if;
 if not assigned section then section := "all"; end if;
