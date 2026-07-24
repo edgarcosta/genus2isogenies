@@ -652,7 +652,7 @@ intrinsic BadPrimeCatalogue(O::AlgQuatOrd, p::RngIntElt, e::RngIntElt) -> SeqEnu
   fails to contain p^e O or exceeds index p^(2e), and HNF-deduplicating. Terminal
   candidates pass through CMCandidatePremise and LocalPrincipalityData; only the
   locally principal ones are kept (rejection is expected at bad primes). Requires
-  p prime dividing discrd(O); a good prime redirects to the good-prime catalogue.
+  p prime dividing discrd(O); a good prime is rejected; use the good-prime catalogue.
   Returns the kept entries (BadCatalogueEntryFormat records X, n = p^e, filter
   record; ordered canonically by HNF) and a BadCatalogueStatsFormat statistics
   record. Raises a clean error on a node-cap overflow rather than returning a
