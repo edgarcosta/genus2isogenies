@@ -134,9 +134,11 @@ end intrinsic;
 
 intrinsic FrobeniusCharpoly(E::CrvEll, P::RngOrdIdl) -> RngUPolElt
 {The characteristic polynomial x^2 - a*x + Norm(P) of Frobenius at the good
-prime ideal P, for E defined over a number field.}
-    require Type(BaseRing(E)) eq FldNum :
+prime ideal P, for E defined over an absolute number field.}
+    require ISA(Type(BaseRing(E)), FldNum) :
         "FrobeniusCharpoly: E must be defined over a number field when P is a prime ideal";
+    require IsAbsoluteField(BaseRing(E)) :
+        "FrobeniusCharpoly: E must be defined over an absolute field; pass the curve over AbsoluteField(K)";
     require IsPrime(P) : "FrobeniusCharpoly: P must be a prime ideal";
     // E need not be locally minimal at P (class number > 1 fields have no
     // global minimal model); MinimalModel(E,P) always succeeds for a single
@@ -469,7 +471,7 @@ the rational prime l: the product over k = 0 .. d/2 of P_l^* evaluated at
 l^(12k), where P_l^* is equation (9). E must have good reduction at every
 prime above l; the value is a model invariant. Exposed for the
 inert-principal gate.}
-    require Type(BaseRing(E)) eq FldNum :
+    require ISA(Type(BaseRing(E)), FldNum) :
         "BillereyBl: E must be defined over a number field";
     d := AbsoluteDegree(BaseRing(E));
     require d ge 2 : "BillereyBl: Billerey's theorem requires absolute degree >= 2";
@@ -489,7 +491,7 @@ intrinsic BillereyRq(E::CrvEll, q::RngOrdIdl) -> RngIntElt
 the prime ideal q, with the pinned deviation h = ord([q]) in Cl(K) in place of
 the class number. The full product over k = 0 .. d/2, k = 0 included. Exposed
 for the inert-principal gate (R_q = B_l for l inert, q = (l)).}
-    require Type(BaseRing(E)) eq FldNum :
+    require ISA(Type(BaseRing(E)), FldNum) :
         "BillereyRq: E must be defined over a number field";
     require IsPrime(q) : "BillereyRq: q must be a prime ideal";
     K := BaseRing(E);
@@ -849,9 +851,12 @@ intrinsic IsogenyPrimes(E::CrvEll :
 {A certified superset L of R(E), the primes ell such that E[ell] is
 reducible as a Gal(Qbar/K)-module, plus a tagged IsogenyPrimesInfo record.
 See the design spec's Denotational semantics section for the exact
-guarantee.}
-    require Type(BaseRing(E)) in {FldRat, FldNum} :
+guarantee. E must be defined over Q or an absolute number field; pass a curve
+over a relative field as its AbsoluteField.}
+    require Type(BaseRing(E)) eq FldRat or ISA(Type(BaseRing(E)), FldNum) :
         "IsogenyPrimes: E must be defined over the rationals or a number field";
+    require Type(BaseRing(E)) eq FldRat or IsAbsoluteField(BaseRing(E)) :
+        "IsogenyPrimes: E must be defined over Q or an absolute number field; pass the curve over AbsoluteField(K)";
     require 0 lt AuxBound and AuxBound le MaxAuxBound :
         "IsogenyPrimes: require 0 < AuxBound <= MaxAuxBound";
     require FilterBound gt 0 : "IsogenyPrimes: require FilterBound > 0";
@@ -1111,11 +1116,17 @@ intrinsic CongruencePrimes(E1::CrvEll, E2::CrvEll :
 {A certified superset L of the primes ell such that E1[ell] and E2[ell] have
 isomorphic semisimplifications over their common base field, plus a tagged
 CongruencePrimesInfo record. See the design spec's CongruencePrimes
-semantics section for the exact guarantee.}
-    require Type(BaseRing(E1)) in {FldRat, FldNum} :
+semantics section for the exact guarantee. E1 and E2 must be defined over Q
+or an absolute number field; pass curves over a relative field as their
+AbsoluteField.}
+    require Type(BaseRing(E1)) eq FldRat or ISA(Type(BaseRing(E1)), FldNum) :
         "CongruencePrimes: E1 must be defined over the rationals or a number field";
-    require Type(BaseRing(E2)) in {FldRat, FldNum} :
+    require Type(BaseRing(E2)) eq FldRat or ISA(Type(BaseRing(E2)), FldNum) :
         "CongruencePrimes: E2 must be defined over the rationals or a number field";
+    require Type(BaseRing(E1)) eq FldRat or IsAbsoluteField(BaseRing(E1)) :
+        "CongruencePrimes: E1 must be defined over Q or an absolute number field; pass the curve over AbsoluteField(K)";
+    require Type(BaseRing(E2)) eq FldRat or IsAbsoluteField(BaseRing(E2)) :
+        "CongruencePrimes: E2 must be defined over Q or an absolute number field; pass the curve over AbsoluteField(K)";
     require 0 lt NormBound and NormBound le MaxNormBound :
         "CongruencePrimes: require 0 < NormBound <= MaxNormBound";
     require CertificationPrimeBound ge 2 :
