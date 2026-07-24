@@ -187,6 +187,12 @@ intrinsic CMLatticeConstruction(Ibas::SeqEnum, Jbas::SeqEnum)
     assert forall{ <m, y> : m in Mel,  y in Je | InLat(CoordVec(m*y), BI) };
     assert forall{ <u, m> : u in R0el, m in Mel | InLat(CoordVec(u*m), Mm) };
 
+    // Orientation certificate for delta: (J:I) = delta*conj(M) as lattices,
+    // with M = (I:J). An inverted delta breaks this, since the two sides
+    // scale oppositely in delta.
+    Mconj := LatHNF(BasisMat([Trace(m) - m : m in Mel]));
+    assert LatColon(BJ, BI, L) eq LatHNF(delta * Mconj);
+
     assert delta gt 0;
 
     return Rel, Rpel, R0el, Mel, delta;

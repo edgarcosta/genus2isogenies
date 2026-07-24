@@ -177,6 +177,20 @@ function BuildCMSquareOrder(Ibas, Jbas)
     subsumed := OddPrimesDivide(discR, discrd)
             and OddPrimesDivide(discRp, discrd)
             and OddPrimesDivide(content, discrd);
+    // Fail closed: odd-prime subsumption is a theorem for this construction,
+    // so a violation is a construction bug, not bad input.
+    dd := Integers() ! discrd;
+    for chk in [ <"disc(R)", Integers() ! discR>, <"disc(R')", Integers() ! discRp>,
+                 <"degree-form content", content> ] do
+        n := AbsoluteValue(chk[2]);
+        if n ne 0 then
+            for pe in Factorization(n) do
+                error if IsOdd(pe[1]) and dd mod pe[1] ne 0,
+                    Sprintf("odd prime %o divides %o (=%o) but not discrd(O)=%o",
+                            pe[1], chk[1], chk[2], dd);
+            end for;
+        end if;
+    end for;
     audit := rec< CMAuditFormat |
         discR := discR, discRp := discRp,
         DegreeFormContent := content, OddPrimesSubsumed := subsumed >;
