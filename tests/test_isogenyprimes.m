@@ -129,6 +129,63 @@ procedure Test_gates()
     assert BillereyRq(E23g, q23g) eq 6170455359721624102560000000000000;
     assert BillereyBl(E23g, 5) eq 6170455359721624102560000000000000;   // inert q=(5): R_q = B_l
     assert BillereyRq(E23g, q23g) eq BillereyBl(E23g, 5);
+    // gate (ec3465f): FldQuad/FldCyc base fields are accepted (ISA FldNum type
+    // check), and require an ABSOLUTE field. The pre-fix engine rejected a
+    // QuadraticField base with "must be defined over the rationals or a number
+    // field", so IsogenyPrimes/FrobeniusCharpoly over Q(sqrt -1) below erred.
+    Kquad := QuadraticField(-1);
+    Knum := BuildField([1, 0, 1]);          // NumberField(x^2 + 1), an honest FldNum
+    assert Type(Kquad) eq FldQuad;
+    Equad := EllipticCurve([ Kquad | 0, -1, 1, -10, -20 ]);   // 11a1 base-changed
+    Enum := EllipticCurve([ Knum | 0, -1, 1, -10, -20 ]);
+    Lquad, iquad := IsogenyPrimes(Equad);
+    Lnum, inum := IsogenyPrimes(Enum);
+    assert IntSet(Lquad) eq IntSet(Lnum);
+    assert iquad`Kind eq inum`Kind;
+    // FrobeniusCharpoly agrees across the two field constructions. 7 is inert
+    // in Q(sqrt -1), so the prime above it is unique and its charpoly is
+    // well-defined (no prime-above choice); the split prime 5 is compared as
+    // the Galois-invariant set over its two primes above.
+    P7quad := Decomposition(Integers(Kquad), 7)[1][1];
+    P7num := Decomposition(Integers(Knum), 7)[1][1];
+    assert FrobeniusCharpoly(Equad, P7quad) eq xg^2 + 10*xg + 49;
+    assert FrobeniusCharpoly(Equad, P7quad) eq FrobeniusCharpoly(Enum, P7num);
+    assert { FrobeniusCharpoly(Equad, pr[1]) : pr in Decomposition(Integers(Kquad), 5) }
+        eq { FrobeniusCharpoly(Enum, pr[1]) : pr in Decomposition(Integers(Knum), 5) };
+    // gate (ec3465f): a CyclotomicField base (FldCyc, absolute degree 4) runs.
+    // The pre-fix engine rejected FldCyc at the same type require.
+    Kcyc := CyclotomicField(5);
+    assert Type(Kcyc) eq FldCyc and AbsoluteDegree(Kcyc) eq 4;
+    Ecyc := EllipticCurve([ Kcyc | 0, -1, 1, -10, -20 ]);
+    Lcyc, icyc := IsogenyPrimes(Ecyc);
+    assert icyc`Source eq "IsogenyPrimes";
+    assert IntSet(Lcyc) eq {5};
+    // gate (ec3465f): a relative extension is refused by the IsAbsoluteField
+    // require. The pre-fix engine had no such require (a relative ext is a
+    // FldNum), so it slipped past the type check; the error text must name the
+    // absolute-field contract, which the pre-fix path never produced.
+    Krel := ext< Knum | PolynomialRing(Knum).1^2 - 2 >;
+    assert not IsAbsoluteField(Krel);
+    Erel := EllipticCurve([ Krel | 0, -1, 1, -10, -20 ]);
+    relFired := false;
+    try
+        _ := IsogenyPrimes(Erel);
+    catch e
+        relFired := true;
+        assert Position(e`Object, "absolute") gt 0;   // the IsAbsoluteField require, not an unrelated crash
+    end try;
+    assert relFired;                        // the require must actually fire
+    // gate (93be583): FrobeniusCharpoly over Q minimizes before the good-
+    // reduction test, so a non-minimal rescaled model at a good prime is
+    // accepted and gives the minimal model's charpoly. 11a1 scaled by u = 3
+    // has discriminant valuation 12 at the good prime 3; the pre-fix engine
+    // tested the submitted model's discriminant and erred "good reduction".
+    E11q := EllipticCurve([ 0, -1, 1, -10, -20 ]);          // 11a1
+    E11scaled := EllipticCurve([ 0, -9, 27, -810, -14580 ]); // 11a1 rescaled by u = 3
+    assert IsIsomorphic(E11q, E11scaled);
+    assert Valuation(Discriminant(E11scaled), 3) eq 12;      // looks non-good to the naive test
+    assert FrobeniusCharpoly(E11scaled, 3) eq xg^2 + xg + 3;
+    assert FrobeniusCharpoly(E11scaled, 3) eq FrobeniusCharpoly(E11q, 3);
     printf "SECTION gates: PASS\n";
 end procedure;
 
@@ -261,8 +318,17 @@ procedure Test_cm(corpus)
         if not assigned r`oE then
             printf "  SKIP %o: oE dropped\n", r`id;
         elif kind eq "Finite" then
-            error if not IntSet(r`oE) subset IntSet(L),
-                Sprintf("%o: O(E)=%o not subset L=%o", r`id, IntSet(r`oE), IntSet(L));
+            if r`deg1 and not HasOEDrop(r) then
+                // Degree-one CM entry: branch 1 is exact (Exact = true) and
+                // O(E) is complete by Mazur, so the engine list equals the
+                // oracle exactly, not merely contains it.
+                error if IntSet(L) ne IntSet(r`oE),
+                    Sprintf("%o: L=%o ne oracle O(E)=%o (deg1 CM exact)", r`id,
+                            IntSet(L), IntSet(r`oE));
+            else
+                error if not IntSet(r`oE) subset IntSet(L),
+                    Sprintf("%o: O(E)=%o not subset L=%o", r`id, IntSet(r`oE), IntSet(L));
+            end if;
         else
             for ell in r`oE do
                 error if not MayBeReducible(ell, L, info),
